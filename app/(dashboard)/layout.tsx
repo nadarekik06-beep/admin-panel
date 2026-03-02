@@ -1,5 +1,10 @@
-import Sidebar from '@/components/layout/Sidebar'
+import dynamic from 'next/dynamic'
 import Header from '@/components/layout/Header'
+
+const Sidebar = dynamic(
+  () => import('@/components/layout/Sidebar'),
+  { ssr: false }
+)
 
 export default function DashboardLayout({
   children,
@@ -10,7 +15,6 @@ export default function DashboardLayout({
     <div className="flex h-screen bg-bg-primary overflow-hidden">
       <Sidebar />
 
-      {/* Main content shifts based on sidebar width — we use margin + CSS var */}
       <div className="flex-1 flex flex-col ml-[260px] transition-all duration-300 min-w-0">
         <Header />
         <main className="flex-1 overflow-y-auto p-6">
