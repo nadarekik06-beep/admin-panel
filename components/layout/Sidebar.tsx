@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  FileText,   // ← new
 } from 'lucide-react'
 import { adminAuthApi } from '@/lib/api/auth'
 import { authStorage } from '@/lib/auth'
@@ -21,12 +22,13 @@ import { Admin } from '@/types'
 import clsx from 'clsx'
 
 const navItems = [
-  { href: '/',           label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/users',      label: 'Users',     icon: Users },
-  { href: '/sellers',    label: 'Sellers',   icon: Store },
-  { href: '/products',   label: 'Products',  icon: Package },
-  { href: '/orders',     label: 'Orders',    icon: ShoppingCart },
-  { href: '/statistics', label: 'Statistics',icon: BarChart3 },
+  { href: '/',                    label: 'Dashboard',          icon: LayoutDashboard },
+  { href: '/users',               label: 'Users',              icon: Users           },
+  { href: '/sellers',             label: 'Sellers',            icon: Store           },
+  { href: '/seller-applications', label: 'Applications',       icon: FileText        }, // ← new
+  { href: '/products',            label: 'Products',           icon: Package         },
+  { href: '/orders',              label: 'Orders',             icon: ShoppingCart    },
+  { href: '/statistics',          label: 'Statistics',         icon: BarChart3       },
 ]
 
 export default function Sidebar() {
@@ -36,7 +38,6 @@ export default function Sidebar() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [admin, setAdmin]           = useState<Admin | null>(null)
 
-  // ✅ Only read localStorage on the client
   useEffect(() => {
     setAdmin(authStorage.getAdmin())
   }, [])
