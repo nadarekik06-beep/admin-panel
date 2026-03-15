@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// lib/api/sellers.ts  — replace your existing file entirely
+// ─────────────────────────────────────────────────────────────────────────────
 import api from '../axios'
 
 interface SellersParams {
@@ -7,6 +10,15 @@ interface SellersParams {
   per_page?: number
 }
 
+export interface SellerUpdatePayload {
+  name?: string
+  email?: string
+  phone?: string
+  store_name?: string
+  address?: string
+  is_active?: boolean
+}
+
 export const sellersApi = {
   async list(params: SellersParams = {}) {
     const res = await api.get('/admin/sellers', { params })
@@ -14,6 +26,10 @@ export const sellersApi = {
   },
   async get(id: number) {
     const res = await api.get(`/admin/sellers/${id}`)
+    return res.data.data
+  },
+  async update(id: number, payload: SellerUpdatePayload) {
+    const res = await api.put(`/admin/sellers/${id}`, payload)
     return res.data.data
   },
   async approve(id: number) {

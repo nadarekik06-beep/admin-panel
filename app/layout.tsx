@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
-  title: 'Admin Panel',
+  title: "Choose'Tounsi — Admin Panel",
   description: 'Platform Administration Dashboard',
 }
 
@@ -15,6 +15,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+    // ✅ Keep "dark" class — required for the dark theme CSS variables to apply
     <html lang="en" className="dark">
       <body className={`${inter.variable} bg-bg-primary text-text-primary antialiased`}>
         {children}

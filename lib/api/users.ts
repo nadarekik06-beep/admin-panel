@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// lib/api/users.ts  — replace your existing file entirely
+// ─────────────────────────────────────────────────────────────────────────────
 import api from '../axios'
 
 interface UsersParams {
@@ -7,6 +10,14 @@ interface UsersParams {
   per_page?: number
 }
 
+export interface UserUpdatePayload {
+  name?: string
+  email?: string
+  phone?: string
+  address?: string
+  is_active?: boolean
+}
+
 export const usersApi = {
   async list(params: UsersParams = {}) {
     const res = await api.get('/admin/users', { params })
@@ -14,6 +25,10 @@ export const usersApi = {
   },
   async get(id: number) {
     const res = await api.get(`/admin/users/${id}`)
+    return res.data.data
+  },
+  async update(id: number, payload: UserUpdatePayload) {
+    const res = await api.put(`/admin/users/${id}`, payload)
     return res.data.data
   },
   async ban(id: number) {

@@ -2,42 +2,147 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHOOSE'TOUNSI ADMIN — DARK THEME
+   ─────────────────────────────────────────────────────────────────────────
+   #0a0a0a  — deep black        → page background
+   #111318  — rich dark         → sidebar / header
+   #16191f  — elevated dark     → cards
+   #1c2028  — lighter dark      → hover states
+   #db142e  — Tunisian red      → PRIMARY accent (nav active, buttons, cta)
+   #198f41  — Tunisian green    → secondary accent (success, badges, borders)
+   #fcfdfd  — near-white        → primary text
+   #dadbdb  — light grey        → muted text / subtle borders
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --sidebar-width: 260px;
+  /* ── Backgrounds ── */
+  --bg-primary:    #0a0a0a;
+  --bg-secondary:  #111318;
+  --bg-card:       #16191f;
+  --bg-hover:      #1c2028;
+
+  /* ── Text ── */
+  --text-primary:  #fcfdfd;
+  --text-secondary:#c8cad0;
+  --text-muted:    #6b7280;
+
+  /* ── Borders ── */
+  --border:        #1e2128;
+  --border-subtle: #2a2d35;
+
+  /* ── Red — PRIMARY accent ── */
+  --accent-red:          #db142e;
+  --accent-red-light:    #f43347;
+  --accent-red-dim:      rgba(219,20,46,0.12);
+
+  /* ── Green — secondary / success ── */
+  --accent-green:        #198f41;
+  --accent-green-light:  #22b356;
+  --accent-green-dim:    rgba(25,143,65,0.12);
+
+  /* ── Orange — warnings ── */
+  --accent-orange:       #f97316;
+
+  /* ── Shadows & glows ── */
+  --shadow-card:   0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow:   0 0 20px rgba(219,20,46,0.25);
+  --shadow-green:  0 0 16px rgba(25,143,65,0.20);
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+/* ── Base reset ─────────────────────────────────────────────────────────── */
+@layer base {
+  * { box-sizing: border-box; }
+
+  html { color-scheme: dark; }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-geist-sans, system-ui, sans-serif);
+  }
+
+  /* Scrollbar — dark styled */
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-red); }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  background-color: #0f1117;
-  color: #f1f5f9;
+/* ── Utility classes ────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* Backgrounds */
+  .bg-bg-primary   { background-color: var(--bg-primary);   }
+  .bg-bg-secondary { background-color: var(--bg-secondary); }
+  .bg-bg-card      { background-color: var(--bg-card);      }
+  .bg-bg-hover     { background-color: var(--bg-hover);     }
+
+  /* Text */
+  .text-text-primary   { color: var(--text-primary);   }
+  .text-text-secondary { color: var(--text-secondary); }
+  .text-text-muted     { color: var(--text-muted);     }
+
+  /* Border */
+  .border-border { border-color: var(--border); }
+
+  /* ── RED — primary accent (replaces purple everywhere) ── */
+  .text-accent-red             { color: var(--accent-red);       }
+  .text-accent-red-light       { color: var(--accent-red-light); }
+  .bg-accent-red               { background-color: var(--accent-red); }
+  .bg-accent-red\/10           { background-color: rgba(219,20,46,0.10); }
+  .bg-accent-red\/20           { background-color: rgba(219,20,46,0.20); }
+  .bg-accent-red\/90           { background-color: rgba(219,20,46,0.90); }
+  .border-accent-red           { border-color: var(--accent-red); }
+  .border-accent-red\/30       { border-color: rgba(219,20,46,0.30); }
+  .hover\:bg-accent-red\/10:hover  { background-color: rgba(219,20,46,0.10); }
+  .hover\:bg-accent-red\/90:hover  { background-color: rgba(219,20,46,0.90); }
+  .hover\:text-accent-red:hover    { color: var(--accent-red); }
+  .hover\:bg-accent-red:hover      { background-color: var(--accent-red); }
+
+  /* ── GREEN — secondary / success ── */
+  .text-accent-green           { color: var(--accent-green);       }
+  .text-accent-green-light     { color: var(--accent-green-light); }
+  .bg-accent-green             { background-color: var(--accent-green); }
+  .bg-accent-green\/10         { background-color: rgba(25,143,65,0.10); }
+  .bg-accent-green\/20         { background-color: rgba(25,143,65,0.20); }
+  .bg-accent-green\/90         { background-color: rgba(25,143,65,0.90); }
+  .border-accent-green         { border-color: var(--accent-green); }
+  .border-accent-green\/30     { border-color: rgba(25,143,65,0.30); }
+  .hover\:bg-accent-green\/90:hover { background-color: rgba(25,143,65,0.90); }
+  .hover\:text-accent-green:hover   { color: var(--accent-green); }
+
+  /* ── ORANGE — warnings ── */
+  .text-accent-orange            { color: var(--accent-orange); }
+  .bg-accent-orange              { background-color: var(--accent-orange); }
+  .bg-accent-orange\/10          { background-color: rgba(249,115,22,0.10); }
+  .bg-accent-orange\/90          { background-color: rgba(249,115,22,0.90); }
+  .hover\:bg-accent-orange\/90:hover { background-color: rgba(249,115,22,0.90); }
+
+  /* ── PURPLE aliases → RED so legacy class names still compile ── */
+  .text-accent-purple-light    { color: var(--accent-red-light);  }
+  .bg-accent-purple            { background-color: var(--accent-red); }
+  .bg-accent-purple\/20        { background-color: rgba(219,20,46,0.15); }
+  .border-accent-purple        { border-color: var(--accent-red); }
+  .border-accent-purple\/30    { border-color: rgba(219,20,46,0.30); }
+  .focus\:border-accent-purple:focus { border-color: var(--accent-red); }
+
+  /* Gradient — red to deep red (replaces purple gradient) */
+  .bg-gradient-purple {
+    background: linear-gradient(135deg, #db142e 0%, #9b0d1f 100%);
+  }
+
+  /* Shadows */
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+
+  /* Fade animation */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #1a1d27;
-}
-::-webkit-scrollbar-thumb {
-  background: #3a3d52;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #7c3aed;
-}
-
-/* Focus rings */
-*:focus-visible {
-  outline: 2px solid #7c3aed;
-  outline-offset: 2px;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
