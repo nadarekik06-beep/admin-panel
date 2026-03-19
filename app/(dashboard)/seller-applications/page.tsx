@@ -1,41 +1,123 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, CheckCircle, XCircle, Eye, X, ExternalLink, MapPin, Phone, Store, Tag } from 'lucide-react'
+import {
+  Search, CheckCircle, XCircle, Eye, X,
+  ExternalLink, MapPin, Phone, Store, Tag,
+  Trash2, UserCog, Loader2,
+} from 'lucide-react'
 import { sellerApplicationsApi, SellerApplication, storageUrl } from '@/lib/api/sellerApplications'
+import { sellersApi } from '@/lib/api/sellers'
 import { format } from 'date-fns'
 
 type Tab = 'pending' | 'approved' | 'rejected'
 
-// ── Badge ──────────────────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
+  return (
+    <div
+      className={`fixed bottom-5 right-5 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium animate-fade-in`}
+      style={{ background: type === 'success' ? '#198f41' : '#db142e' }}
+    >
+      {type === 'success' ? <CheckCircle size={16} /> : <X size={16} />}
+      {message}
+    </div>
+  )
+}
+
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  confirmColor,
+  loading,
+  onConfirm,
+  onClose,
+  children,
+}: {
+  title: string
+  message: string
+  confirmLabel: string
+  confirmColor: string
+  loading: boolean
+  onConfirm: () => void
+  onClose: () => void
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#16191f', border: '1px solid #1e2128' }}>
+        <div className="px-6 py-4 border-b" style={{ borderColor: '#1e2128' }}>
+          <h3 className="font-bold text-base" style={{ color: '#fcfdfd' }}>{title}</h3>
+        </div>
+        <div className="px-6 py-4 space-y-4">
+          <p className="text-sm" style={{ color: '#9ca3af' }}>{message}</p>
+          {children}
+        </div>
+        <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid #1e2128' }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+            style={{ border: '1px solid #1e2128', color: '#9ca3af' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#1c2028')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{ background: confirmColor }}>
+            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading ? 'Processing…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: Tab }) {
   const styles = {
-    pending:  'bg-amber-50  text-amber-600  border-amber-200',
-    approved: 'bg-green-50  text-green-600  border-green-200',
-    rejected: 'bg-red-50    text-red-600    border-red-200',
+    pending:  { background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' },
+    approved: { background: 'rgba(25,143,65,0.12)',  color: '#22b356', border: '1px solid rgba(25,143,65,0.25)'  },
+    rejected: { background: 'rgba(219,20,46,0.12)',  color: '#db142e', border: '1px solid rgba(219,20,46,0.25)'  },
   }
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status]}`}>
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={styles[status]}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
 }
 
-// ── Detail Modal ───────────────────────────────────────────────────────────────
+// ─── Info Card ────────────────────────────────────────────────────────────────
+function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl px-4 py-3" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
+      <div className="flex items-center gap-1.5 mb-1" style={{ color: '#6b7280' }}>
+        {icon}
+        <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-sm font-medium truncate" style={{ color: '#fcfdfd' }}>{value}</p>
+    </div>
+  )
+}
+
+// ─── Detail Modal ─────────────────────────────────────────────────────────────
 function DetailModal({
-  app,
-  onClose,
-  onApprove,
-  onReject,
+  app, onClose, onApprove, onReject, onDelete, onChangeRole,
 }: {
   app: SellerApplication
   onClose: () => void
-  onApprove: (id: number) => void
-  onReject: (id: number, reason: string) => void
+  onApprove: (id: number) => Promise<void>
+  onReject: (id: number, reason: string) => Promise<void>
+  onDelete: (userId: number, name: string) => void
+  onChangeRole: (userId: number, name: string) => void
 }) {
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const pic = storageUrl(app.profile_picture)
 
   const handleApprove = async () => {
     setLoading(true)
@@ -47,72 +129,70 @@ function DetailModal({
     try { await onReject(app.id, reason) } finally { setLoading(false) }
   }
 
-  const pic = storageUrl(app.profile_picture)
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{ background: '#16191f', border: '1px solid #1e2128' }}>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #1e2128' }}>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0" style={{ border: '2px solid #1e2128' }}>
               {pic
                 ? <img src={pic} alt="" className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg font-bold">
+                : <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
+                    style={{ background: 'linear-gradient(135deg, #db142e, #9b0d1f)' }}>
                     {app.full_name.charAt(0)}
                   </div>}
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">{app.business_name}</h3>
-              <p className="text-sm text-gray-500">{app.full_name} · {app.user?.email}</p>
+              <h3 className="font-bold" style={{ color: '#fcfdfd' }}>{app.business_name}</h3>
+              <p className="text-sm" style={{ color: '#6b7280' }}>{app.full_name} · {app.user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <StatusBadge status={app.status} />
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <X size={16} className="text-gray-500" />
+            <button onClick={onClose} className="p-2 rounded-lg transition-colors" style={{ color: '#6b7280' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1c2028')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <X size={16} />
             </button>
           </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          
-          {/* Info grid */}
           <div className="grid grid-cols-2 gap-4">
-            <InfoCard icon={<Tag size={14} />} label="Category" value={app.business_category} />
-            <InfoCard icon={<Phone size={14} />} label="Phone" value={app.phone_number} />
+            <InfoCard icon={<Tag size={14} />}   label="Category" value={app.business_category} />
+            <InfoCard icon={<Phone size={14} />}  label="Phone"    value={app.phone_number} />
             <InfoCard icon={<MapPin size={14} />} label="Location" value={`${app.city}, ${app.wilaya}`} />
-            <InfoCard icon={<Store size={14} />} label="Applied" value={format(new Date(app.created_at), 'MMM d, yyyy')} />
+            <InfoCard icon={<Store size={14} />}  label="Applied"  value={format(new Date(app.created_at), 'MMM d, yyyy')} />
           </div>
 
-          {/* Description */}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Business Description</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{app.business_description}</p>
+          <div className="rounded-xl p-4" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Business Description</p>
+            <p className="text-sm leading-relaxed" style={{ color: '#c8cad0' }}>{app.business_description}</p>
           </div>
 
-          {/* Social links */}
           {(app.facebook_url || app.instagram_url || app.website_url) && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Social / Web</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Social / Web</p>
+              <div className="flex flex-wrap gap-3">
                 {app.facebook_url && (
                   <a href={app.facebook_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#4267B2' }}>
                     <ExternalLink size={11} />Facebook
                   </a>
                 )}
                 {app.instagram_url && (
                   <a href={app.instagram_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-pink-600 hover:underline">
+                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#E1306C' }}>
                     <ExternalLink size={11} />Instagram
                   </a>
                 )}
                 {app.website_url && (
                   <a href={app.website_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:underline">
+                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#198f41' }}>
                     <ExternalLink size={11} />Website
                   </a>
                 )}
@@ -120,47 +200,42 @@ function DetailModal({
             </div>
           )}
 
-          {/* Sample images */}
           {app.sample_images && app.sample_images.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Product Samples</p>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Product Samples</p>
               <div className="flex flex-wrap gap-2">
                 {app.sample_images.map((img, i) => {
                   const url = storageUrl(img)
                   return url ? (
-                    <img key={i} src={url} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
+                    <img key={i} src={url} alt="" className="w-20 h-20 rounded-xl object-cover"
+                      style={{ border: '1px solid #1e2128' }} />
                   ) : null
                 })}
               </div>
             </div>
           )}
 
-          {/* Rejection reason (if rejected) */}
           {app.status === 'rejected' && app.rejection_reason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-              <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1">Rejection Reason</p>
-              <p className="text-sm text-red-700">{app.rejection_reason}</p>
+            <div className="rounded-xl p-4" style={{ background: 'rgba(219,20,46,0.08)', border: '1px solid rgba(219,20,46,0.20)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#db142e' }}>Rejection Reason</p>
+              <p className="text-sm" style={{ color: '#f87171' }}>{app.rejection_reason}</p>
             </div>
           )}
 
-          {/* Reject form */}
           {showRejectForm && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-semibold text-red-700">Provide rejection reason (optional)</p>
-              <textarea
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-                placeholder="Why is this application rejected?…"
-                rows={3}
-                className="w-full bg-white border border-red-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none focus:border-red-400 resize-none"
-              />
+            <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(219,20,46,0.08)', border: '1px solid rgba(219,20,46,0.25)' }}>
+              <p className="text-sm font-semibold" style={{ color: '#f87171' }}>Provide rejection reason (optional)</p>
+              <textarea value={reason} onChange={e => setReason(e.target.value)}
+                placeholder="Why is this application rejected?…" rows={3}
+                className="w-full rounded-xl px-3 py-2 text-sm placeholder:text-text-muted outline-none resize-none"
+                style={{ background: '#0d0f14', border: '1px solid rgba(219,20,46,0.3)', color: '#fcfdfd' }} />
               <div className="flex gap-2">
                 <button onClick={() => setShowRejectForm(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-white transition-colors">
-                  Cancel
-                </button>
+                  className="flex-1 px-4 py-2 rounded-xl text-sm transition-colors"
+                  style={{ border: '1px solid #1e2128', color: '#9ca3af' }}>Cancel</button>
                 <button onClick={handleReject} disabled={loading}
-                  className="flex-1 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                  className="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                  style={{ background: '#db142e' }}>
                   {loading ? 'Rejecting…' : 'Confirm Rejection'}
                 </button>
               </div>
@@ -168,143 +243,167 @@ function DetailModal({
           )}
         </div>
 
-        {/* Footer actions (only for pending) */}
-        {app.status === 'pending' && !showRejectForm && (
-          <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-            <button
-              onClick={() => setShowRejectForm(true)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold transition-colors"
-            >
-              <XCircle size={15} />
-              Reject Application
-            </button>
-            <button
-              onClick={handleApprove}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition-colors disabled:opacity-60"
-            >
-              <CheckCircle size={15} />
-              {loading ? 'Approving…' : 'Approve Seller'}
-            </button>
-          </div>
-        )}
+        {/* Footer */}
+        <div className="px-6 py-4 flex gap-3 flex-wrap" style={{ borderTop: '1px solid #1e2128' }}>
+          {/* Pending actions */}
+          {app.status === 'pending' && !showRejectForm && (
+            <>
+              <button onClick={() => setShowRejectForm(true)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid rgba(219,20,46,0.3)', color: '#db142e' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <XCircle size={15} /> Reject
+              </button>
+              <button onClick={handleApprove} disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60"
+                style={{ background: '#198f41' }}>
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={15} />}
+                {loading ? 'Approving…' : 'Approve Seller'}
+              </button>
+            </>
+          )}
+
+          {/* ── Approved seller actions: Delete + Change Role ── */}
+          {app.status === 'approved' && app.user && (
+            <>
+              <button
+                onClick={() => onChangeRole(app.user!.id, app.full_name)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid rgba(25,143,65,0.3)', color: '#22b356' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <UserCog size={15} /> Change Role
+              </button>
+              <button
+                onClick={() => onDelete(app.user!.id, app.full_name)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid rgba(219,20,46,0.3)', color: '#db142e' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <Trash2 size={15} /> Delete Seller
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="bg-gray-50 rounded-xl px-4 py-3">
-      <div className="flex items-center gap-1.5 text-gray-400 mb-1">
-        {icon}
-        <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
-      </div>
-      <p className="text-sm font-medium text-gray-800 truncate">{value}</p>
-    </div>
-  )
-}
-
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SellerApplicationsPage() {
-  const [tab, setTab] = useState<Tab>('pending')
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [data, setData] = useState<any>(null)
+  const [tab, setTab]         = useState<Tab>('pending')
+  const [search, setSearch]   = useState('')
+  const [page, setPage]       = useState(1)
+  const [data, setData]       = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<SellerApplication | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
+  const [toast, setToast]     = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // ── Delete confirm state ──────────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget]   = useState<{ userId: number; name: string } | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // ── Change role confirm state ─────────────────────────────────────────────
+  const [roleTarget, setRoleTarget]     = useState<{ userId: number; name: string } | null>(null)
+  const [roleValue, setRoleValue]       = useState<'client' | 'seller'>('client')
+  const [roleLoading, setRoleLoading]   = useState(false)
+
+  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await sellerApplicationsApi.list({
-        status: tab,
-        search: search || undefined,
-        page,
-      })
+      const res = await sellerApplicationsApi.list({ status: tab, search: search || undefined, page })
       setData(res)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }, [tab, search, page])
 
-  useEffect(() => {
-    const t = setTimeout(fetchData, 300)
-    return () => clearTimeout(t)
-  }, [fetchData])
+  useEffect(() => { const t = setTimeout(fetchData, 300); return () => clearTimeout(t) }, [fetchData])
 
   const handleApprove = async (id: number) => {
-    setActionLoading(true)
-    try {
-      await sellerApplicationsApi.approve(id)
-      setSelected(null)
-      fetchData()
-    } finally {
-      setActionLoading(false)
-    }
+    await sellerApplicationsApi.approve(id)
+    setSelected(null)
+    showToast('Seller approved successfully.', 'success')
+    fetchData()
   }
 
   const handleReject = async (id: number, reason: string) => {
-    setActionLoading(true)
-    try {
-      await sellerApplicationsApi.reject(id, reason)
-      setSelected(null)
-      fetchData()
-    } finally {
-      setActionLoading(false)
-    }
+    await sellerApplicationsApi.reject(id, reason)
+    setSelected(null)
+    showToast('Application rejected.', 'success')
+    fetchData()
   }
 
-  const TAB_LABELS: { key: Tab; label: string; color: string }[] = [
-    { key: 'pending',  label: 'Pending',  color: 'text-amber-600  border-amber-500 bg-amber-50' },
-    { key: 'approved', label: 'Approved', color: 'text-green-600  border-green-500 bg-green-50' },
-    { key: 'rejected', label: 'Rejected', color: 'text-red-600    border-red-500   bg-red-50'   },
-  ]
+  // ── Delete seller ─────────────────────────────────────────────────────────
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      await sellersApi.delete(deleteTarget.userId)
+      setDeleteTarget(null)
+      setSelected(null)
+      showToast(`${deleteTarget.name} has been deleted.`, 'success')
+      fetchData()
+    } catch { showToast('Failed to delete seller.', 'error') }
+    finally { setDeleteLoading(false) }
+  }
+
+  // ── Change role ───────────────────────────────────────────────────────────
+  const confirmRoleChange = async () => {
+    if (!roleTarget) return
+    setRoleLoading(true)
+    try {
+      await sellersApi.changeRole(roleTarget.userId, roleValue)
+      setRoleTarget(null)
+      setSelected(null)
+      showToast(`Role changed to "${roleValue}" successfully.`, 'success')
+      fetchData()
+    } catch { showToast('Failed to change role.', 'error') }
+    finally { setRoleLoading(false) }
+  }
 
   const applications: SellerApplication[] = data?.data ?? []
   const total = data?.total ?? 0
 
+  const TAB_LABELS: { key: Tab; label: string }[] = [
+    { key: 'pending',  label: 'Pending'  },
+    { key: 'approved', label: 'Approved' },
+    { key: 'rejected', label: 'Rejected' },
+  ]
+
   return (
     <div className="space-y-4">
-      {/* ── Tabs + Search ─────────────────────────────────────── */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* ── Filters ── */}
       <div className="bg-bg-card border border-border rounded-xl p-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          
-          {/* Tabs */}
           <div className="flex gap-1 bg-bg-primary rounded-lg p-1 border border-border">
             {TAB_LABELS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => { setTab(key); setPage(1) }}
-                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  tab === key
-                    ? 'bg-accent-purple text-white shadow-sm'
-                    : 'text-text-muted hover:text-text-primary'
-                }`}
-              >
+              <button key={key} onClick={() => { setTab(key); setPage(1) }}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold transition-all"
+                style={tab === key
+                  ? { background: '#db142e', color: '#ffffff' }
+                  : { color: '#6b7280' }}
+                onMouseEnter={e => { if (tab !== key) (e.currentTarget as HTMLElement).style.color = '#fcfdfd' }}
+                onMouseLeave={e => { if (tab !== key) (e.currentTarget as HTMLElement).style.color = '#6b7280' }}>
                 {label}
               </button>
             ))}
           </div>
-
-          {/* Search */}
           <div className="relative flex-1 min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search by name, business, email…"
-              value={search}
+            <input type="text" placeholder="Search by name, business, email…" value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="w-full bg-bg-primary border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple transition-colors"
-            />
+              className="w-full bg-bg-primary border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple transition-colors" />
           </div>
         </div>
       </div>
 
-      {/* ── Table ─────────────────────────────────────────────── */}
+      {/* ── Table ── */}
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-text-primary">
@@ -315,7 +414,7 @@ export default function SellerApplicationsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-accent-purple border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#db142e', borderTopColor: 'transparent' }} />
           </div>
         ) : applications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-muted">
@@ -326,10 +425,8 @@ export default function SellerApplicationsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {['Applicant', 'Business', 'Category', 'Location', 'Applied', 'Status', ''].map(h => (
-                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
-                      {h}
-                    </th>
+                  {['Applicant', 'Business', 'Category', 'Location', 'Applied', 'Status', 'Actions'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -340,10 +437,11 @@ export default function SellerApplicationsPage() {
                     <tr key={app.id} className="hover:bg-bg-hover transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-bg-primary overflow-hidden flex-shrink-0 border border-border">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ border: '1px solid #1e2128' }}>
                             {pic
                               ? <img src={pic} alt="" className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center text-text-muted text-sm font-bold">
+                              : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
+                                  style={{ background: 'linear-gradient(135deg, #db142e, #9b0d1f)' }}>
                                   {app.full_name.charAt(0)}
                                 </div>}
                           </div>
@@ -356,38 +454,54 @@ export default function SellerApplicationsPage() {
                       <td className="px-5 py-4 text-sm text-text-secondary font-medium">{app.business_name}</td>
                       <td className="px-5 py-4 text-sm text-text-muted">{app.business_category}</td>
                       <td className="px-5 py-4 text-sm text-text-muted">{app.city}, {app.wilaya}</td>
-                      <td className="px-5 py-4 text-xs text-text-muted">
-                        {format(new Date(app.created_at), 'MMM d, yyyy')}
-                      </td>
+                      <td className="px-5 py-4 text-xs text-text-muted">{format(new Date(app.created_at), 'MMM d, yyyy')}</td>
+                      <td className="px-5 py-4"><StatusBadge status={app.status} /></td>
                       <td className="px-5 py-4">
-                        <StatusBadge status={app.status} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          {/* View details */}
-                          <button
-                            onClick={() => setSelected(app)}
-                            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
-                            title="View details"
-                          >
+                        <div className="flex items-center gap-1.5">
+                          {/* View */}
+                          <button onClick={() => setSelected(app)}
+                            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors" title="View details">
                             <Eye size={14} />
                           </button>
-                          {/* Quick approve / reject for pending */}
+
+                          {/* Pending quick actions */}
                           {app.status === 'pending' && (
                             <>
-                              <button
-                                onClick={() => handleApprove(app.id)}
-                                className="p-1.5 rounded-md text-accent-green hover:bg-accent-green/10 transition-colors"
-                                title="Approve"
-                              >
+                              <button onClick={() => handleApprove(app.id)}
+                                className="p-1.5 rounded-md transition-colors" title="Approve"
+                                style={{ color: '#198f41' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <CheckCircle size={14} />
                               </button>
-                              <button
-                                onClick={() => setSelected(app)}
-                                className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors"
-                                title="Reject"
-                              >
+                              <button onClick={() => setSelected(app)}
+                                className="p-1.5 rounded-md transition-colors" title="Reject"
+                                style={{ color: '#db142e' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <XCircle size={14} />
+                              </button>
+                            </>
+                          )}
+
+                          {/* ── Approved quick actions: Change Role + Delete ── */}
+                          {app.status === 'approved' && app.user && (
+                            <>
+                              <button
+                                onClick={() => { setRoleTarget({ userId: app.user!.id, name: app.full_name }); setRoleValue('client') }}
+                                className="p-1.5 rounded-md transition-colors" title="Change Role"
+                                style={{ color: '#22b356' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                <UserCog size={14} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget({ userId: app.user!.id, name: app.full_name })}
+                                className="p-1.5 rounded-md transition-colors" title="Delete Seller"
+                                style={{ color: '#db142e' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                <Trash2 size={14} />
                               </button>
                             </>
                           )}
@@ -404,37 +518,76 @@ export default function SellerApplicationsPage() {
         {/* Pagination */}
         {data && data.last_page > 1 && (
           <div className="px-5 py-3 border-t border-border flex items-center justify-between">
-            <span className="text-xs text-text-muted">
-              Showing {data.from}–{data.to} of {data.total}
-            </span>
+            <span className="text-xs text-text-muted">Showing {data.from}–{data.to} of {data.total}</span>
             <div className="flex gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary disabled:opacity-40 hover:bg-bg-hover transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage(p => Math.min(data.last_page, p + 1))}
-                disabled={page === data.last_page}
-                className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary disabled:opacity-40 hover:bg-bg-hover transition-colors"
-              >
-                Next
-              </button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary disabled:opacity-40 hover:bg-bg-hover transition-colors">Previous</button>
+              <button onClick={() => setPage(p => Math.min(data.last_page, p + 1))} disabled={page === data.last_page}
+                className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary disabled:opacity-40 hover:bg-bg-hover transition-colors">Next</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Detail Modal ──────────────────────────────────────── */}
+      {/* ── Detail Modal ── */}
       {selected && (
         <DetailModal
           app={selected}
           onClose={() => setSelected(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          onDelete={(userId, name) => { setDeleteTarget({ userId, name }); setSelected(null) }}
+          onChangeRole={(userId, name) => { setRoleTarget({ userId, name }); setRoleValue('client'); setSelected(null) }}
         />
+      )}
+
+      {/* ── Delete Confirm Modal ── */}
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Seller Account"
+          message={`Permanently delete "${deleteTarget.name}"? This will remove their account, all products, and application data. This cannot be undone.`}
+          confirmLabel="Delete Seller"
+          confirmColor="#db142e"
+          loading={deleteLoading}
+          onConfirm={confirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* ── Change Role Confirm Modal ── */}
+      {roleTarget && (
+        <ConfirmModal
+          title="Change Seller Role"
+          message={`Change the role for "${roleTarget.name}".`}
+          confirmLabel="Confirm Change"
+          confirmColor="#198f41"
+          loading={roleLoading}
+          onConfirm={confirmRoleChange}
+          onClose={() => setRoleTarget(null)}
+        >
+          {/* Role selector */}
+          <div>
+            <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: '#6b7280' }}>
+              New Role
+            </label>
+            <div className="flex gap-3">
+              {(['client', 'seller'] as const).map(r => (
+                <button key={r} onClick={() => setRoleValue(r)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all"
+                  style={roleValue === r
+                    ? { background: r === 'client' ? '#db142e' : '#198f41', color: '#fff', border: 'none' }
+                    : { background: 'transparent', color: '#6b7280', border: '1px solid #1e2128' }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {roleValue === 'client' && (
+              <p className="text-xs mt-2" style={{ color: '#f87171' }}>
+                ⚠️ This will revoke their seller access and all products will become unlisted.
+              </p>
+            )}
+          </div>
+        </ConfirmModal>
       )}
     </div>
   )

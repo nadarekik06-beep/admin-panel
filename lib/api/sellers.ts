@@ -1,6 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// lib/api/sellers.ts  — replace your existing file entirely
-// ─────────────────────────────────────────────────────────────────────────────
+// lib/api/sellers.ts — replace your existing file entirely
 import api from '../axios'
 
 interface SellersParams {
@@ -31,6 +29,12 @@ export const sellersApi = {
   async update(id: number, payload: SellerUpdatePayload) {
     const res = await api.put(`/admin/sellers/${id}`, payload)
     return res.data.data
+  },
+  async delete(id: number) {
+    await api.delete(`/admin/sellers/${id}`)
+  },
+  async changeRole(id: number, role: 'client' | 'seller') {
+    await api.patch(`/admin/sellers/${id}/role`, { role })
   },
   async approve(id: number) {
     await api.patch(`/admin/sellers/${id}/approve`)
