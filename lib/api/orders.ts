@@ -1,3 +1,4 @@
+// lib/api/orders.ts  (admin panel)
 import api from '../axios'
 
 interface OrdersParams {
@@ -14,8 +15,14 @@ export const ordersApi = {
     const res = await api.get('/admin/orders', { params })
     return res.data.data
   },
+
   async get(id: number) {
     const res = await api.get(`/admin/orders/${id}`)
     return res.data.data
+  },
+
+  async updateStatus(id: number, status: string) {
+    const res = await api.patch(`/admin/orders/${id}/status`, { status })
+    return res.data
   },
 }
