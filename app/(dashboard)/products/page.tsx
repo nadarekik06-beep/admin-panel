@@ -12,10 +12,9 @@ import { format } from 'date-fns'
 
 type ActionType = 'approve' | 'disable' | 'delete'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+// ✅ FIX 1: Strip /api suffix so image URLs and category fetch don't double up
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/api$/, '')
 
-// ─── Extended product type with all fields the admin API returns ──────────────
-// This avoids touching the shared Product type used by the rest of the app.
 interface ProductImage {
   id: number
   image_path: string
@@ -45,7 +44,6 @@ interface AdminProduct {
   images: ProductImage[]
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatCurrency(value: string | number) {
   return `${Number(value).toFixed(3)} DT`
 }
@@ -57,13 +55,14 @@ function deriveStatus(product: AdminProduct): string {
   return 'approved'
 }
 
+// ✅ FIX 2: Correctly build storage URLs — strips any duplicate /storage prefix
 function resolveImageUrl(path: string | null | undefined): string | null {
   if (!path) return null
   if (path.startsWith('http')) return path
-  return `${API_URL}/storage/${path}`
+  const clean = path.replace(/^\/storage\//, '').replace(/^\//, '')
+  return `${API_URL}/storage/${clean}`
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ message, type, onClose }: {
   message: string
   type: 'success' | 'error'
@@ -83,7 +82,6 @@ function Toast({ message, type, onClose }: {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const [products, setProducts]           = useState<PaginatedResponse<AdminProduct> | null>(null)
   const [loading, setLoading]             = useState(true)
@@ -92,20 +90,15 @@ export default function ProductsPage() {
   const [page, setPage]                   = useState(1)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
-  // View / Edit
   const [viewProduct, setViewProduct]     = useState<AdminProduct | null>(null)
   const [editMode, setEditMode]           = useState(false)
   const [editForm, setEditForm]           = useState<ProductUpdatePayload>({})
   const [saveLoading, setSaveLoading]     = useState(false)
   const [formErrors, setFormErrors]       = useState<Record<string, string>>({})
   const [toast, setToast]                 = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-
-  // Categories for dropdown
   const [categories, setCategories]       = useState<{ id: number; name: string }[]>([])
-
   const [confirmModal, setConfirmModal]   = useState<{ type: ActionType; product: AdminProduct } | null>(null)
 
-  // ── Fetch products ───────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
@@ -127,7 +120,7 @@ export default function ProductsPage() {
     return () => clearTimeout(timer)
   }, [fetchProducts])
 
-  // ── Load categories for the edit dropdown ────────────────────────────────────
+  // ✅ FIX 3: Use corrected API_URL (no /api suffix) for direct fetch calls
   useEffect(() => {
     fetch(`${API_URL}/api/categories`, { headers: { Accept: 'application/json' } })
       .then(r => r.json())
@@ -135,7 +128,6 @@ export default function ProductsPage() {
       .catch(() => {})
   }, [])
 
-  // ── Open view modal ──────────────────────────────────────────────────────────
   const openView = async (product: AdminProduct) => {
     try {
       const full: AdminProduct = await productsApi.get(product.id)
@@ -158,7 +150,6 @@ export default function ProductsPage() {
     }
   }
 
-  // ── Validate ─────────────────────────────────────────────────────────────────
   const validate = (): boolean => {
     const errors: Record<string, string> = {}
     if (!editForm.name?.trim())
@@ -171,7 +162,6 @@ export default function ProductsPage() {
     return Object.keys(errors).length === 0
   }
 
-  // ── Save edit ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!viewProduct || !validate()) return
     setSaveLoading(true)
@@ -188,7 +178,6 @@ export default function ProductsPage() {
     }
   }
 
-  // ── Confirm action ────────────────────────────────────────────────────────────
   const handleAction = async () => {
     if (!confirmModal) return
     setActionLoading(confirmModal.product.id)
@@ -205,14 +194,12 @@ export default function ProductsPage() {
     }
   }
 
-  // ── Columns ───────────────────────────────────────────────────────────────────
   const columns: Column<AdminProduct>[] = [
     {
       key: 'name',
       header: 'Product',
       render: (row) => (
         <div className="flex items-center gap-3">
-          {/* Thumbnail */}
           <div className="w-9 h-9 rounded-lg overflow-hidden bg-bg-hover flex-shrink-0">
             {row.primary_image_url ? (
               <img
@@ -261,6 +248,8 @@ export default function ProductsPage() {
           'text-text-secondary'
         }`}>
           {row.stock}
+          {row.stock === 0 && <span className="text-xs ml-1">(Out)</span>}
+          {row.stock > 0 && row.stock <= 10 && <span className="text-xs ml-1">(Low)</span>}
         </span>
       ),
     },
@@ -288,7 +277,6 @@ export default function ProductsPage() {
         const s = deriveStatus(row)
         return (
           <div className="flex items-center gap-1.5">
-            {/* 👁 View */}
             <button
               onClick={() => openView(row)}
               className="p-1.5 rounded-md text-text-muted hover:text-accent-purple-light hover:bg-accent-purple/10 transition-colors"
@@ -296,7 +284,6 @@ export default function ProductsPage() {
             >
               <Eye size={15} />
             </button>
-
             {(s === 'pending' || s === 'disabled') && (
               <button
                 onClick={() => setConfirmModal({ type: 'approve', product: row })}
@@ -306,7 +293,6 @@ export default function ProductsPage() {
                 <CheckCircle size={15} />
               </button>
             )}
-
             {s === 'approved' && (
               <button
                 onClick={() => setConfirmModal({ type: 'disable', product: row })}
@@ -316,7 +302,6 @@ export default function ProductsPage() {
                 <EyeOff size={15} />
               </button>
             )}
-
             <button
               onClick={() => setConfirmModal({ type: 'delete', product: row })}
               className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors"
@@ -330,14 +315,13 @@ export default function ProductsPage() {
     },
   ]
 
-  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
-      {/* ── Filters ── */}
+      {/* Filters */}
       <div className="bg-bg-card border border-border rounded-xl p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -363,7 +347,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-text-primary">
@@ -396,9 +380,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════
-          VIEW / EDIT MODAL
-      ══════════════════════════════════════════════════════════════ */}
+      {/* View / Edit Modal */}
       <Modal
         open={!!viewProduct}
         onClose={() => { setViewProduct(null); setEditMode(false) }}
@@ -407,11 +389,8 @@ export default function ProductsPage() {
       >
         {viewProduct && (
           <div className="space-y-5">
-
-            {/* ── VIEW MODE ── */}
             {!editMode && (
               <>
-                {/* Images strip */}
                 {viewProduct.images?.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {viewProduct.images.map((img) => {
@@ -430,7 +409,6 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                {/* Info grid */}
                 <div className="grid grid-cols-2 gap-3">
                   {(
                     [
@@ -451,7 +429,6 @@ export default function ProductsPage() {
                   ))}
                 </div>
 
-                {/* Description */}
                 {viewProduct.description && (
                   <div className="p-3 bg-bg-primary rounded-lg border border-border">
                     <p className="text-xs text-text-muted mb-1">Description</p>
@@ -478,16 +455,11 @@ export default function ProductsPage() {
               </>
             )}
 
-            {/* ── EDIT MODE ── */}
             {editMode && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                  {/* Name */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-text-muted mb-1">
-                      Product Name *
-                    </label>
+                    <label className="block text-xs font-medium text-text-muted mb-1">Product Name *</label>
                     <input
                       value={editForm.name ?? ''}
                       onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
@@ -495,67 +467,45 @@ export default function ProductsPage() {
                         ${formErrors.name ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
                       placeholder="Product name"
                     />
-                    {formErrors.name && (
-                      <p className="text-xs text-accent-red mt-1">{formErrors.name}</p>
-                    )}
+                    {formErrors.name && <p className="text-xs text-accent-red mt-1">{formErrors.name}</p>}
                   </div>
 
-                  {/* Price */}
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1">
-                      Price (DT) *
-                    </label>
+                    <label className="block text-xs font-medium text-text-muted mb-1">Price (DT) *</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.001"
+                      type="number" min="0" step="0.001"
                       value={editForm.price ?? ''}
                       onChange={(e) => setEditForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
                       className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors
                         ${formErrors.price ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
                     />
-                    {formErrors.price && (
-                      <p className="text-xs text-accent-red mt-1">{formErrors.price}</p>
-                    )}
+                    {formErrors.price && <p className="text-xs text-accent-red mt-1">{formErrors.price}</p>}
                   </div>
 
-                  {/* Stock */}
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1">
-                      Stock *
-                    </label>
+                    <label className="block text-xs font-medium text-text-muted mb-1">Stock *</label>
                     <input
-                      type="number"
-                      min="0"
+                      type="number" min="0"
                       value={editForm.stock ?? ''}
                       onChange={(e) => setEditForm(f => ({ ...f, stock: parseInt(e.target.value) || 0 }))}
                       className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors
                         ${formErrors.stock ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
                     />
-                    {formErrors.stock && (
-                      <p className="text-xs text-accent-red mt-1">{formErrors.stock}</p>
-                    )}
+                    {formErrors.stock && <p className="text-xs text-accent-red mt-1">{formErrors.stock}</p>}
                   </div>
 
-                  {/* Category */}
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1">Category</label>
                     <select
                       value={editForm.category_id ?? ''}
-                      onChange={(e) => setEditForm(f => ({
-                        ...f,
-                        category_id: parseInt(e.target.value) || undefined,
-                      }))}
+                      onChange={(e) => setEditForm(f => ({ ...f, category_id: parseInt(e.target.value) || undefined }))}
                       className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
                     >
                       <option value="">Select category</option>
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
 
-                  {/* Status */}
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1">Status</label>
                     <select
@@ -568,25 +518,18 @@ export default function ProductsPage() {
                     </select>
                   </div>
 
-                  {/* Featured */}
                   <div className="flex items-center gap-3 p-3 bg-bg-primary rounded-lg border border-border">
                     <input
-                      type="checkbox"
-                      id="featured"
+                      type="checkbox" id="featured"
                       checked={editForm.featured ?? false}
                       onChange={(e) => setEditForm(f => ({ ...f, featured: e.target.checked }))}
                       className="w-4 h-4 rounded accent-accent-purple cursor-pointer"
                     />
-                    <label htmlFor="featured" className="text-sm text-text-primary cursor-pointer">
-                      Mark as Featured
-                    </label>
+                    <label htmlFor="featured" className="text-sm text-text-primary cursor-pointer">Mark as Featured</label>
                   </div>
 
-                  {/* Short description */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-text-muted mb-1">
-                      Short Description
-                    </label>
+                    <label className="block text-xs font-medium text-text-muted mb-1">Short Description</label>
                     <input
                       value={editForm.short_description ?? ''}
                       onChange={(e) => setEditForm(f => ({ ...f, short_description: e.target.value }))}
@@ -595,13 +538,12 @@ export default function ProductsPage() {
                     />
                   </div>
 
-                  {/* Description */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-text-muted mb-1">Description</label>
                     <textarea
+                      rows={4}
                       value={editForm.description ?? ''}
                       onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
-                      rows={4}
                       className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors resize-none"
                       placeholder="Full product description"
                     />
@@ -630,7 +572,7 @@ export default function ProductsPage() {
         )}
       </Modal>
 
-      {/* ── Confirm action modal ── */}
+      {/* Confirm action modal */}
       <Modal
         open={!!confirmModal}
         onClose={() => setConfirmModal(null)}
@@ -642,12 +584,9 @@ export default function ProductsPage() {
         size="sm"
       >
         <p className="text-text-secondary text-sm mb-5">
-          {confirmModal?.type === 'approve' &&
-            `Approve "${confirmModal.product.name}" and make it visible?`}
-          {confirmModal?.type === 'disable' &&
-            `Disable "${confirmModal?.product.name}"? It will be hidden from customers.`}
-          {confirmModal?.type === 'delete' &&
-            `Permanently delete "${confirmModal?.product.name}"? This cannot be undone.`}
+          {confirmModal?.type === 'approve' && `Approve "${confirmModal.product.name}" and make it visible?`}
+          {confirmModal?.type === 'disable' && `Disable "${confirmModal?.product.name}"? It will be hidden from customers.`}
+          {confirmModal?.type === 'delete'  && `Permanently delete "${confirmModal?.product.name}"? This cannot be undone.`}
         </p>
         <div className="flex gap-3 justify-end">
           <button
@@ -660,11 +599,9 @@ export default function ProductsPage() {
             onClick={handleAction}
             disabled={!!actionLoading}
             className={`px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 ${
-              confirmModal?.type === 'approve'
-                ? 'bg-accent-green hover:bg-accent-green/90'
-                : confirmModal?.type === 'disable'
-                ? 'bg-accent-orange hover:bg-accent-orange/90'
-                : 'bg-accent-red hover:bg-accent-red/90'
+              confirmModal?.type === 'approve' ? 'bg-accent-green hover:bg-accent-green/90' :
+              confirmModal?.type === 'disable' ? 'bg-accent-orange hover:bg-accent-orange/90' :
+              'bg-accent-red hover:bg-accent-red/90'
             }`}
           >
             {actionLoading ? 'Processing…' : 'Confirm'}

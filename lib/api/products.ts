@@ -1,6 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// lib/api/products.ts  — replace your existing file entirely
-// ─────────────────────────────────────────────────────────────────────────────
 import api from '../axios'
 
 interface ProductsParams {
@@ -26,22 +23,34 @@ export interface ProductUpdatePayload {
 export const productsApi = {
   async list(params: ProductsParams = {}) {
     const res = await api.get('/admin/products', { params })
+    // Laravel returns { success, data: { data: [...], total, ... } }
+    // res.data      = { success, data: { data: [...], total, ... } }
+    // res.data.data = { data: [...], total, current_page, last_page, ... }  ← the paginated object
     return res.data.data
   },
+
   async get(id: number) {
     const res = await api.get(`/admin/products/${id}`)
     return res.data.data
   },
+
   async update(id: number, payload: ProductUpdatePayload) {
     const res = await api.put(`/admin/products/${id}`, payload)
     return res.data.data
   },
+
   async approve(id: number) {
     await api.patch(`/admin/products/${id}/approve`)
   },
+
+  async reject(id: number) {
+    await api.patch(`/admin/products/${id}/reject`)
+  },
+
   async disable(id: number) {
     await api.patch(`/admin/products/${id}/disable`)
   },
+
   async delete(id: number) {
     await api.delete(`/admin/products/${id}`)
   },
