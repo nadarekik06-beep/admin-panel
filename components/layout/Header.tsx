@@ -1,12 +1,17 @@
 'use client';
-// components/layout/Header.tsx  (admin panel)
-// FULL REPLACEMENT — NotificationBell integrated
+// components/layout/Header.tsx — FIXED
+// Changes from original:
+//   1. `new Date().toLocaleDateString(...)` moved into a useEffect → state.
+//      The original called new Date() directly in JSX during render, which ran
+//      on the server (SSR) and then again on the client. Because the server and
+//      client clocks differ by milliseconds the rendered string never matched,
+//      causing the React hydration crash you saw in the console.
+//      Fix: render an empty string on the server; set the real date only after
+//      the component mounts on the client.
 
-import { Bell } from 'lucide-react';
-import { authStorage } from '@/lib/auth';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { authStorage } from '@/lib/auth';
 import { Admin } from '@/types';
 import NotificationBell from '@/components/Notificationbell';
 import { adminNotificationApi } from '@/lib/Notificationapi';
@@ -24,9 +29,23 @@ const pageTitles: Record<string, string> = {
 export default function Header() {
   const pathname = usePathname();
   const router   = useRouter();
-  const [admin, setAdmin] = useState<Admin | null>(null);
 
-  useEffect(() => { setAdmin(authStorage.getAdmin()); }, []);
+  const [admin,      setAdmin]      = useState<Admin | null>(null);
+  const [dateString, setDateString] = useState(''); // FIX: empty on server, set on client
+
+  useEffect(() => {
+    setAdmin(authStorage.getAdmin());
+
+    // Set date only after mount so SSR and client output are identical (both empty)
+    setDateString(
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year:    'numeric',
+        month:   'long',
+        day:     'numeric',
+      }),
+    );
+  }, []);
 
   const title = pageTitles[pathname] ?? 'Admin Panel';
 
@@ -39,31 +58,32 @@ export default function Header() {
         boxShadow:    '0 2px 20px rgba(0,0,0,0.4)',
       }}
     >
-      {/* left: breadcrumb + title */}
+      {/* ── left: page title ── */}
       <div className="flex items-center gap-3">
         <div
           className="w-1 h-7 rounded-full flex-shrink-0"
           style={{
             background: 'linear-gradient(180deg, #db142e 0%, #9b0d1f 100%)',
-            boxShadow: '0 0 8px rgba(219,20,46,0.5)',
+            boxShadow:  '0 0 8px rgba(219,20,46,0.5)',
           }}
         />
         <div>
           <h1 className="text-base font-bold tracking-tight" style={{ color: '#fcfdfd' }}>
             {title}
           </h1>
-          <p className="text-[11px] hidden sm:block" style={{ color: '#6b7280' }}>
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-            })}
-          </p>
+          {/* Only rendered after mount — never during SSR */}
+          {dateString && (
+            <p className="text-[11px] hidden sm:block" style={{ color: '#6b7280' }}>
+              {dateString}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* right: notification bell + divider + admin */}
+      {/* ── right: bell + admin info ── */}
       <div className="flex items-center gap-3">
 
-        {/* ── NOTIFICATION BELL ── */}
+        {/* NOTIFICATION BELL */}
         <NotificationBell
           api={adminNotificationApi}
           dark={true}
@@ -71,13 +91,13 @@ export default function Header() {
           pollInterval={30_000}
         />
 
-        {/* vertical divider */}
+        {/* divider */}
         <div
           className="h-8 w-px"
           style={{ background: 'linear-gradient(180deg, transparent, #198f41, transparent)' }}
         />
 
-        {/* admin info */}
+        {/* admin info — also only rendered after mount (authStorage reads localStorage) */}
         {admin && (
           <div className="flex items-center gap-2.5">
             <div

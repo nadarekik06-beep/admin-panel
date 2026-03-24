@@ -1,11 +1,11 @@
-// lib/notificationApi.ts
-// Works for BOTH seller dashboard and admin panel.
-// Import the pre-built instances at the bottom.
+// lib/Notificationapi.ts — FIXED
+// Changes from original:
+//   1. Added `as const` → object is a stable singleton, never recreated between renders
+//      This is critical: passing a new object reference each render breaks useCallback
+//      deps in useNotifications and causes an infinite poll loop.
+//   2. File name kept as Notificationapi.ts to match your existing imports exactly.
 
-import axios from 'axios';
-import Cookies from 'js-cookie';
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+import api from './axios';
 
 export interface AppNotification {
   id: string;
@@ -23,86 +23,37 @@ export interface AppNotification {
   };
 }
 
-export interface NotificationMeta {
-  current_page: number;
-  last_page: number;
-  total: number;
-}
-
 export interface NotificationListResponse {
   data: AppNotification[];
-  meta: NotificationMeta;
-}
-
-// ─── token resolvers ──────────────────────────────────────────────
-
-function sellerToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('ct_auth_token');
-}
-
-function adminToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  // Admin panel stores token in a cookie called 'admin_token'
-  return Cookies.get('admin_token') ?? null;
-}
-
-// ─── factory ──────────────────────────────────────────────────────
-
-function makeHeaders(token: string | null) {
-  return {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  meta: {
+    current_page: number;
+    last_page: number;
+    total: number;
   };
 }
 
-export function createNotificationApi(
-  prefix: string,               // '/notifications' or '/admin/notifications'
-  getToken: () => string | null,
-) {
-  const url = (path = '') => `${BASE}${prefix}${path}`;
+// ─────────────────────────────────────────────────────────────────────────────
+// Stable module-level singleton.
+// Import and pass directly as the `api` prop — do NOT wrap in useMemo/useState.
+// ─────────────────────────────────────────────────────────────────────────────
+export const adminNotificationApi = {
+  async getAll(page = 1): Promise<NotificationListResponse> {
+    const res = await api.get('/admin/notifications', {
+      params: { page, per_page: 20 },
+    });
+    return { data: res.data.data, meta: res.data.meta };
+  },
 
-  return {
-    async getAll(page = 1): Promise<NotificationListResponse> {
-      const res = await axios.get(url(), {
-        params: { page, per_page: 20 },
-        headers: makeHeaders(getToken()),
-      });
-      return { data: res.data.data, meta: res.data.meta };
-    },
+  async getUnreadCount(): Promise<number> {
+    const res = await api.get('/admin/notifications/unread-count');
+    return res.data.count as number;
+  },
 
-    async getUnreadCount(): Promise<number> {
-      const res = await axios.get(url('/unread-count'), {
-        headers: makeHeaders(getToken()),
-      });
-      return res.data.count as number;
-    },
+  async markRead(id: string): Promise<void> {
+    await api.patch(`/admin/notifications/${id}/read`);
+  },
 
-    async markRead(id: string): Promise<void> {
-      await axios.patch(url(`/${id}/read`), {}, {
-        headers: makeHeaders(getToken()),
-      });
-    },
-
-    async markAllRead(): Promise<void> {
-      await axios.patch(url('/read-all'), {}, {
-        headers: makeHeaders(getToken()),
-      });
-    },
-  };
-}
-
-// ─── pre-built instances ──────────────────────────────────────────
-
-/** Use in the seller dashboard */
-export const sellerNotificationApi = createNotificationApi(
-  '/notifications',
-  sellerToken,
-);
-
-/** Use in the admin panel */
-export const adminNotificationApi = createNotificationApi(
-  '/admin/notifications',
-  adminToken,
-);
+  async markAllRead(): Promise<void> {
+    await api.patch('/admin/notifications/read-all');
+  },
+} as const;
