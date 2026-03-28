@@ -1,4 +1,4 @@
-// types/index.ts
+// types/index.ts  (admin-panel)
 
 export interface Admin {
   id: number
@@ -29,19 +29,18 @@ export interface User {
   name: string
   email: string
   role: string
-  is_active: boolean       // ✅ real column
-  is_approved: boolean     // ✅ real column
+  is_active: boolean
+  is_approved: boolean
   orders_count?: number
   created_at: string
   updated_at: string
 }
 
 // ── Seller ────────────────────────────────────────────────────────
-
 export interface Seller {
   id: number
-  name: string        // direct field — seller IS a user
-  email: string       // direct field
+  name: string
+  email: string
   role: 'seller'
   is_active: boolean
   is_approved: boolean
@@ -52,6 +51,33 @@ export interface Seller {
 
 // ── Product ───────────────────────────────────────────────────────
 export type ProductStatus = 'pending' | 'approved' | 'disabled'
+
+export interface ProductVariantOption {
+  value: string
+  color_hex?: string | null
+}
+
+export interface ProductVariant {
+  id: number
+  label: string
+  sku: string | null
+  stock: number
+  price_override: number | null
+  is_active: boolean
+  option_map: Record<string, ProductVariantOption>
+  /** Resolved image URLs for this variant/color */
+  image_urls: string[]
+}
+
+export interface ProductImage {
+  id: number
+  image_path: string
+  is_primary: boolean
+  order: number
+  url: string
+  variant_id?: number | null
+  color_option_id?: number | null
+}
 
 export interface Product {
   id: number
@@ -64,23 +90,48 @@ export interface Product {
   is_active: boolean
   featured?: boolean
   status?: string
+  primary_image_url?: string | null
+  images?: ProductImage[]
+  /** Enriched variant data (returned by admin show endpoint) */
+  variant_data?: ProductVariant[]
   seller?: { id: number; name: string; email?: string }
   category?: { id: number; name: string }
   created_at: string
   updated_at: string
 }
 
+// ── Order item ────────────────────────────────────────────────────
+export interface OrderItem {
+  id: number
+  product_id: number
+  variant_id: number | null
+  variant_label: string | null
+  product_name: string
+  quantity: number
+  unit_price: number
+  total: number
+  /** Resolved by the backend based on variant image → product image priority */
+  resolved_image_url: string | null
+  /** Key-value map of variant options e.g. { color: { value: 'Red', color_hex: '#DC2626' } } */
+  variant_options: Record<string, { value: string; color_hex?: string | null }>
+  product?: { id: number; name: string; slug?: string }
+}
+
 // ── Order ─────────────────────────────────────────────────────────
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled'
+export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'delivered' | 'refunded'
 
 export interface Order {
   id: number
-  order_number?: string        // ✅ add this
+  order_number?: string
   user?: { id: number; name: string; email: string }
   status: OrderStatus
-  payment_status?: string      // ✅ add this too (your orders table has it)
-  payment_method?: string      // ✅ and this
+  payment_status?: string
+  payment_method?: string
   total_amount: number
+  wilaya?: string | null
+  address?: string | null
+  phone?: string | null
+  items?: OrderItem[]
   created_at: string
   updated_at: string
 }
@@ -104,20 +155,6 @@ export interface DashboardData {
 }
 
 // ── Statistics ────────────────────────────────────────────────────
-export interface RevenuePoint {
-  month: string
-  revenue: number
-}
-
-export interface OrderTrendPoint {
-  month: string
-  pending: number
-  processing: number
-  delivered: number
-  canceled: number
-}
-
-export interface CategoryPoint {
-  name: string
-  count: number
-}
+export interface RevenuePoint  { month: string; revenue: number }
+export interface OrderTrendPoint { month: string; pending: number; processing: number; delivered: number; canceled: number }
+export interface CategoryPoint  { name: string; count: number }

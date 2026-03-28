@@ -1,5 +1,8 @@
 // lib/api/orders.ts  (admin panel)
+// CORRECT PATH: lib/api/orders.ts  — not lib/orders.ts
+
 import api from '../axios'
+import type { Order, PaginatedResponse } from '@/types'
 
 interface OrdersParams {
   status?: string
@@ -11,16 +14,31 @@ interface OrdersParams {
 }
 
 export const ordersApi = {
-  async list(params: OrdersParams = {}) {
+  /**
+   * List orders (paginated).
+   * Backend returns { success, data: { data: [...], total, ... } }
+   * This unwraps to the inner paginated object.
+   */
+  async list(params: OrdersParams = {}): Promise<PaginatedResponse<Order>> {
     const res = await api.get('/admin/orders', { params })
     return res.data.data
   },
 
-  async get(id: number) {
+  /**
+   * Get full order by ID.
+   * Response includes items[] each with:
+   *   - resolved_image_url (variant image → product primary image fallback)
+   *   - variant_options { color: { value, color_hex }, size: { value } ... }
+   *   - variant_label (snapshot string e.g. "Red / M")
+   */
+  async get(id: number): Promise<Order> {
     const res = await api.get(`/admin/orders/${id}`)
     return res.data.data
   },
 
+  /**
+   * Update order status.
+   */
   async updateStatus(id: number, status: string) {
     const res = await api.patch(`/admin/orders/${id}/status`, { status })
     return res.data

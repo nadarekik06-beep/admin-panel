@@ -1,8 +1,12 @@
 'use client'
 
 /**
- * Admin panel: app/(dashboard)/orders/page.tsx
- * Full order list with detail modal showing client, products, address, status.
+ * app/(dashboard)/orders/page.tsx  — Admin Panel
+ *
+ * UPDATED: OrderDetailModal now shows per-item:
+ *   - Variant image (resolved by backend: variant image → product primary fallback)
+ *   - Variant attribute badges with color swatches (Color, Size, etc.)
+ *   - Variant label snapshot
  */
 
 import { useEffect, useState, useCallback } from 'react'
@@ -12,44 +16,21 @@ import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
 import { ordersApi } from '@/lib/api/orders'
-import { Order, PaginatedResponse, OrderStatus } from '@/types'
+import type { Order, OrderItem, PaginatedResponse, OrderStatus } from '@/types'
 import { format } from 'date-fns'
 
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
 
-// Extended order types with address fields
-interface OrderItem {
-  id: number
-  product_id: number
-  product_name: string
-  quantity: number
-  unit_price: number
-  price: number
-  total: number
-  product?: {
-    id: number
-    name: string
-    primary_image_url?: string | null
-  }
-}
+// ─── Extended order types ──────────────────────────────────────────────────────
 
 interface OrderDetail extends Order {
-  user_id?: number
-  wilaya?: string | null
-  address?: string | null
-  phone?: string | null
-  notes?: string | null
-  items: OrderItem[]
-  user?: {
-    id: number
-    name: string
-    email: string
-  }
+  items?: OrderItem[]
+  user?: { id: number; name: string; email: string }
 }
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    '#f59e0b',
@@ -75,7 +56,81 @@ function StatusChip({ status }: { status: string }) {
   )
 }
 
-// ─── Order Detail Modal ───────────────────────────────────────────────────────
+// ─── Order Item Row (with variant image + badges) ──────────────────────────────
+
+function OrderItemRow({ item }: { item: OrderItem }) {
+  const hasVariant  = !!item.variant_id
+  const options     = Object.entries(item.variant_options ?? {})
+  const imageUrl    = item.resolved_image_url ?? null
+
+  return (
+    <tr style={{ borderTop: '1px solid var(--border, #e5e7eb)' }}>
+      {/* Image — variant-aware, resolved by backend */}
+      <td style={{ padding: '12px 14px', width: 56 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 8, overflow: 'hidden',
+          background: '#f8fafc', border: '1px solid #f1f5f9',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          {imageUrl
+            ? <img src={imageUrl} alt={item.product_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <Package size={16} color="#e2e8f0" />
+          }
+        </div>
+      </td>
+
+      {/* Product name + variant badges */}
+      <td style={{ padding: '12px 14px' }}>
+        <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary, #0f172a)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+          {item.product_name}
+        </p>
+
+        {/* Variant option badges */}
+        {hasVariant && options.length > 0 && (
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {options.map(([slug, opt]) => (
+              <span key={slug} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                background: '#f1f5f9', color: '#374151', border: '1px solid #e5e7eb',
+                textTransform: 'capitalize',
+              }}>
+                {opt.color_hex && (
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: opt.color_hex, border: '1px solid rgba(0,0,0,0.15)', flexShrink: 0 }} />
+                )}
+                {slug}: {opt.value}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Fallback: show variant_label if no option map */}
+        {hasVariant && options.length === 0 && item.variant_label && (
+          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#f1f5f9', color: '#374151', border: '1px solid #e5e7eb' }}>
+            {item.variant_label}
+          </span>
+        )}
+      </td>
+
+      {/* Qty */}
+      <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
+        {item.quantity}
+      </td>
+
+      {/* Unit price */}
+      <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
+        {formatCurrency(item.unit_price)}
+      </td>
+
+      {/* Line total */}
+      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-purple, #7c3aed)', fontSize: 13 }}>
+        {formatCurrency(item.total)}
+      </td>
+    </tr>
+  )
+}
+
+// ─── Order Detail Modal ────────────────────────────────────────────────────────
 
 function OrderDetailModal({
   orderId,
@@ -93,14 +148,16 @@ function OrderDetailModal({
   const [newStatus, setNewStatus] = useState('')
   const [updating,  setUpdating]  = useState(false)
   const [error,     setError]     = useState('')
+  const [success,   setSuccess]   = useState('')
 
   useEffect(() => {
     if (!orderId || !open) return
     setLoading(true)
     setError('')
     setNewStatus('')
+    setSuccess('')
     ordersApi.get(orderId)
-      .then((res: OrderDetail) => setDetail(res))
+      .then(res => setDetail(res as OrderDetail))
       .catch(() => setError('Failed to load order details.'))
       .finally(() => setLoading(false))
   }, [orderId, open])
@@ -108,10 +165,13 @@ function OrderDetailModal({
   const handleStatusUpdate = async () => {
     if (!newStatus || !detail) return
     setUpdating(true)
+    setError('')
     try {
       await ordersApi.updateStatus(detail.id, newStatus)
+      setSuccess(`Status updated to "${newStatus}".`)
+      setDetail(prev => prev ? { ...prev, status: newStatus as any } : prev)
+      setNewStatus('')
       onUpdated()
-      onClose()
     } catch {
       setError('Failed to update status.')
     } finally {
@@ -125,25 +185,37 @@ function OrderDetailModal({
         <div className="flex justify-center py-12">
           <Loader2 size={24} className="animate-spin text-accent-purple" />
         </div>
-      ) : error ? (
+      ) : error && !detail ? (
         <p className="text-accent-red text-sm">{error}</p>
       ) : detail ? (
         <div className="space-y-5">
 
+          {/* Feedback messages */}
+          {success && (
+            <div className="bg-accent-green/10 border border-accent-green/25 rounded-xl px-4 py-2.5 text-sm font-semibold text-accent-green">
+              ✓ {success}
+            </div>
+          )}
+          {error && (
+            <div className="bg-accent-red/10 border border-accent-red/25 rounded-xl px-4 py-2.5 text-sm font-semibold text-accent-red">
+              {error}
+            </div>
+          )}
+
           {/* ── Meta grid ── */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: ShoppingBag, label: 'Order Number', value: detail.order_number },
+              { icon: ShoppingBag, label: 'Order Number', value: detail.order_number ?? `#${detail.id}` },
               { icon: User,        label: 'Customer',     value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
               { icon: MapPin,      label: 'Wilaya',       value: (detail as any).wilaya ?? '—' },
-              { icon: Phone,       label: 'Phone',        value: (detail as any).phone ?? '—' },
+              { icon: Phone,       label: 'Phone',        value: (detail as any).phone  ?? '—' },
             ].map(({ icon: Icon, label, value, sub }) => (
               <div key={label} className="p-3 bg-bg-primary rounded-xl border border-border">
                 <div className="flex items-center gap-1.5 text-text-muted text-[9px] font-bold uppercase tracking-widest mb-1.5">
                   <Icon size={9} />{label}
                 </div>
-                <p className="text-text-primary text-sm font-bold leading-snug">{value}</p>
-                {sub && <p className="text-text-muted text-xs mt-0.5">{sub}</p>}
+                <p className="text-text-primary text-sm font-bold leading-snug truncate">{value}</p>
+                {sub && <p className="text-text-muted text-xs mt-0.5 truncate">{sub}</p>}
               </div>
             ))}
           </div>
@@ -186,38 +258,34 @@ function OrderDetailModal({
             </div>
           </div>
 
-          {/* ── Order items table ── */}
+          {/* ── Order items table — WITH variant images ── */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Package size={14} className="text-accent-purple" />
               <h3 className="text-sm font-bold text-text-primary">Order Items</h3>
+              <span className="text-[10px] text-text-muted font-medium">
+                (images match selected variant/color)
+              </span>
             </div>
             <div className="border border-border rounded-xl overflow-hidden">
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-bg-primary">
-                    {['Product', 'Qty', 'Unit Price', 'Total'].map((h, i) => (
-                      <th key={h} className={`py-2 px-3 text-text-muted font-bold uppercase tracking-wider text-[9px] ${i > 0 ? 'text-right' : 'text-left'}`}>
-                        {h}
-                      </th>
-                    ))}
+                    <th className="py-2 px-3 text-left text-text-muted font-bold uppercase tracking-wider text-[9px] w-14">Image</th>
+                    <th className="py-2 px-3 text-left text-text-muted font-bold uppercase tracking-wider text-[9px]">Product</th>
+                    <th className="py-2 px-3 text-right text-text-muted font-bold uppercase tracking-wider text-[9px]">Qty</th>
+                    <th className="py-2 px-3 text-right text-text-muted font-bold uppercase tracking-wider text-[9px]">Unit</th>
+                    <th className="py-2 px-3 text-right text-text-muted font-bold uppercase tracking-wider text-[9px]">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.items?.map(item => (
-                    <tr key={item.id} className="border-t border-border">
-                      <td className="py-2.5 px-3 text-text-primary font-medium">
-                        {item.product_name || item.product?.name || `Product #${item.product_id}`}
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-text-muted">{item.quantity}</td>
-                      <td className="py-2.5 px-3 text-right text-text-muted">{formatCurrency(item.unit_price || item.price)}</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-accent-purple">{formatCurrency(item.total)}</td>
-                    </tr>
+                  {(detail.items ?? []).map(item => (
+                    <OrderItemRow key={item.id} item={item} />
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-border bg-bg-primary">
-                    <td colSpan={3} className="py-2.5 px-3 font-bold text-text-primary text-right">Total</td>
+                    <td colSpan={4} className="py-2.5 px-3 font-bold text-text-primary text-right">Total</td>
                     <td className="py-2.5 px-3 text-right font-black text-accent-red">{formatCurrency(detail.total_amount)}</td>
                   </tr>
                 </tfoot>
@@ -227,16 +295,17 @@ function OrderDetailModal({
 
           {/* ── Update status ── */}
           <div className="bg-bg-primary rounded-xl border border-border p-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">Update Order Status</p>
-            {error && <p className="text-xs text-accent-red mb-2">{error}</p>}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">
+              Update Order Status
+            </p>
             <div className="flex gap-3">
               <select
                 value={newStatus}
-                onChange={e => setNewStatus(e.target.value)}
+                onChange={e => { setNewStatus(e.target.value); setSuccess('') }}
                 className="flex-1 bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
               >
                 <option value="">— Select new status —</option>
-                {['pending', 'processing', 'completed', 'delivered', 'cancelled'].map(s => (
+                {['pending', 'processing', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                 ))}
               </select>
@@ -371,7 +440,7 @@ export default function OrdersPage() {
   return (
     <div className="space-y-4">
 
-      {/* ── Filters ── */}
+      {/* Filters */}
       <div className="bg-bg-card border border-border rounded-xl p-4">
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[180px]">
@@ -401,7 +470,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-text-primary">
@@ -432,7 +501,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* ── Detail Modal ── */}
+      {/* Detail Modal — opens on row Eye click */}
       <OrderDetailModal
         orderId={selectedId}
         open={detailOpen}
