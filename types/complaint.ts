@@ -1,15 +1,17 @@
 /**
- * types/complaint.ts
- * TypeScript types for the ChooseTounsi complaint system.
- * Place at: types/complaint.ts  (customer frontend + admin panel — identical)
+ * FILE: types/complaint.ts  ← REPLACE existing file (same in both frontends)
+ *
+ * Changes from v1:
+ *   - Added 'seller_rejected_pending_admin' to ComplaintStatus
+ *   - Added STATUS_CONFIG entry for new status
+ *   - Added seller_decision field to Complaint interface
  */
-
-// ─── Enums / Literals ─────────────────────────────────────────────────────────
 
 export type ComplaintStatus =
   | 'pending'
   | 'reviewing'
   | 'approved'
+  | 'seller_rejected_pending_admin'
   | 'rejected'
 
 export type ComplaintType =
@@ -37,29 +39,35 @@ export const STATUS_CONFIG: Record<
     label:       'Pending',
     color:       '#f59e0b',
     bg:          'rgba(245,158,11,0.1)',
-    description: 'Your complaint is awaiting review.',
+    description: 'Awaiting seller review.',
   },
   reviewing: {
     label:       'Under Review',
     color:       '#3b82f6',
     bg:          'rgba(59,130,246,0.1)',
-    description: 'The seller has acknowledged your complaint. Admin will make the final decision.',
+    description: 'Seller is reviewing your complaint.',
   },
   approved: {
     label:       'Approved',
     color:       '#10b981',
     bg:          'rgba(16,185,129,0.1)',
-    description: 'Your complaint has been approved. We will contact you about next steps.',
+    description: 'Your complaint has been approved.',
+  },
+  seller_rejected_pending_admin: {
+    label:       'Awaiting Admin',
+    color:       '#f97316',
+    bg:          'rgba(249,115,22,0.1)',
+    description: 'Seller rejected — admin will make the final decision.',
   },
   rejected: {
     label:       'Rejected',
     color:       '#ef4444',
     bg:          'rgba(239,68,68,0.1)',
-    description: 'Your complaint was reviewed but could not be approved.',
+    description: 'Your complaint was not approved.',
   },
 }
 
-// ─── Eligible Order (for the order selector in the form) ─────────────────────
+// ─── Eligible Order ───────────────────────────────────────────────────────────
 
 export interface EligibleOrderItem {
   product_name: string
@@ -75,7 +83,7 @@ export interface EligibleOrder {
   items:        EligibleOrderItem[]
 }
 
-// ─── Nested shapes — kept flat to avoid circular references ──────────────────
+// ─── Nested shapes ────────────────────────────────────────────────────────────
 
 export interface ComplaintOrderItem {
   id:           number
@@ -103,7 +111,7 @@ export interface ComplaintUser {
   email: string
 }
 
-// ─── Main Complaint shape ─────────────────────────────────────────────────────
+// ─── Main Complaint ───────────────────────────────────────────────────────────
 
 export interface Complaint {
   id:               number
@@ -118,17 +126,17 @@ export interface Complaint {
   status:           ComplaintStatus
   rejection_reason: string | null
   seller_note:      string | null
+  seller_decision:  'approved' | 'rejected' | null  // NEW
   reviewed_at:      string | null
   resolved_at:      string | null
   created_at:       string
   updated_at:       string
-  // Optional nested relations (loaded by Laravel ->with())
   order?:           ComplaintOrder
   user?:            ComplaintUser
   seller?:          ComplaintUser
 }
 
-// ─── Form submission payload ──────────────────────────────────────────────────
+// ─── Form payload ─────────────────────────────────────────────────────────────
 
 export interface ComplaintFormPayload {
   order_id:       number
