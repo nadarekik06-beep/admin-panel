@@ -38,9 +38,19 @@ export const ordersApi = {
 
   /**
    * Update order status.
+   * Throws with a human-readable message on failure so the UI can display it.
    */
   async updateStatus(id: number, status: string) {
-    const res = await api.patch(`/admin/orders/${id}/status`, { status })
-    return res.data
+    try {
+      const res = await api.patch(`/admin/orders/${id}/status`, { status })
+      return res.data
+    } catch (err: any) {
+      // Surface the Laravel error message if available
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.debug ??
+        `Failed to update status to "${status}".`
+      throw new Error(msg)
+    }
   },
 }
