@@ -12,7 +12,6 @@ import { format } from 'date-fns'
 
 type ActionType = 'approve' | 'disable' | 'delete'
 
-// ✅ FIX 1: Strip /api suffix so image URLs and category fetch don't double up
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/api$/, '')
 
 interface ProductImage {

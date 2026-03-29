@@ -15,6 +15,7 @@ import {
   ChevronRight,
   FileText,
   AlertTriangle,
+  FileEdit,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -27,8 +28,12 @@ const navItems = [
   { href: '/',                    label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/users',               label: 'Users',        icon: Users           },
   { href: '/sellers',             label: 'Sellers',      icon: Store           },
+  
   { href: '/seller-applications', label: 'Applications', icon: FileText        },
+
   { href: '/products',            label: 'Products',     icon: Package         },
+  { href: '/product-update-requests', label: 'Update Requests', icon: FileEdit },
+
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },
   { href: '/statistics',          label: 'Statistics',   icon: BarChart3       },
