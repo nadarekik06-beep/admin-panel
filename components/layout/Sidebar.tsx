@@ -42,9 +42,27 @@ const navItems = [
 function LogoIcon({ size }: { size: 'md' | 'sm' }) {
   const dim = size === 'md' ? 48 : 40;
   return (
-    <div style={{ width: dim, height: dim, flexShrink: 0, background: '#ffffff', borderRadius: 10, overflow: 'hidden', padding: 3 }}>
-      <img src={LOGO_B64} alt="Choose'Tounsi"
-        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+    <div style={{
+      width: dim, height: dim, flexShrink: 0,
+      borderRadius: 12,
+      background: '#fff',
+      border: '2px solid #db142e',
+      boxShadow: '0 0 0 1px #198f41, 0 0 10px 3px rgba(219,20,46,0.5), 0 0 22px 5px rgba(219,20,46,0.2), 0 0 32px 8px rgba(25,143,65,0.15)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
+      padding: 2,
+    }}>
+      <img
+        src="/images/logo-chili.png"
+        alt="ChooseTounsi"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          display: 'block',
+          imageRendering: 'crisp-edges',
+        }}
+      />
     </div>
   );
 }
