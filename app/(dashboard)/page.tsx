@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import type { Variants } from 'framer-motion'
 import {
   Users,
   Store,
@@ -29,6 +31,25 @@ function formatDT(value: number): string {
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value)
+}
+
+// ── Animation variants ─────────────────────────────────────
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.4, ease: 'easeOut' },
+  }),
+}
+
+const fadeIn: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.1, duration: 0.45, ease: 'easeOut' },
+  }),
 }
 
 export default function DashboardPage() {
@@ -74,63 +95,72 @@ export default function DashboardPage() {
     <div className="space-y-6">
 
       {/* ── Primary KPI Cards ───────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title="Total Revenue"
-          value={formatDT(kpis.total_revenue)}
-          icon={Banknote}        // ✅ replaced DollarSign with Banknote
-          gradient="purple"
-          trend={{ value: 12.5, label: 'vs last month' }}
-        />
-        <KPICard
-          title="Total Users"
-          value={formatNumber(kpis.total_users)}
-          icon={Users}
-          gradient="cyan"
-        />
-        <KPICard
-          title="Total Orders"
-          value={formatNumber(kpis.total_orders)}
-          icon={ShoppingCart}
-          gradient="green"
-        />
-        <KPICard
-          title="Total Products"
-          value={formatNumber(kpis.total_products)}
-          icon={Package}
-          gradient="orange"
-        />
+      {/* FIX: [&>*]:h-28 forces every card to the same fixed height */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 [&>*]:h-28">
+        {[
+          { title: 'Total Revenue',  value: formatDT(kpis.total_revenue),      icon: Banknote,     gradient: 'purple', trend: { value: 12.5, label: 'vs last month' } },
+          { title: 'Total Users',    value: formatNumber(kpis.total_users),     icon: Users,        gradient: 'cyan',   trend: undefined },
+          { title: 'Total Orders',   value: formatNumber(kpis.total_orders),    icon: ShoppingCart, gradient: 'green',  trend: undefined },
+          { title: 'Total Products', value: formatNumber(kpis.total_products),  icon: Package,      gradient: 'orange', trend: undefined },
+        ].map((card, i) => (
+          <motion.div
+            key={card.title}
+            custom={i}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="h-full"
+          >
+            <KPICard
+              title={card.title}
+              value={card.value}
+              icon={card.icon}
+              gradient={card.gradient as any}
+              trend={card.trend as any}
+            />
+          </motion.div>
+        ))}
       </div>
 
       {/* ── Secondary KPI Cards ─────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <KPICard
-          title="Total Sellers"
-          value={formatNumber(kpis.total_sellers)}
-          icon={Store}
-          gradient="purple"
-        />
-        <KPICard
-          title="Pending Sellers"
-          value={kpis.pending_seller_approvals}
-          subtitle="Awaiting approval"
-          icon={Clock}
-          gradient="orange"
-        />
-        <KPICard
-          title="Pending Products"
-          value={kpis.pending_product_approvals}
-          subtitle="Awaiting moderation"
-          icon={AlertTriangle}
-          gradient="cyan"
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+        {[
+          { title: 'Total Sellers',    value: formatNumber(kpis.total_sellers),  icon: Store,         gradient: 'purple', subtitle: undefined },
+          { title: 'Pending Sellers',  value: kpis.pending_seller_approvals,     icon: Clock,         gradient: 'orange', subtitle: 'Awaiting approval' },
+          { title: 'Pending Products', value: kpis.pending_product_approvals,    icon: AlertTriangle, gradient: 'cyan',   subtitle: 'Awaiting moderation' },
+        ].map((card, i) => (
+          <motion.div
+            key={card.title}
+            custom={i + 4}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ y: -4, transition: { duration: 0.3 } }}
+            className="h-full"
+          >
+            <KPICard
+              title={card.title}
+              value={card.value}
+              subtitle={card.subtitle}
+              icon={card.icon}
+              gradient={card.gradient as any}
+            />
+          </motion.div>
+        ))}
       </div>
 
       {/* ── Charts Row ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Revenue line chart */}
-        <div className="lg:col-span-2 bg-bg-card border border-border rounded-xl p-5">
+        <motion.div
+          className="lg:col-span-2 bg-bg-card border border-border rounded-xl p-5"
+          custom={7}
+          variants={fadeIn}
+          initial="hidden"
+          animate="visible"
+        >
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-base font-semibold text-text-primary">Revenue Overview</h2>
@@ -139,20 +169,32 @@ export default function DashboardPage() {
             <TrendingUp size={18} className="text-accent-purple-light" />
           </div>
           <RevenueLineChart data={monthly_revenue} />
-        </div>
+        </motion.div>
 
         {/* Order status pie */}
-        <div className="bg-bg-card border border-border rounded-xl p-5">
+        <motion.div
+          className="bg-bg-card border border-border rounded-xl p-5"
+          custom={8}
+          variants={fadeIn}
+          initial="hidden"
+          animate="visible"
+        >
           <div className="mb-4">
             <h2 className="text-base font-semibold text-text-primary">Order Status</h2>
             <p className="text-xs text-text-muted">Distribution</p>
           </div>
           <OrderPieChart data={order_status_distribution} />
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Recent Orders ────────────────────────────────────── */}
-      <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
+      <motion.div
+        className="bg-bg-card border border-border rounded-xl overflow-hidden"
+        custom={9}
+        variants={fadeIn}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-base font-semibold text-text-primary">Recent Orders</h2>
           <a
@@ -167,21 +209,11 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">
-                  Order ID
-                </th>
-                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">
-                  Date
-                </th>
+                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">Order ID</th>
+                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">Customer</th>
+                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">Amount</th>
+                <th className="px-5 py-3 text-left text-xs text-text-muted uppercase tracking-wider">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -192,9 +224,13 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ) : (
-                recent_orders.map((order: Order) => (
-                  <tr
+                recent_orders.map((order: Order, i: number) => (
+                  <motion.tr
                     key={order.id}
+                    custom={i}
+                    variants={fadeUp}
+                    initial="hidden"
+                    animate="visible"
                     className="hover:bg-bg-hover/50 transition-colors"
                   >
                     <td className="px-5 py-3 font-mono text-text-secondary text-xs">
@@ -205,31 +241,24 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-5 py-3">
                       <Badge
-                        variant={
-                          order.status as
-                            | 'pending'
-                            | 'processing'
-                            | 'delivered'
-                            | 'canceled'
-                        }
+                        variant={order.status as 'pending' | 'processing' | 'delivered' | 'canceled'}
                       >
                         {order.status}
                       </Badge>
                     </td>
                     <td className="px-5 py-3 font-medium text-text-primary">
-                      {/* ✅ DT formatting */}
                       {formatDT(Number(order.total_amount))}
                     </td>
                     <td className="px-5 py-3 text-text-muted text-xs">
                       {format(new Date(order.created_at), 'MMM d, yyyy')}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

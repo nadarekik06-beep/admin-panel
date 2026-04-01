@@ -8,6 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { motion } from 'framer-motion'
 import { CategoryPoint } from '@/types'
 
 const COLORS = ['#7c3aed', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#8b5cf6']
@@ -32,6 +33,12 @@ export default function CategoryPieChart({ data }: { data: CategoryPoint[] }) {
   }))
 
   return (
+    <motion.div
+      initial={{ opacity: 0, scaleX: 0.95 }}
+      animate={{ opacity: 1, scaleX: 1 }}
+      transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.2 }}
+      style={{ transformOrigin: 'left center' }}
+    >
     <ResponsiveContainer width="100%" height={200}>
       <PieChart>
         <Pie
@@ -57,5 +64,6 @@ export default function CategoryPieChart({ data }: { data: CategoryPoint[] }) {
         />
       </PieChart>
     </ResponsiveContainer>
+    </motion.div>
   )
 }

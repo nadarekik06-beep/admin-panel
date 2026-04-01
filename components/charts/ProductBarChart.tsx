@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { motion } from 'framer-motion'
 import { OrderTrendPoint } from '@/types'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -32,6 +33,12 @@ export default function ProductBarChart({ data }: { data: OrderTrendPoint[] }) {
   const formatted = data.map((d) => ({ ...d, month: d.month.slice(5) }))
 
   return (
+    <motion.div
+      initial={{ opacity: 0, scaleX: 0.95 }}
+      animate={{ opacity: 1, scaleX: 1 }}
+      transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.2 }}
+      style={{ transformOrigin: 'left center' }}
+    >
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={formatted} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={10}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3e" vertical={false} />
@@ -54,5 +61,6 @@ export default function ProductBarChart({ data }: { data: OrderTrendPoint[] }) {
         <Bar dataKey="canceled"   fill="#ef4444" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </motion.div>
   )
 }

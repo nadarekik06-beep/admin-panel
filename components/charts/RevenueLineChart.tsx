@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { motion } from 'framer-motion'
 import { RevenuePoint } from '@/types'
 
 // ✅ DT tooltip
@@ -34,6 +35,12 @@ export default function RevenueLineChart({ data }: { data: RevenuePoint[] }) {
   }))
 
   return (
+    <motion.div
+      initial={{ opacity: 0, scaleX: 0.95 }}
+      animate={{ opacity: 1, scaleX: 1 }}
+      transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.2 }}
+      style={{ transformOrigin: 'left center' }}
+    >
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={formatted} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3e" vertical={false} />
@@ -65,5 +72,6 @@ export default function RevenueLineChart({ data }: { data: RevenuePoint[] }) {
         />
       </LineChart>
     </ResponsiveContainer>
+    </motion.div>
   )
 }
