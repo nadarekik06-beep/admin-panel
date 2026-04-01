@@ -26,7 +26,7 @@ export default function KPICard({
   trend,
 }: KPICardProps) {
   return (
-    <div className="bg-bg-card rounded-xl border border-border p-5 hover:border-border-light transition-all duration-200 shadow-card group">
+    <div className="h-full bg-bg-card rounded-xl border border-border p-5 hover:border-border-light transition-all duration-300 shadow-card group">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-text-muted text-sm font-medium mb-1">{title}</p>
