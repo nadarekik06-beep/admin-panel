@@ -16,6 +16,7 @@ import {
   FileText,
   AlertTriangle,
   FileEdit,
+  Tag,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -38,6 +39,7 @@ const navItems = [
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },
+  { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/statistics',          label: 'Statistics',   icon: BarChart3       },
 ];
 
