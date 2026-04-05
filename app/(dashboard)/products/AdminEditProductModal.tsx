@@ -517,15 +517,16 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-semibold">TND</span>
                     </div>
                   </Field>
-                  <Field label="Stock" hint={hasVariants ? 'Auto from variants' : undefined}>
-                    <input
-                      type="number" min={0}
-                      value={form.stock}
-                      onChange={e => !hasVariants && set('stock', e.target.value)}
-                      readOnly={hasVariants}
-                      className={`${inputCls()} ${hasVariants ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    />
-                  </Field>
+                 {!hasVariants && (
+                    <Field label="Stock">
+                      <input
+                        type="number" min={0}
+                        value={form.stock}
+                        onChange={e => set('stock', e.target.value)}
+                        className={inputCls()}
+                      />
+                    </Field>
+                  )}
                   <Field label="Status">
                     <select value={form.is_active ? 'active' : 'inactive'} onChange={e => set('is_active', e.target.value === 'active')} className={inputCls()}>
                       <option value="active">Active</option>
@@ -663,6 +664,14 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
                       onChange={setVariantRows}
                       basePrice={form.price}
                     />
+                  )}{hasVariants && variantRows.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div className="inline-flex items-center gap-2.5 bg-accent-red/5 border border-accent-red/20 rounded-xl px-4 py-2.5">
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Total Stock</span>
+                        <span className="text-xl font-black text-accent-red">{variantTotalStock}</span>
+                        <span className="text-xs text-text-muted">units (auto-calculated)</span>
+                      </div>
+                    </div>
                   )}
                 </section>
               )}
