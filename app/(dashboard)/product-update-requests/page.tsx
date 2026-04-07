@@ -175,9 +175,12 @@ function DetailModal({ request, onClose, onApprove, onReject }: DetailModalProps
           {request.status === 'pending' && (
             <>
               {showRejectForm ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <textarea
-                    placeholder="Reason for rejection (optional)…"
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      Rejection Reason <span style={{ color: '#ef4444' }}>*</span>
+    </label>
+    <textarea
+      placeholder="Reason for rejection…"
                     value={rejectComment}
                     onChange={e => setRejectComment(e.target.value)}
                     rows={3}
@@ -187,8 +190,7 @@ function DetailModal({ request, onClose, onApprove, onReject }: DetailModalProps
                     <button onClick={() => setShowRejectForm(false)} style={{ flex: 1, padding: '10px 0', border: '1px solid #1e2128', background: 'transparent', color: '#6b7280', fontWeight: 700, fontSize: 13, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                       Cancel
                     </button>
-                    <button onClick={handleReject} disabled={saving}
-                      style={{ flex: 1, padding: '10px 0', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', fontWeight: 800, fontSize: 13, borderRadius: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.6 : 1, fontFamily: 'inherit' }}>
+                    <button onClick={handleReject} disabled={saving || !rejectComment.trim()}                      style={{ flex: 1, padding: '10px 0', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', fontWeight: 800, fontSize: 13, borderRadius: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving || !rejectComment.trim() ? 0.6 : 1, fontFamily: 'inherit' }}>
                       {saving && <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />}
                       Confirm Rejection
                     </button>
