@@ -5,15 +5,25 @@ import api from '../axios'
 import type { Order, PaginatedResponse } from '@/types'
 
 interface OrdersParams {
-  status?: string
-  search?: string
-  date_from?: string
-  date_to?: string
-  page?: number
-  per_page?: number
+  status?:         string
+  search?:         string
+  payment_method?: string   // ← ADDED
+  date_from?:      string
+  date_to?:        string
+  page?:           number
+  per_page?:       number
 }
 
 export const ordersApi = {
+  /**
+   * Manually confirm payment for COD and D17 orders.
+   * PATCH /api/admin/orders/{id}/confirm-payment
+   */
+  confirmPayment: (id: number, d17Reference?: string) =>
+    api.patch(`/admin/orders/${id}/confirm-payment`, {
+      ...(d17Reference ? { d17_reference: d17Reference } : {}),
+    }),
+
   /**
    * List orders (paginated).
    * Backend returns { success, data: { data: [...], total, ... } }
@@ -45,7 +55,6 @@ export const ordersApi = {
       const res = await api.patch(`/admin/orders/${id}/status`, { status })
       return res.data
     } catch (err: any) {
-      // Surface the Laravel error message if available
       const msg =
         err?.response?.data?.message ??
         err?.response?.data?.debug ??

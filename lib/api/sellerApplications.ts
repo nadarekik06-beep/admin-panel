@@ -2,6 +2,9 @@ import api from '../axios'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type PreferredPlan = 'green' | 'red' | 'black'
+export type ActivePlan    = 'free'  | 'red' | 'black'
+
 export interface SellerApplication {
   id: number
   user_id: number
@@ -23,6 +26,22 @@ export interface SellerApplication {
   reviewed_by: number | null
   created_at: string
   updated_at: string
+
+  // ── Plan fields (separate concerns) ──────────────────────────────────────
+  /**
+   * What the seller expressed interest in on the pricing page.
+   * Set at application time. Never changes after submission.
+   * Used to show "Preferred Plan" in admin panel and upgrade prompts in dashboard.
+   */
+  preferred_plan: PreferredPlan
+
+  /**
+   * The ACTIVE subscription plan.
+   * Always 'free' when the application is created or approved.
+   * Only changes to 'red' or 'black' after the seller pays for an upgrade.
+   */
+  plan: ActivePlan
+
   user?: {
     id: number
     name: string
@@ -77,24 +96,43 @@ export function storageUrl(path: string | null | undefined): string | null {
   return `${BASE.replace(/\/api$/, '')}/storage/${path.replace(/^\//, '')}`
 }
 
+/**
+ * Returns a human-readable label + color for a preferred_plan value.
+ * Used in admin table badges and detail modal.
+ */
+export function preferredPlanMeta(plan: PreferredPlan): {
+  label: string
+  color: string
+  bg: string
+  border: string
+} {
+  switch (plan) {
+    case 'red':
+      return {
+        label:  'Red Pepper (49 DT/mo)',
+        color:  '#db142e',
+        bg:     'rgba(219,20,46,0.10)',
+        border: 'rgba(219,20,46,0.25)',
+      }
+    case 'black':
+      return {
+        label:  'Black Pepper (129 DT/mo)',
+        color:  '#f59e0b',
+        bg:     'rgba(245,158,11,0.10)',
+        border: 'rgba(245,158,11,0.25)',
+      }
+    case 'green':
+    default:
+      return {
+        label:  'Green Pepper (Free)',
+        color:  '#198f41',
+        bg:     'rgba(25,143,65,0.10)',
+        border: 'rgba(25,143,65,0.25)',
+      }
+  }
+}
+
 // ─── Seller Applications ──────────────────────────────────────────────────────
-//
-// Matching routes in api.php (admin block, middleware: auth:sanctum):
-//   GET  /admin/seller-applications
-//   GET  /admin/seller-applications/{application}
-//   POST /admin/seller-applications/{application}/approve
-//   POST /admin/seller-applications/{application}/reject
-//
-// ⚠️  REQUIRED BACKEND FIX in routes/api.php:
-//     The controller uses implicit model binding (SellerApplication $application),
-//     so the route parameter MUST be named {application}, not {id}.
-//     Change:
-//       Route::post('/seller-applications/{id}/approve', ...)
-//       Route::post('/seller-applications/{id}/reject',  ...)
-//     To:
-//       Route::post('/seller-applications/{application}/approve', ...)
-//       Route::post('/seller-applications/{application}/reject',  ...)
-//     The frontend URLs do NOT change — only the Laravel route parameter name.
 
 export const sellerApplicationsApi = {
   async list(params: ApplicationsParams = {}) {
@@ -107,13 +145,11 @@ export const sellerApplicationsApi = {
     return res.data.data as SellerApplication
   },
 
-  // POST /admin/seller-applications/{application}/approve
   async approve(id: number) {
     const res = await api.post(`/admin/seller-applications/${id}/approve`)
     return res.data
   },
 
-  // POST /admin/seller-applications/{application}/reject
   async reject(id: number, rejection_reason?: string) {
     const res = await api.post(`/admin/seller-applications/${id}/reject`, {
       rejection_reason,
@@ -123,16 +159,6 @@ export const sellerApplicationsApi = {
 }
 
 // ─── Sellers ──────────────────────────────────────────────────────────────────
-//
-// Matching routes in api.php (admin block, middleware: auth:sanctum):
-//   GET    /admin/sellers
-//   GET    /admin/sellers/{id}
-//   PUT    /admin/sellers/{id}
-//   DELETE /admin/sellers/{id}
-//   PATCH  /admin/sellers/{id}/approve
-//   PATCH  /admin/sellers/{id}/reject
-//   PATCH  /admin/sellers/{id}/suspend
-//   PATCH  /admin/sellers/{id}/role
 
 export const sellersApi = {
   async list(params: SellersParams = {}) {
@@ -174,24 +200,14 @@ export const sellersApi = {
     const res = await api.patch(`/admin/sellers/${id}/role`, { role })
     return res.data
   },
+
+  // Alias for destroy — used in SellerApplicationsPage
+  async delete(id: number) {
+    return this.destroy(id)
+  },
 }
 
 // ─── Admin Products ───────────────────────────────────────────────────────────
-//
-// Matching routes in api.php:
-//   PUT   /admin/products/{id}         → update  (middleware: auth:sanctum)
-//   PATCH /admin/products/{id}/approve → approveProduct
-//   PATCH /admin/products/{id}/reject  → rejectProduct
-//
-// ⚠️  REQUIRED BACKEND FIX:
-//     approve/reject are currently under middleware('auth:admin') — a separate
-//     guard that your frontend token (Bearer/sanctum) cannot satisfy.
-//     Move them into the auth:sanctum admin block in routes/api.php:
-//
-//     Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
-//         Route::patch('products/{id}/approve', [SellerController::class, 'approveProduct']);
-//         Route::patch('products/{id}/reject',  [SellerController::class, 'rejectProduct']);
-//     });
 
 export const adminProductsApi = {
   async approve(id: number) {
