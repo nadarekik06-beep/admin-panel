@@ -27,6 +27,9 @@ interface SellerDetail extends Seller {
   website_url?:          string | null
   app_status?:           string | null
   reviewed_at?:          string | null
+  active_plan?:          'free' | 'red' | 'black' | null  // ← ADD THIS
+  preferred_plan?:       'green' | 'red' | 'black' | null // ← ADD THIS
+
 }
 
 function getSellerStatus(seller: Seller): 'pending' | 'approved' | 'suspended' {
@@ -156,9 +159,30 @@ export default function SellersPage() {
       key: 'is_approved', header: 'Status',
       render: (row) => { const s = getSellerStatus(row); return <Badge variant={s}>{s}</Badge> },
     },
-    {
+        {
       key: 'products_count', header: 'Products',
       render: (row) => <span className="text-text-secondary">{row.products_count ?? 0}</span>,
+    },
+    {
+      key: 'active_plan' as keyof Seller, header: 'Plan',
+      render: (row) => {
+        const plan = (row as SellerDetail).active_plan ?? 'free'
+        const cfg = {
+          free:  { label: '🟢 Free',  color: '#198f41', bg: 'rgba(25,143,65,0.12)'   },
+          red:   { label: '🔴 Red',   color: '#db142e', bg: 'rgba(219,20,46,0.12)'   },
+          black: { label: '⚫ Black', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+        } as const
+        const { label, color, bg } = cfg[plan as keyof typeof cfg] ?? cfg.free
+        return (
+          <span style={{
+            background: bg, color, border: `1px solid ${color}33`,
+            padding: '2px 10px', borderRadius: 999,
+            fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+          }}>
+            {label}
+          </span>
+        )
+      },
     },
     {
       key: 'created_at', header: 'Joined',
@@ -285,6 +309,16 @@ export default function SellersPage() {
               <InfoCard label="City"          value={viewSeller.city} />
               <InfoCard label="Joined"        value={format(new Date(viewSeller.created_at), 'MMM d, yyyy')} />
               <InfoCard label="App Status"    value={viewSeller.app_status} />
+              <InfoCard label="Active Plan"   value={
+                viewSeller.active_plan === 'red'   ? '🔴 Red Pepper'   :
+                viewSeller.active_plan === 'black' ? '⚫ Black Pepper' :
+                '🟢 Free (Green Pepper)'
+              } />
+              <InfoCard label="Preferred Plan" value={
+                viewSeller.preferred_plan === 'red'   ? '🔴 Red Pepper'   :
+                viewSeller.preferred_plan === 'black' ? '⚫ Black Pepper' :
+                '🟢 Green Pepper'
+              } />
             </div>
 
             {/* ── Business description ── */}
