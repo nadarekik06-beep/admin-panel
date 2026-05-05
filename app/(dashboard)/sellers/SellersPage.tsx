@@ -18,6 +18,7 @@ interface SellerDetail extends Seller {
   phone_number?:         string | null
   business_name?:        string | null
   business_category?:    string | null
+  business_categories?:  string[]              // ← NEW
   business_description?: string | null
   wilaya?:               string | null
   city?:                 string | null
@@ -27,9 +28,10 @@ interface SellerDetail extends Seller {
   website_url?:          string | null
   app_status?:           string | null
   reviewed_at?:          string | null
-  active_plan?:          'free' | 'red' | 'black' | null  // ← ADD THIS
-  preferred_plan?:       'green' | 'red' | 'black' | null // ← ADD THIS
-
+  active_plan?:          'free' | 'red' | 'black' | null
+  preferred_plan?:       'green' | 'red' | 'black' | null
+  pricing_range?:        'budget' | 'mid' | 'premium' | null  // ← NEW
+  sample_captions?:      string[] | null                      // ← NEW
 }
 
 function getSellerStatus(seller: Seller): 'pending' | 'approved' | 'suspended' {
@@ -99,8 +101,8 @@ export default function SellersPage() {
       const full: SellerDetail = await sellersApi.get(seller.id)
       setViewSeller(full)
       setEditForm({
-        name:       full.name       ?? '',
-        email:      full.email      ?? '',
+        name:       full.name         ?? '',
+        email:      full.email        ?? '',
         phone:      full.phone_number ?? '',
         store_name: full.business_name ?? '',
         address:    full.city ? `${full.city}, ${full.wilaya ?? ''}`.trim() : '',
@@ -159,7 +161,7 @@ export default function SellersPage() {
       key: 'is_approved', header: 'Status',
       render: (row) => { const s = getSellerStatus(row); return <Badge variant={s}>{s}</Badge> },
     },
-        {
+    {
       key: 'products_count', header: 'Products',
       render: (row) => <span className="text-text-secondary">{row.products_count ?? 0}</span>,
     },
@@ -274,7 +276,6 @@ export default function SellersPage() {
 
             {/* ── Header: avatar + name + status ── */}
             <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
-              {/* Profile picture or initial */}
               {viewSeller.profile_picture ? (
                 <img src={viewSeller.profile_picture} alt={viewSeller.full_name ?? viewSeller.name}
                   className="w-14 h-14 rounded-full object-cover flex-shrink-0"
@@ -299,26 +300,58 @@ export default function SellersPage() {
               <Badge variant={getSellerStatus(viewSeller)}>{getSellerStatus(viewSeller)}</Badge>
             </div>
 
-            {/* ── Info grid — all seller_application fields ── */}
+            {/* ── Info grid ── */}
             <div className="grid grid-cols-2 gap-3">
-              <InfoCard label="Seller ID"     value={`#${viewSeller.id}`} />
-              <InfoCard label="Products"      value={viewSeller.products_count ?? 0} />
-              <InfoCard label="Phone"         value={viewSeller.phone_number} />
+              <InfoCard label="Seller ID"            value={`#${viewSeller.id}`} />
+              <InfoCard label="Products"             value={viewSeller.products_count ?? 0} />
+              <InfoCard label="Phone"                value={viewSeller.phone_number} />
               <InfoCard label="Store / Business Name" value={viewSeller.business_name} />
-              <InfoCard label="Wilaya"        value={viewSeller.wilaya} />
-              <InfoCard label="City"          value={viewSeller.city} />
-              <InfoCard label="Joined"        value={format(new Date(viewSeller.created_at), 'MMM d, yyyy')} />
-              <InfoCard label="App Status"    value={viewSeller.app_status} />
-              <InfoCard label="Active Plan"   value={
+              <InfoCard label="Wilaya"               value={viewSeller.wilaya} />
+              <InfoCard label="City"                 value={viewSeller.city} />
+              <InfoCard label="Joined"               value={format(new Date(viewSeller.created_at), 'MMM d, yyyy')} />
+              <InfoCard label="App Status"           value={viewSeller.app_status} />
+              <InfoCard label="Active Plan"          value={
                 viewSeller.active_plan === 'red'   ? '🔴 Red Pepper'   :
                 viewSeller.active_plan === 'black' ? '⚫ Black Pepper' :
                 '🟢 Free (Green Pepper)'
               } />
-              <InfoCard label="Preferred Plan" value={
+              <InfoCard label="Preferred Plan"       value={
                 viewSeller.preferred_plan === 'red'   ? '🔴 Red Pepper'   :
                 viewSeller.preferred_plan === 'black' ? '⚫ Black Pepper' :
                 '🟢 Green Pepper'
               } />
+
+              {/* ── NEW: Pricing Range ── */}
+              <InfoCard label="Pricing Range" value={
+                viewSeller.pricing_range === 'budget'  ? '💚 Budget'    :
+                viewSeller.pricing_range === 'mid'     ? '💛 Mid-range' :
+                viewSeller.pricing_range === 'premium' ? '🖤 Premium'   :
+                null
+              } />
+
+              {/* ── NEW: Categories (multi) — spans full row ── */}
+              <div className="col-span-2 p-3 rounded-lg border" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#6b7280' }}>Categories</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {(
+                    viewSeller.business_categories?.length
+                      ? viewSeller.business_categories
+                      : viewSeller.business_category
+                        ? [viewSeller.business_category]
+                        : ['—']
+                  ).map((cat, i) => (
+                    <span key={i} style={{
+                      fontSize: '0.72rem', fontWeight: 600,
+                      padding: '2px 10px', borderRadius: 999,
+                      background: cat === '—' ? 'transparent' : 'rgba(25,143,65,0.1)',
+                      color: cat === '—' ? '#4b5563' : '#22b356',
+                      border: cat === '—' ? 'none' : '1px solid rgba(25,143,65,0.2)',
+                    }}>
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* ── Business description ── */}

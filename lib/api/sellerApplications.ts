@@ -41,6 +41,11 @@ export interface SellerApplication {
    * Only changes to 'red' or 'black' after the seller pays for an upgrade.
    */
   plan: ActivePlan
+  // In the SellerApplication interface, add after `plan: ActivePlan`:
+
+pricing_range:       'budget' | 'mid' | 'premium' | null   // ← NEW
+business_categories: string[]                               // ← NEW
+sample_captions:     string[] | null                        // ← NEW
 
   user?: {
     id: number

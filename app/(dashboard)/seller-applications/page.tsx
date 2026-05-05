@@ -22,10 +22,8 @@ type Tab = 'pending' | 'approved' | 'rejected'
 function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
   return (
-    <div
-      className="fixed bottom-5 right-5 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium animate-fade-in"
-      style={{ background: type === 'success' ? '#198f41' : '#db142e' }}
-    >
+    <div className="fixed bottom-5 right-5 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium animate-fade-in"
+      style={{ background: type === 'success' ? '#198f41' : '#db142e' }}>
       {type === 'success' ? <CheckCircle size={16} /> : <X size={16} />}
       {message}
     </div>
@@ -33,9 +31,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 }
 
 // ─── Confirm Modal ────────────────────────────────────────────────────────────
-function ConfirmModal({
-  title, message, confirmLabel, confirmColor, loading, onConfirm, onClose, children,
-}: {
+function ConfirmModal({ title, message, confirmLabel, confirmColor, loading, onConfirm, onClose, children }: {
   title: string; message: string; confirmLabel: string; confirmColor: string
   loading: boolean; onConfirm: () => void; onClose: () => void; children?: React.ReactNode
 }) {
@@ -50,8 +46,7 @@ function ConfirmModal({
           {children}
         </div>
         <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid #1e2128' }}>
-          <button onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
             style={{ border: '1px solid #1e2128', color: '#9ca3af' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#1c2028')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -84,26 +79,23 @@ function StatusBadge({ status }: { status: Tab }) {
 }
 
 // ─── Preferred Plan Badge ─────────────────────────────────────────────────────
-/**
- * NEW: Shows the plan the seller expressed interest in.
- * Green = free (no upgrade interest), Red/Black = paid interest.
- * Only shows a distinct visual treatment for Red and Black
- * since Green is the default / no special intent.
- */
 function PreferredPlanBadge({ plan }: { plan: PreferredPlan }) {
   const meta = preferredPlanMeta(plan)
   return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-      style={{
-        background: meta.bg,
-        color:      meta.color,
-        border:     `1px solid ${meta.border}`,
-      }}
-    >
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+      style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
       {plan === 'black' && <Sparkles size={10} />}
       {meta.label}
     </span>
+  )
+}
+
+// ─── Section divider for the modal ───────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 8px' }}>
+      {children}
+    </p>
   )
 }
 
@@ -136,26 +128,30 @@ function DetailModal({
   const [loading, setLoading] = useState(false)
 
   const pic = storageUrl(app.profile_picture)
-
-  const handleApprove = async () => {
-    setLoading(true)
-    try { await onApprove(app.id) } finally { setLoading(false) }
-  }
-
-  const handleReject = async () => {
-    setLoading(true)
-    try { await onReject(app.id, reason) } finally { setLoading(false) }
-  }
-
   const planMeta = preferredPlanMeta(app.preferred_plan)
+
+  const handleApprove = async () => { setLoading(true); try { await onApprove(app.id) } finally { setLoading(false) } }
+  const handleReject  = async () => { setLoading(true); try { await onReject(app.id, reason) } finally { setLoading(false) } }
+
+  // Pricing range display
+  const pricingDisplay =
+    app.pricing_range === 'budget'  ? { emoji: '💚', label: 'Budget',    color: '#22c55e' } :
+    app.pricing_range === 'mid'     ? { emoji: '💛', label: 'Mid-range', color: '#f59e0b' } :
+    app.pricing_range === 'premium' ? { emoji: '🖤', label: 'Premium',   color: '#94a3b8' } :
+    null
+
+  // Categories
+  const categories: string[] = (app as any).business_categories?.length
+    ? (app as any).business_categories
+    : app.business_category ? [app.business_category] : []
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         style={{ background: '#16191f', border: '1px solid #1e2128' }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #1e2128' }}>
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #1e2128' }}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0" style={{ border: '2px solid #1e2128' }}>
               {pic
@@ -180,74 +176,138 @@ function DetailModal({
           </div>
         </div>
 
-        {/* Body */}
+        {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* ── NEW: Preferred Plan section ── */}
-          <div
-            className="rounded-xl px-4 py-3.5 flex items-start gap-3"
-            style={{ background: planMeta.bg, border: `1px solid ${planMeta.border}` }}
-          >
-            <div
-              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: planMeta.color + '22' }}
-            >
+          {/* ── SECTION A: Plan preference ── */}
+          <div className="rounded-xl px-4 py-3.5 flex items-start gap-3"
+            style={{ background: planMeta.bg, border: `1px solid ${planMeta.border}` }}>
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: planMeta.color + '22' }}>
               <Sparkles size={15} color={planMeta.color} />
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: planMeta.color }}>
                 Preferred Plan
               </p>
-              <p className="text-sm font-semibold" style={{ color: '#fcfdfd' }}>
-                {planMeta.label}
+              <p className="text-sm font-semibold" style={{ color: '#fcfdfd' }}>{planMeta.label}</p>
+              <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                {app.preferred_plan !== 'green'
+                  ? 'This seller expressed interest in a paid plan. Once approved, they can upgrade from their dashboard.'
+                  : 'This seller selected the free plan. They can upgrade any time after approval.'}
               </p>
-              {app.preferred_plan !== 'green' && (
-                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                  This seller expressed interest in a paid plan. Once approved, they can upgrade from their dashboard.
-                </p>
+            </div>
+          </div>
+
+          {/* ── SECTION B: Quick decision strip — categories + pricing ── */}
+          <div>
+            <SectionLabel>Business Profile</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+              {/* Categories */}
+              {categories.length > 0 && (
+                <div style={{ background: '#0d0f14', border: '1px solid #1e2128', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Tag size={12} color="#6b7280" />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Categories ({categories.length})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {categories.map((cat, i) => (
+                      <span key={i} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: 'rgba(25,143,65,0.12)', color: '#22b356', border: '1px solid rgba(25,143,65,0.25)' }}>
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
-              {app.preferred_plan === 'green' && (
-                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                  This seller selected the free plan. They can upgrade any time after approval.
-                </p>
+
+              {/* Pricing range */}
+              {pricingDisplay && (
+                <div style={{ background: '#0d0f14', border: '1px solid #1e2128', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.2rem' }}>{pricingDisplay.emoji}</span>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 2 }}>Pricing Range</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: pricingDisplay.color }}>{pricingDisplay.label}</span>
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <InfoCard icon={<Tag size={14} />}   label="Category" value={app.business_category} />
-            <InfoCard icon={<Phone size={14} />}  label="Phone"    value={app.phone_number} />
-            <InfoCard icon={<MapPin size={14} />} label="Location" value={`${app.city}, ${app.wilaya}`} />
-            <InfoCard icon={<Store size={14} />}  label="Applied"  value={format(new Date(app.created_at), 'MMM d, yyyy')} />
+          {/* ── SECTION C: Contact + location grid ── */}
+          <div>
+            <SectionLabel>Contact & Location</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <InfoCard icon={<Phone size={14} />}  label="Phone"    value={app.phone_number} />
+              <InfoCard icon={<Store size={14} />}  label="Applied"  value={format(new Date(app.created_at), 'MMM d, yyyy')} />
+              <InfoCard icon={<MapPin size={14} />} label="Location" value={`${app.city}, ${app.wilaya}`} />
+              <InfoCard icon={<Tag size={14} />}    label="Category" value={app.business_category} />
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="rounded-xl p-4" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Business Description</p>
-            <p className="text-sm leading-relaxed" style={{ color: '#c8cad0' }}>{app.business_description}</p>
+          {/* ── SECTION D: Business description ── */}
+          <div>
+            <SectionLabel>Business Description</SectionLabel>
+            <div className="rounded-xl p-4" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#c8cad0' }}>{app.business_description}</p>
+            </div>
           </div>
 
-          {/* Social / Web */}
+          {/* ── SECTION E: Product samples with captions ── */}
+          {app.sample_images && app.sample_images.length > 0 && (
+            <div>
+              <SectionLabel>Product Samples ({app.sample_images.length})</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {app.sample_images.map((img, i) => {
+                  const url = storageUrl(img)
+                  const caption = (app as any).sample_captions?.[i]
+                  return url ? (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0d0f14', border: '1px solid #1e2128', borderRadius: 12, padding: 10 }}>
+                      <img src={url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid #1e2128' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {caption
+                          ? <p style={{ fontSize: '0.82rem', color: '#fcfdfd', margin: '0 0 3px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{caption}</p>
+                          : <p style={{ fontSize: '0.78rem', color: '#4b5563', margin: '0 0 3px', fontStyle: 'italic' }}>No caption</p>}
+                        <p style={{ fontSize: '0.68rem', color: '#6b7280', margin: 0 }}>Image {i + 1}</p>
+                      </div>
+                    </div>
+                  ) : null
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION F: Social links ── */}
           {(app.facebook_url || app.instagram_url || app.website_url) && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Social / Web</p>
-              <div className="flex flex-wrap gap-3">
+              <SectionLabel>Social &amp; Web</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {app.facebook_url && (
                   <a href={app.facebook_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#4267B2' }}>
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                    style={{ background: '#0d0f14', border: '1px solid #1e2128', color: '#4267B2', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#4267B2')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2128')}>
                     <ExternalLink size={11} />Facebook
                   </a>
                 )}
                 {app.instagram_url && (
                   <a href={app.instagram_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#E1306C' }}>
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                    style={{ background: '#0d0f14', border: '1px solid #1e2128', color: '#E1306C', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#E1306C')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2128')}>
                     <ExternalLink size={11} />Instagram
                   </a>
                 )}
                 {app.website_url && (
                   <a href={app.website_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs hover:underline" style={{ color: '#198f41' }}>
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                    style={{ background: '#0d0f14', border: '1px solid #1e2128', color: '#198f41', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#198f41')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e2128')}>
                     <ExternalLink size={11} />Website
                   </a>
                 )}
@@ -255,23 +315,7 @@ function DetailModal({
             </div>
           )}
 
-          {/* Sample images */}
-          {app.sample_images && app.sample_images.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#6b7280' }}>Product Samples</p>
-              <div className="flex flex-wrap gap-2">
-                {app.sample_images.map((img, i) => {
-                  const url = storageUrl(img)
-                  return url ? (
-                    <img key={i} src={url} alt="" className="w-20 h-20 rounded-xl object-cover"
-                      style={{ border: '1px solid #1e2128' }} />
-                  ) : null
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Rejection reason */}
+          {/* ── Rejection reason (if rejected) ── */}
           {app.status === 'rejected' && app.rejection_reason && (
             <div className="rounded-xl p-4" style={{ background: 'rgba(219,20,46,0.08)', border: '1px solid rgba(219,20,46,0.20)' }}>
               <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#db142e' }}>Rejection Reason</p>
@@ -279,7 +323,7 @@ function DetailModal({
             </div>
           )}
 
-          {/* Rejection form */}
+          {/* ── Reject form ── */}
           {showRejectForm && (
             <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(219,20,46,0.08)', border: '1px solid rgba(219,20,46,0.25)' }}>
               <p className="text-sm font-semibold" style={{ color: '#f87171' }}>Provide rejection reason (optional)</p>
@@ -301,8 +345,8 @@ function DetailModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 flex gap-3 flex-wrap" style={{ borderTop: '1px solid #1e2128' }}>
+        {/* ── Footer actions ── */}
+        <div className="px-6 py-4 flex gap-3 flex-wrap flex-shrink-0" style={{ borderTop: '1px solid #1e2128' }}>
           {app.status === 'pending' && !showRejectForm && (
             <>
               <button onClick={() => setShowRejectForm(true)}
@@ -375,16 +419,12 @@ export default function SellerApplicationsPage() {
 
   const handleApprove = async (id: number) => {
     await sellerApplicationsApi.approve(id)
-    setSelected(null)
-    showToast('Seller approved successfully.', 'success')
-    fetchData()
+    setSelected(null); showToast('Seller approved successfully.', 'success'); fetchData()
   }
 
   const handleReject = async (id: number, reason: string) => {
     await sellerApplicationsApi.reject(id, reason)
-    setSelected(null)
-    showToast('Application rejected.', 'success')
-    fetchData()
+    setSelected(null); showToast('Application rejected.', 'success'); fetchData()
   }
 
   const confirmDelete = async () => {
@@ -392,10 +432,8 @@ export default function SellerApplicationsPage() {
     setDeleteLoading(true)
     try {
       await sellersApi.delete(deleteTarget.userId)
-      setDeleteTarget(null)
-      setSelected(null)
-      showToast(`${deleteTarget.name} has been deleted.`, 'success')
-      fetchData()
+      setDeleteTarget(null); setSelected(null)
+      showToast(`${deleteTarget.name} has been deleted.`, 'success'); fetchData()
     } catch { showToast('Failed to delete seller.', 'error') }
     finally { setDeleteLoading(false) }
   }
@@ -405,10 +443,8 @@ export default function SellerApplicationsPage() {
     setRoleLoading(true)
     try {
       await sellersApi.changeRole(roleTarget.userId, roleValue)
-      setRoleTarget(null)
-      setSelected(null)
-      showToast(`Role changed to "${roleValue}" successfully.`, 'success')
-      fetchData()
+      setRoleTarget(null); setSelected(null)
+      showToast(`Role changed to "${roleValue}" successfully.`, 'success'); fetchData()
     } catch { showToast('Failed to change role.', 'error') }
     finally { setRoleLoading(false) }
   }
@@ -471,7 +507,6 @@ export default function SellerApplicationsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {/* NEW: Added "Preferred Plan" column */}
                   {['Applicant', 'Business', 'Category', 'Preferred Plan', 'Location', 'Applied', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
                   ))}
@@ -482,7 +517,6 @@ export default function SellerApplicationsPage() {
                   const pic = storageUrl(app.profile_picture)
                   return (
                     <tr key={app.id} className="hover:bg-bg-hover transition-colors">
-                      {/* Applicant */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ border: '1px solid #1e2128' }}>
@@ -501,17 +535,12 @@ export default function SellerApplicationsPage() {
                       </td>
                       <td className="px-5 py-4 text-sm text-text-secondary font-medium">{app.business_name}</td>
                       <td className="px-5 py-4 text-sm text-text-muted">{app.business_category}</td>
-
-                      {/* NEW: Preferred Plan badge in table row */}
                       <td className="px-5 py-4">
                         <PreferredPlanBadge plan={app.preferred_plan} />
                       </td>
-
                       <td className="px-5 py-4 text-sm text-text-muted">{app.city}, {app.wilaya}</td>
                       <td className="px-5 py-4 text-xs text-text-muted">{format(new Date(app.created_at), 'MMM d, yyyy')}</td>
                       <td className="px-5 py-4"><StatusBadge status={app.status} /></td>
-
-                      {/* Actions */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => setSelected(app)}
@@ -521,15 +550,13 @@ export default function SellerApplicationsPage() {
                           {app.status === 'pending' && (
                             <>
                               <button onClick={() => handleApprove(app.id)}
-                                className="p-1.5 rounded-md transition-colors" title="Approve"
-                                style={{ color: '#198f41' }}
+                                className="p-1.5 rounded-md transition-colors" title="Approve" style={{ color: '#198f41' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <CheckCircle size={14} />
                               </button>
                               <button onClick={() => setSelected(app)}
-                                className="p-1.5 rounded-md transition-colors" title="Reject"
-                                style={{ color: '#db142e' }}
+                                className="p-1.5 rounded-md transition-colors" title="Reject" style={{ color: '#db142e' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <XCircle size={14} />
@@ -538,18 +565,14 @@ export default function SellerApplicationsPage() {
                           )}
                           {app.status === 'approved' && app.user && (
                             <>
-                              <button
-                                onClick={() => { setRoleTarget({ userId: app.user!.id, name: app.full_name }); setRoleValue('client') }}
-                                className="p-1.5 rounded-md transition-colors" title="Change Role"
-                                style={{ color: '#22b356' }}
+                              <button onClick={() => { setRoleTarget({ userId: app.user!.id, name: app.full_name }); setRoleValue('client') }}
+                                className="p-1.5 rounded-md transition-colors" title="Change Role" style={{ color: '#22b356' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <UserCog size={14} />
                               </button>
-                              <button
-                                onClick={() => setDeleteTarget({ userId: app.user!.id, name: app.full_name })}
-                                className="p-1.5 rounded-md transition-colors" title="Delete Seller"
-                                style={{ color: '#db142e' }}
+                              <button onClick={() => setDeleteTarget({ userId: app.user!.id, name: app.full_name })}
+                                className="p-1.5 rounded-md transition-colors" title="Delete Seller" style={{ color: '#db142e' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                 <Trash2 size={14} />
@@ -592,30 +615,22 @@ export default function SellerApplicationsPage() {
         />
       )}
 
-      {/* ── Delete Confirm Modal ── */}
+      {/* ── Delete Confirm ── */}
       {deleteTarget && (
         <ConfirmModal
           title="Delete Seller Account"
           message={`Permanently delete "${deleteTarget.name}"? This will remove their account, all products, and application data. This cannot be undone.`}
-          confirmLabel="Delete Seller"
-          confirmColor="#db142e"
-          loading={deleteLoading}
-          onConfirm={confirmDelete}
-          onClose={() => setDeleteTarget(null)}
-        />
+          confirmLabel="Delete Seller" confirmColor="#db142e"
+          loading={deleteLoading} onConfirm={confirmDelete} onClose={() => setDeleteTarget(null)} />
       )}
 
-      {/* ── Change Role Confirm Modal ── */}
+      {/* ── Change Role Confirm ── */}
       {roleTarget && (
         <ConfirmModal
           title="Change Seller Role"
           message={`Change the role for "${roleTarget.name}".`}
-          confirmLabel="Confirm Change"
-          confirmColor="#198f41"
-          loading={roleLoading}
-          onConfirm={confirmRoleChange}
-          onClose={() => setRoleTarget(null)}
-        >
+          confirmLabel="Confirm Change" confirmColor="#198f41"
+          loading={roleLoading} onConfirm={confirmRoleChange} onClose={() => setRoleTarget(null)}>
           <div>
             <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: '#6b7280' }}>New Role</label>
             <div className="flex gap-3">
