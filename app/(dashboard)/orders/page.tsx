@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Search, Eye, Loader2, ShoppingBag, MapPin, Phone,
   Package, User, CheckCircle,
-  X, ChevronDown, Store, Tag,
+  X, ChevronDown, Store, Tag, TrendingDown, TrendingUp,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
@@ -19,9 +19,13 @@ function formatCurrency(v: number | string) {
 
 interface OrderDetail extends Order {
   items?: (OrderItem & {
-    is_platform_item?: boolean
-    variant_options?: Record<string, { value: string; color_hex?: string | null }>
-    resolved_image_url?: string | null
+    is_platform_item?:       boolean
+    variant_options?:        Record<string, { value: string; color_hex?: string | null }>
+    resolved_image_url?:     string | null
+    commission_percentage?:  number | null
+    commission_amount?:      number | null
+    seller_amount?:          number | null
+    plan_used?:              string | null
   })[]
   user?: { id: number; name: string; email: string }
   has_platform_items?: boolean
@@ -44,6 +48,12 @@ const STATUS_COLORS: Record<string, string> = {
   delivered:  '#14b8a6',
   cancelled:  '#ef4444',
   refunded:   '#a855f7',
+}
+
+const PLAN_COLORS: Record<string, string> = {
+  free:  '#198f41',
+  red:   '#db142e',
+  black: '#f59e0b',
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -96,23 +106,35 @@ function PlatformBadge() {
   )
 }
 
+// ── Order item row with commission breakdown ────────────────────────────────────
+
 function OrderItemRow({ item }: { item: any }) {
-  const options  = Object.entries(item.variant_options ?? {})
-  const imageUrl = item.resolved_image_url ?? null
+  const options         = Object.entries(item.variant_options ?? {})
+  const imageUrl        = item.resolved_image_url ?? null
+  const hasCommission   = Number(item.commission_amount) > 0
+  const commissionPct   = Number(item.commission_percentage ?? 0)
+  const commissionAmt   = Number(item.commission_amount ?? 0)
+  const sellerAmt       = Number(item.seller_amount ?? 0)
+  const planUsed        = item.plan_used as string | null
+  const planColor       = PLAN_COLORS[planUsed ?? 'free'] ?? '#94a3b8'
+
   return (
     <tr style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Image */}
       <td style={{ padding: '10px 12px', width: 52 }}>
         <div style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {imageUrl ? <img src={imageUrl} alt={item.product_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={14} color="#4b5563" />}
         </div>
       </td>
+
+      {/* Product + commission line */}
       <td style={{ padding: '10px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-          <p style={{ fontWeight: 700, fontSize: 13, color: '#f1f5f9', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{item.product_name}</p>
+          <p style={{ fontWeight: 700, fontSize: 13, color: '#f1f5f9', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{item.product_name}</p>
           {item.is_platform_item && <PlatformBadge />}
         </div>
         {options.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
             {options.map(([slug, opt]: any) => (
               <span key={slug} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999, background: 'rgba(255,255,255,0.07)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', textTransform: 'capitalize' }}>
                 {opt.color_hex && <span style={{ width: 7, height: 7, borderRadius: '50%', background: opt.color_hex, border: '1px solid rgba(0,0,0,0.2)', flexShrink: 0 }} />}
@@ -122,13 +144,125 @@ function OrderItemRow({ item }: { item: any }) {
           </div>
         )}
         {item.variant_label && options.length === 0 && (
-          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999, background: 'rgba(255,255,255,0.07)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' }}>{item.variant_label}</span>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999, background: 'rgba(255,255,255,0.07)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', display: 'inline-block', marginBottom: 4 }}>{item.variant_label}</span>
+        )}
+        {/* ── Commission line ── */}
+        {hasCommission && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+              background: 'rgba(219,20,46,0.12)', color: '#db142e',
+              border: '1px solid rgba(219,20,46,0.2)',
+            }}>
+              Fee {commissionPct}% → {commissionAmt.toFixed(3)} DT
+            </span>
+            <span style={{
+              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+              background: 'rgba(16,185,129,0.1)', color: '#10b981',
+              border: '1px solid rgba(16,185,129,0.2)',
+            }}>
+              Seller {sellerAmt.toFixed(3)} DT
+            </span>
+            {planUsed && planUsed !== 'free' && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                background: `${planColor}12`, color: planColor,
+                border: `1px solid ${planColor}25`,
+                textTransform: 'capitalize',
+              }}>
+                {planUsed}
+              </span>
+            )}
+          </div>
         )}
       </td>
+
       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#94a3b8', fontSize: 12 }}>{item.quantity}</td>
       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#94a3b8', fontSize: 12 }}>{formatCurrency(item.unit_price)}</td>
       <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#a78bfa', fontSize: 13 }}>{formatCurrency(item.total)}</td>
     </tr>
+  )
+}
+
+// ─── Commission Summary Card ────────────────────────────────────────────────────
+
+function CommissionSummary({ items, grossTotal }: { items: any[]; grossTotal: number }) {
+  const totalCommission = items.reduce((s, i) => s + Number(i.commission_amount ?? 0), 0)
+  const totalSeller     = items.reduce((s, i) => s + Number(i.seller_amount ?? 0), 0)
+  const hasData         = totalCommission > 0 || totalSeller > 0
+
+  if (!hasData) return null
+
+  const commissionPct = grossTotal > 0 ? ((totalCommission / grossTotal) * 100).toFixed(1) : '0'
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.02)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '10px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: 'rgba(219,20,46,0.12)', border: '1px solid rgba(219,20,46,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TrendingDown size={13} color="#db142e" />
+        </div>
+        <p style={{ fontSize: 11, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+          Revenue Split
+        </p>
+        <span style={{
+          fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+          background: 'rgba(219,20,46,0.1)', color: '#db142e',
+          border: '1px solid rgba(219,20,46,0.2)',
+        }}>
+          ADMIN EARNS {commissionPct}%
+        </span>
+      </div>
+
+      {/* Three columns */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+
+        {/* Gross */}
+        <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+            Gross Total
+          </p>
+          <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0, letterSpacing: '-0.01em' }}>
+            {formatCurrency(grossTotal)}
+          </p>
+          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Customer paid</p>
+        </div>
+
+        {/* Platform commission */}
+        <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)', background: 'rgba(219,20,46,0.03)' }}>
+          <p style={{ fontSize: 9, fontWeight: 800, color: '#db142e', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+            Platform Fee
+          </p>
+          <p style={{ fontSize: 15, fontWeight: 900, color: '#db142e', margin: 0, letterSpacing: '-0.01em' }}>
+            {formatCurrency(totalCommission)}
+          </p>
+          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Admin income ✓</p>
+        </div>
+
+        {/* Seller payout */}
+        <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.03)' }}>
+          <p style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+            Seller Gets
+          </p>
+          <p style={{ fontSize: 15, fontWeight: 900, color: '#10b981', margin: 0, letterSpacing: '-0.01em' }}>
+            {formatCurrency(totalSeller)}
+          </p>
+          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Paid to sellers</p>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -137,15 +271,12 @@ function OrderItemRow({ item }: { item: any }) {
 function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
   orderId: number | null; open: boolean; onClose: () => void; onUpdated: () => void
 }) {
-  // ── ALL state declared inside the component function ─────────────────────
   const [detail,       setDetail]       = useState<OrderDetail | null>(null)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
   const [success,      setSuccess]      = useState('')
-  // Order status
   const [newStatus,    setNewStatus]    = useState('')
   const [updating,     setUpdating]     = useState(false)
-  // Payment status
   const [newPayStatus, setNewPayStatus] = useState('')
   const [payUpdating,  setPayUpdating]  = useState(false)
 
@@ -202,11 +333,12 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
   if (!open) return null
 
   const statusColor = STATUS_COLORS[detail?.status ?? ''] ?? '#94a3b8'
+  const items       = detail?.items ?? []
 
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 100 }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 620, background: '#0f1623', borderLeft: '1px solid rgba(255,255,255,0.08)', zIndex: 101, display: 'flex', flexDirection: 'column', boxShadow: '-24px 0 64px rgba(0,0,0,0.5)', animation: 'slideIn 0.25s cubic-bezier(0.32,0.72,0,1)' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 680, background: '#0f1623', borderLeft: '1px solid rgba(255,255,255,0.08)', zIndex: 101, display: 'flex', flexDirection: 'column', boxShadow: '-24px 0 64px rgba(0,0,0,0.5)', animation: 'slideIn 0.25s cubic-bezier(0.32,0.72,0,1)' }}>
 
         {/* Header */}
         <div style={{ flexShrink: 0, padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0f1623' }}>
@@ -239,7 +371,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
           ) : detail ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-              {/* Feedback banners */}
+              {/* Feedback */}
               {success && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '12px 16px', color: '#10b981', fontSize: 13, fontWeight: 700 }}>
                   <CheckCircle size={14} /> {success}
@@ -309,7 +441,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <Package size={14} color="#a78bfa" />
                   <h3 style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Order Items</h3>
-                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 500 }}>({(detail.items ?? []).length} item{(detail.items ?? []).length !== 1 ? 's' : ''})</span>
+                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 500 }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
                 </div>
                 <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -321,17 +453,20 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {(detail.items ?? []).map(item => <OrderItemRow key={item.id} item={item} />)}
+                      {items.map((item: any) => <OrderItemRow key={item.id} item={item} />)}
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>Total</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, color: '#db142e', fontSize: 14 }}>{formatCurrency(detail.total_amount)}</td>
+                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>Gross Total</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, color: '#94a3b8', fontSize: 14 }}>{formatCurrency(detail.total_amount)}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
+
+              {/* ── Commission Revenue Split ── */}
+              <CommissionSummary items={items} grossTotal={Number(detail.total_amount)} />
 
               {/* ── Update Order Status ── */}
               <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 14, padding: 18 }}>
