@@ -90,7 +90,7 @@ function PreferredPlanBadge({ plan }: { plan: PreferredPlan }) {
   )
 }
 
-// ─── Section divider for the modal ───────────────────────────────────────────
+// ─── Section Label ────────────────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 8px' }}>
@@ -127,23 +127,24 @@ function DetailModal({
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const pic = storageUrl(app.profile_picture)
+  const pic      = storageUrl(app.profile_picture)
   const planMeta = preferredPlanMeta(app.preferred_plan)
 
   const handleApprove = async () => { setLoading(true); try { await onApprove(app.id) } finally { setLoading(false) } }
   const handleReject  = async () => { setLoading(true); try { await onReject(app.id, reason) } finally { setLoading(false) } }
 
-  // Pricing range display
   const pricingDisplay =
     app.pricing_range === 'budget'  ? { emoji: '💚', label: 'Budget',    color: '#22c55e' } :
     app.pricing_range === 'mid'     ? { emoji: '💛', label: 'Mid-range', color: '#f59e0b' } :
     app.pricing_range === 'premium' ? { emoji: '🖤', label: 'Premium',   color: '#94a3b8' } :
     null
 
-  // Categories
   const categories: string[] = (app as any).business_categories?.length
     ? (app as any).business_categories
     : app.business_category ? [app.business_category] : []
+
+  // ── NEW: subcategories from the saved application ──
+  const subcategories: string[] = (app as any).business_subcategories ?? []
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -199,7 +200,7 @@ function DetailModal({
             </div>
           </div>
 
-          {/* ── SECTION B: Quick decision strip — categories + pricing ── */}
+          {/* ── SECTION B: Business profile — categories, subcategories, pricing ── */}
           <div>
             <SectionLabel>Business Profile</SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -217,6 +218,25 @@ function DetailModal({
                     {categories.map((cat, i) => (
                       <span key={i} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: 'rgba(25,143,65,0.12)', color: '#22b356', border: '1px solid rgba(25,143,65,0.25)' }}>
                         {cat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── NEW: Subcategories ── */}
+              {subcategories.length > 0 && (
+                <div style={{ background: '#0d0f14', border: '1px solid #1e2128', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Tag size={12} color="#6b7280" />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Subcategories ({subcategories.length})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {subcategories.map((sub, i) => (
+                      <span key={i} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}>
+                        {sub}
                       </span>
                     ))}
                   </div>
@@ -248,12 +268,14 @@ function DetailModal({
           </div>
 
           {/* ── SECTION D: Business description ── */}
-          <div>
-            <SectionLabel>Business Description</SectionLabel>
-            <div className="rounded-xl p-4" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
-              <p className="text-sm leading-relaxed" style={{ color: '#c8cad0' }}>{app.business_description}</p>
+          {app.business_description && (
+            <div>
+              <SectionLabel>Business Description</SectionLabel>
+              <div className="rounded-xl p-4" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#c8cad0' }}>{app.business_description}</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── SECTION E: Product samples with captions ── */}
           {app.sample_images && app.sample_images.length > 0 && (
@@ -261,7 +283,7 @@ function DetailModal({
               <SectionLabel>Product Samples ({app.sample_images.length})</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {app.sample_images.map((img, i) => {
-                  const url = storageUrl(img)
+                  const url     = storageUrl(img)
                   const caption = (app as any).sample_captions?.[i]
                   return url ? (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0d0f14', border: '1px solid #1e2128', borderRadius: 12, padding: 10 }}>
@@ -390,19 +412,19 @@ function DetailModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SellerApplicationsPage() {
-  const [tab, setTab]         = useState<Tab>('pending')
-  const [search, setSearch]   = useState('')
-  const [page, setPage]       = useState(1)
-  const [data, setData]       = useState<any>(null)
+  const [tab,    setTab]    = useState<Tab>('pending')
+  const [search, setSearch] = useState('')
+  const [page,   setPage]   = useState(1)
+  const [data,   setData]   = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<SellerApplication | null>(null)
-  const [toast, setToast]     = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  const [deleteTarget, setDeleteTarget]   = useState<{ userId: number; name: string } | null>(null)
+  const [deleteTarget,  setDeleteTarget]  = useState<{ userId: number; name: string } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [roleTarget, setRoleTarget]       = useState<{ userId: number; name: string } | null>(null)
-  const [roleValue, setRoleValue]         = useState<'client' | 'seller'>('client')
-  const [roleLoading, setRoleLoading]     = useState(false)
+  const [roleTarget,    setRoleTarget]    = useState<{ userId: number; name: string } | null>(null)
+  const [roleValue,     setRoleValue]     = useState<'client' | 'seller'>('client')
+  const [roleLoading,   setRoleLoading]   = useState(false)
 
   const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type })
 
@@ -535,9 +557,7 @@ export default function SellerApplicationsPage() {
                       </td>
                       <td className="px-5 py-4 text-sm text-text-secondary font-medium">{app.business_name}</td>
                       <td className="px-5 py-4 text-sm text-text-muted">{app.business_category}</td>
-                      <td className="px-5 py-4">
-                        <PreferredPlanBadge plan={app.preferred_plan} />
-                      </td>
+                      <td className="px-5 py-4"><PreferredPlanBadge plan={app.preferred_plan} /></td>
                       <td className="px-5 py-4 text-sm text-text-muted">{app.city}, {app.wilaya}</td>
                       <td className="px-5 py-4 text-xs text-text-muted">{format(new Date(app.created_at), 'MMM d, yyyy')}</td>
                       <td className="px-5 py-4"><StatusBadge status={app.status} /></td>
