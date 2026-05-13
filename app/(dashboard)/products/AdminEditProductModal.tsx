@@ -61,6 +61,7 @@ interface AdminProduct {
   is_active?: boolean
   is_approved?: boolean
   featured?: boolean
+  season?: string          
   existing_attributes?: Record<string, any>
   variant_rows?: VariantRow[]
   images?: Array<{ id: number; url?: string; image_path: string; is_primary: boolean; order: number }>
@@ -253,7 +254,9 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
     category_id:       '',
     subcategory_id:    '',
     is_active:         true,
+    
     featured:          false,
+    season: 'all_seasons',
   })
 
   // Category / Subcategory
@@ -291,6 +294,7 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
           subcategory_id:    p.subcategory_id     != null ? String(p.subcategory_id) : '',
           is_active:         p.is_active          ?? true,
           featured:          p.featured           ?? false,
+          season: p.season ?? 'all_seasons',
         })
         setAttrValues(p.existing_attributes ?? {})
         setVariantRows((p.variant_rows ?? []).map(r => ({
@@ -394,6 +398,7 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
         subcategory_id:    form.subcategory_id ? parseInt(form.subcategory_id, 10) : null,
         is_active:         form.is_active,
         featured:          form.featured,
+        season: form.season,
       }
 
       // Attributes
@@ -504,7 +509,17 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
               {/* ── Pricing & Inventory ── */}
               <section>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted pb-2 border-b border-border mb-4">Pricing & Inventory</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Product Season">
+  <select value={form.season} onChange={e => set('season', e.target.value)} className={inputCls()}>
+    {[
+      ['all_seasons','All Seasons'],['summer','☀️ Summer'],['winter','❄️ Winter'],
+      ['spring','🌸 Spring'],['autumn','🍂 Autumn'],['ramadan','🌙 Ramadan'],
+      ['eid_al_fitr','🎉 Eid al-Fitr'],['eid_al_adha','🐑 Eid al-Adha'],
+      ['back_to_school','📚 Back to School'],['new_year','🎆 New Year'],
+    ].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+  </select>
+</Field>
                   <Field label="Base Price (TND)" required error={errors.price}>
                     <div className="relative">
                       <input
@@ -517,6 +532,7 @@ export default function AdminEditProductModal({ productId, onClose, onSaved }: P
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-semibold">TND</span>
                     </div>
                   </Field>
+
                  {!hasVariants && (
                     <Field label="Stock">
                       <input
