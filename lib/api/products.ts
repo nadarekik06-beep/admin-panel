@@ -23,9 +23,6 @@ export interface ProductUpdatePayload {
 export const productsApi = {
   async list(params: ProductsParams = {}) {
     const res = await api.get('/admin/products', { params })
-    // Laravel returns { success, data: { data: [...], total, ... } }
-    // res.data      = { success, data: { data: [...], total, ... } }
-    // res.data.data = { data: [...], total, current_page, last_page, ... }  ← the paginated object
     return res.data.data
   },
 
@@ -43,8 +40,8 @@ export const productsApi = {
     await api.patch(`/admin/products/${id}/approve`)
   },
 
-  async reject(id: number) {
-    await api.patch(`/admin/products/${id}/reject`)
+  async reject(id: number, reason?: string) {
+    await api.patch(`/admin/products/${id}/reject`, { reason: reason ?? null })
   },
 
   async disable(id: number) {
