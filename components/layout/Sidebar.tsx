@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Package2 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
@@ -40,6 +41,8 @@ const navItems = [
 
   { href: '/products',            label: 'Products',     icon: Package         },
   { href: '/product-update-requests', label: 'Update Requests', icon: FileEdit },
+
+  { href: '/packs',                   label: 'Packs',           icon: Package2        },
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/finance', label: 'Finance', icon: Banknote },
