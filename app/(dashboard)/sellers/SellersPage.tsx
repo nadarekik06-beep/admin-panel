@@ -149,14 +149,17 @@ export default function SellersPage() {
 
   const columns: Column<Seller>[] = [
     {
-      key: 'name', header: 'Seller',
-      render: (row) => (
-        <div>
-          <p className="font-medium text-text-primary">{row.name}</p>
-          <p className="text-xs text-text-muted">{row.email}</p>
-        </div>
-      ),
-    },
+  key: 'name', header: 'Seller',
+  render: (row) => (
+    <div>
+      <p className="font-medium text-text-primary">{row.name}</p>
+      <p className="text-xs text-text-muted">{row.email}</p>
+      {(row as SellerDetail).phone_number && (
+        <p className="text-xs" style={{ color: '#475569' }}>{(row as SellerDetail).phone_number}</p>
+      )}
+    </div>
+  ),
+},
     {
       key: 'is_approved', header: 'Status',
       render: (row) => { const s = getSellerStatus(row); return <Badge variant={s}>{s}</Badge> },

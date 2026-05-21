@@ -265,10 +265,11 @@ export default function FinancePage() {
   const [showCreate,  setShowCreate]  = useState(false)
   const [sellersList, setSellersList] = useState<Seller[]>([])
 
-  const [search,       setSearch]       = useState('')
-  const [payoutFilter, setPayoutFilter] = useState('')
-  const [dateFrom,     setDateFrom]     = useState('')
-  const [dateTo,       setDateTo]       = useState('')
+  const [search,           setSearch]           = useState('')
+  const [payoutFilter,     setPayoutFilter]      = useState('')
+  const [dateFrom,         setDateFrom]          = useState('')
+  const [dateTo,           setDateTo]            = useState('')
+  const [settlementSearch, setSettlementSearch]  = useState('')
 
   const fetchOverview = useCallback(async () => {
     const res = await api.get('/admin/finance/overview', { params: { period } })
@@ -307,9 +308,11 @@ export default function FinancePage() {
   }, [search, dateFrom, dateTo])
 
   const fetchSettlements = useCallback(async () => {
-    const res = await api.get('/admin/settlements')
+    const res = await api.get('/admin/settlements', {
+      params: { search: settlementSearch || undefined },
+    })
     setSettlements(res.data.data)
-  }, [])
+  }, [settlementSearch])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -601,6 +604,9 @@ export default function FinancePage() {
                           <td style={td()}>
                             <p style={{ fontWeight: 700, color: '#f1f5f9', margin: 0, fontSize: 12 }}>{row.seller_name}</p>
                             <p style={{ color: '#64748b', margin: 0, fontSize: 10 }}>{row.seller_email}</p>
+                            {row.seller_phone && (
+                              <p style={{ color: '#475569', margin: 0, fontSize: 10 }}>{row.seller_phone}</p>
+                            )}
                           </td>
                           <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.subtotal)}</td>
                           <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.commission_amount)}</td>
@@ -655,6 +661,9 @@ export default function FinancePage() {
                         <td style={td()}>
                           <p style={{ fontWeight: 700, color: '#f1f5f9', margin: 0 }}>{row.seller_name}</p>
                           <p style={{ color: '#64748b', margin: 0, fontSize: 10 }}>{row.seller_email}</p>
+                          {row.seller_phone && (
+                            <p style={{ color: '#475569', margin: 0, fontSize: 10 }}>{row.seller_phone}</p>
+                          )}
                         </td>
                         <td style={{ ...td(true), color: '#94a3b8' }}>{row.orders_count}</td>
                         <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.gross_revenue)}</td>
@@ -674,13 +683,21 @@ export default function FinancePage() {
           {tab === 'settlements' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-              {/* Toolbar with Create button */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
-                  {(settlements?.data ?? []).length === 0
-                    ? 'No settlement batches yet.'
-                    : `${settlements?.total ?? 0} batch${settlements?.total !== 1 ? 'es' : ''}`}
-                </p>
+              {/* Toolbar with search + Create button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 320 }}>
+                  <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                  <input
+                    value={settlementSearch}
+                    onChange={e => setSettlementSearch(e.target.value)}
+                    placeholder="Search by seller name or phone…"
+                    style={{
+                      width: '100%', background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9,
+                      padding: '8px 12px 8px 30px', fontSize: 12, color: '#f1f5f9', outline: 'none',
+                    }}
+                  />
+                </div>
                 <button
                   onClick={() => setShowCreate(true)}
                   style={{
@@ -727,6 +744,9 @@ export default function FinancePage() {
                           <td style={{ ...td(), color: '#f1f5f9', fontWeight: 600 }}>
                             <p style={{ margin: 0, fontWeight: 700 }}>{row.seller_name}</p>
                             <p style={{ margin: 0, fontSize: 10, color: '#64748b' }}>{row.seller_email}</p>
+                            {row.seller_phone && (
+                              <p style={{ margin: 0, fontSize: 10, color: '#475569' }}>{row.seller_phone}</p>
+                            )}
                           </td>
                           <td style={{ ...td(true), color: '#94a3b8', fontFamily: 'monospace' }}>{row.batch_date}</td>
                           <td style={{ ...td(true), color: '#94a3b8' }}>{row.orders_count}</td>
