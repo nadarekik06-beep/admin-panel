@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   Search, CheckCircle, XCircle, EyeOff, Trash2,
-  Eye, X, Loader2, Edit2,
+  Eye, X, Loader2, Edit2, RotateCcw, AlertTriangle,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
@@ -14,7 +14,7 @@ import { productsApi, ProductUpdatePayload } from '@/lib/api/products'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
-type ActionType = 'approve' | 'disable' | 'delete'
+type ActionType = 'approve' | 'disable' | 'delete' | 'force_delete'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/api$/, '')
 
@@ -41,6 +41,7 @@ interface AdminProduct {
   status?: string
   created_at: string
   updated_at: string
+  deleted_at?: string | null
   primary_image_url: string | null
   rejection_reason?: string | null
   seller: { id: number; name: string; email: string } | null
@@ -56,13 +57,15 @@ function formatCurrency(value: string | number) {
  * Derives the display status from the product object.
  * Must mirror AdminProductController::deriveStatus() exactly.
  *
- * pending  → not approved, no rejection_reason (never reviewed)
- * rejected → not approved, has rejection_reason
- * disabled → approved, not active
- * approved → approved, active
+ * deleted_by_seller → soft-deleted (deleted_at set) with __deleted_by_seller__ marker
+ * pending           → not approved, no rejection_reason (never reviewed)
+ * rejected          → not approved, has rejection_reason
+ * disabled          → approved, not active
+ * approved          → approved, active
  */
 function deriveStatus(product: AdminProduct): string {
   if (product.status) return product.status
+  if (product.rejection_reason === '__deleted_by_seller__') return 'deleted_by_seller'
   if (!product.is_approved) {
     return product.rejection_reason ? 'rejected' : 'pending'
   }
@@ -148,13 +151,15 @@ export default function ProductsPage() {
     if (!confirmModal) return
     setActionLoading(confirmModal.product.id)
     try {
-      if (confirmModal.type === 'approve') await productsApi.approve(confirmModal.product.id)
-      if (confirmModal.type === 'disable') await productsApi.disable(confirmModal.product.id)
-      if (confirmModal.type === 'delete')  await productsApi.delete(confirmModal.product.id)
+      if (confirmModal.type === 'approve')      await productsApi.approve(confirmModal.product.id)
+      if (confirmModal.type === 'disable')      await productsApi.disable(confirmModal.product.id)
+      if (confirmModal.type === 'delete')       await productsApi.delete(confirmModal.product.id)
+      if (confirmModal.type === 'force_delete') await productsApi.forceDelete(confirmModal.product.id)
       setConfirmModal(null)
       fetchProducts()
     } catch (err) {
       console.error('Action failed:', err)
+      setToast({ message: 'Action failed. Please try again.', type: 'error' })
     } finally {
       setActionLoading(null)
     }
@@ -173,6 +178,19 @@ export default function ProductsPage() {
       setToast({ message: 'Failed to reject product.', type: 'error' })
     } finally {
       setRejectLoading(false)
+    }
+  }
+
+  const handleRestore = async (product: AdminProduct) => {
+    setActionLoading(product.id)
+    try {
+      await productsApi.restore(product.id)
+      setToast({ message: 'Product restored to pending review.', type: 'success' })
+      fetchProducts()
+    } catch {
+      setToast({ message: 'Failed to restore product.', type: 'error' })
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -237,14 +255,33 @@ export default function ProductsPage() {
         const s = deriveStatus(row)
         return (
           <div className="space-y-1">
-            <Badge variant={s as 'pending' | 'approved' | 'disabled' | 'rejected'}>{s}</Badge>
+            {s === 'deleted_by_seller' ? (
+              // Special badge for deleted by seller — not in the standard Badge variants
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999,
+                background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                border: '1px solid rgba(239,68,68,0.25)',
+                textTransform: 'capitalize',
+              }}>
+                🗑 Deleted by Seller
+              </span>
+            ) : (
+              <Badge variant={s as 'pending' | 'approved' | 'disabled' | 'rejected'}>{s}</Badge>
+            )}
             {/* Truncated reason shown inline under badge when rejected */}
-            {s === 'rejected' && row.rejection_reason && (
+            {s === 'rejected' && row.rejection_reason && row.rejection_reason !== '__deleted_by_seller__' && (
               <p
                 className="text-[10px] text-accent-red/70 max-w-[140px] truncate"
                 title={row.rejection_reason}
               >
                 {row.rejection_reason}
+              </p>
+            )}
+            {/* Deleted at timestamp */}
+            {s === 'deleted_by_seller' && row.deleted_at && (
+              <p className="text-[10px] text-text-muted">
+                {format(new Date(row.deleted_at), 'MMM d, yyyy')}
               </p>
             )}
           </div>
@@ -268,7 +305,7 @@ export default function ProductsPage() {
         return (
           <div className="flex items-center gap-1.5">
 
-            {/* View */}
+            {/* View — always */}
             <button
               onClick={() => openView(row)}
               className="p-1.5 rounded-md text-text-muted hover:text-accent-purple-light hover:bg-accent-purple/10 transition-colors"
@@ -277,14 +314,16 @@ export default function ProductsPage() {
               <Eye size={15} />
             </button>
 
-            {/* Edit */}
-            <button
-              onClick={() => setEditProductId(row.id)}
-              className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors"
-              title="Edit product"
-            >
-              <Edit2 size={15} />
-            </button>
+            {/* Edit — not for deleted_by_seller */}
+            {s !== 'deleted_by_seller' && (
+              <button
+                onClick={() => setEditProductId(row.id)}
+                className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors"
+                title="Edit product"
+              >
+                <Edit2 size={15} />
+              </button>
+            )}
 
             {/* ── PENDING: approve or reject ── */}
             {s === 'pending' && (
@@ -306,7 +345,7 @@ export default function ProductsPage() {
               </>
             )}
 
-            {/* ── REJECTED: approve only — no second reject button ── */}
+            {/* ── REJECTED: approve only ── */}
             {s === 'rejected' && (
               <button
                 onClick={() => setConfirmModal({ type: 'approve', product: row })}
@@ -339,14 +378,41 @@ export default function ProductsPage() {
               </button>
             )}
 
-            {/* Delete — always available */}
-            <button
-              onClick={() => setConfirmModal({ type: 'delete', product: row })}
-              className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors"
-              title="Delete"
-            >
-              <Trash2 size={15} />
-            </button>
+            {/* ── DELETED BY SELLER: restore or permanently delete ── */}
+            {s === 'deleted_by_seller' && (
+              <>
+                <button
+                  onClick={() => handleRestore(row)}
+                  disabled={actionLoading === row.id}
+                  className="p-1.5 rounded-md text-accent-green hover:bg-accent-green/10 transition-colors disabled:opacity-50"
+                  title="Restore to pending review"
+                >
+                  {actionLoading === row.id
+                    ? <Loader2 size={15} className="animate-spin" />
+                    : <RotateCcw size={15} />
+                  }
+                </button>
+                <button
+                  onClick={() => setConfirmModal({ type: 'force_delete', product: row })}
+                  disabled={actionLoading === row.id}
+                  className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors disabled:opacity-50"
+                  title="Permanently delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </>
+            )}
+
+            {/* Delete — for all statuses EXCEPT deleted_by_seller (they get force_delete instead) */}
+            {s !== 'deleted_by_seller' && (
+              <button
+                onClick={() => setConfirmModal({ type: 'delete', product: row })}
+                className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
 
           </div>
         )
@@ -354,12 +420,53 @@ export default function ProductsPage() {
     },
   ]
 
+  // ── Confirm modal labels ───────────────────────────────────────────────────
+  const confirmTitle = () => {
+    if (!confirmModal) return ''
+    if (confirmModal.type === 'approve')      return 'Approve Product'
+    if (confirmModal.type === 'disable')      return 'Disable Product'
+    if (confirmModal.type === 'force_delete') return 'Permanently Delete Product'
+    return 'Delete Product'
+  }
+
+  const confirmBody = () => {
+    if (!confirmModal) return ''
+    if (confirmModal.type === 'approve')
+      return `Approve "${confirmModal.product.name}" and make it visible to customers?`
+    if (confirmModal.type === 'disable')
+      return `Disable "${confirmModal.product.name}"? It will be hidden from customers.`
+    if (confirmModal.type === 'force_delete')
+      return `Permanently delete "${confirmModal.product.name}"? This product was deleted by the seller. This action cannot be undone and will remove all product data.`
+    return `Permanently delete "${confirmModal.product.name}"? This cannot be undone.`
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+
+      {/* ── Deleted by seller info banner (shown when that tab is active) ── */}
+      {status === 'deleted_by_seller' && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'rgba(239,68,68,0.07)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: 12, padding: '12px 16px',
+        }}>
+          <AlertTriangle size={15} style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', margin: '0 0 3px' }}>
+              Products deleted by sellers
+            </p>
+            <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+              These products were removed by their sellers but had existing orders, so they were soft-deleted to preserve order history.
+              You can <strong style={{ color: '#f1f5f9' }}>restore</strong> them back to pending review, or <strong style={{ color: '#ef4444' }}>permanently delete</strong> them if no longer needed.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Filters */}
@@ -375,7 +482,6 @@ export default function ProductsPage() {
               className="w-full bg-bg-primary border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple transition-colors"
             />
           </div>
-          {/* ── Status filter now includes Rejected ── */}
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1) }}
@@ -386,6 +492,7 @@ export default function ProductsPage() {
             <option value="rejected">Rejected</option>
             <option value="approved">Approved</option>
             <option value="disabled">Disabled</option>
+            <option value="deleted_by_seller">🗑 Deleted by Seller</option>
           </select>
         </div>
       </div>
@@ -394,7 +501,7 @@ export default function ProductsPage() {
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-text-primary">
-            Products
+            {status === 'deleted_by_seller' ? '🗑 Deleted by Seller' : 'Products'}
             {products && (
               <span className="ml-2 text-xs font-normal text-text-muted">
                 ({products.total} total)
@@ -407,7 +514,11 @@ export default function ProductsPage() {
           columns={columns}
           data={products?.data ?? []}
           loading={loading}
-          emptyMessage="No products found."
+          emptyMessage={
+            status === 'deleted_by_seller'
+              ? 'No seller-deleted products.'
+              : 'No products found.'
+          }
           keyField="id"
         />
 
@@ -427,6 +538,22 @@ export default function ProductsPage() {
       <Modal open={!!viewProduct} onClose={() => setViewProduct(null)} title="Product Details" size="lg">
         {viewProduct && (
           <div className="space-y-5">
+
+            {/* Deleted by seller warning inside view modal */}
+            {deriveStatus(viewProduct) === 'deleted_by_seller' && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                borderRadius: 10, padding: '10px 14px',
+              }}>
+                <AlertTriangle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, margin: 0 }}>
+                  This product was deleted by the seller.
+                  {viewProduct.deleted_at && ` Deleted on ${format(new Date(viewProduct.deleted_at), 'MMM d, yyyy')}.`}
+                </p>
+              </div>
+            )}
+
             {viewProduct.images?.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {viewProduct.images.map((img) => {
@@ -463,7 +590,8 @@ export default function ProductsPage() {
               ))}
             </div>
 
-            {viewProduct.rejection_reason && (
+            {/* Rejection reason — hide the internal sentinel value */}
+            {viewProduct.rejection_reason && viewProduct.rejection_reason !== '__deleted_by_seller__' && (
               <div className="p-3 bg-accent-red/5 border border-accent-red/20 rounded-lg">
                 <p className="text-xs text-accent-red font-bold uppercase tracking-wider mb-1">
                   Rejection Reason
@@ -488,31 +616,40 @@ export default function ProductsPage() {
               >
                 Close
               </button>
-              <button
-                onClick={() => { setViewProduct(null); setEditProductId(viewProduct.id) }}
-                className="px-4 py-2 rounded-lg bg-accent-red hover:bg-accent-red/90 text-white text-sm font-medium flex items-center gap-2 transition-colors"
-              >
-                <Edit2 size={14} /> Edit Product
-              </button>
+
+              {/* Restore button inside view modal for deleted products */}
+              {deriveStatus(viewProduct) === 'deleted_by_seller' && (
+                <button
+                  onClick={() => { setViewProduct(null); handleRestore(viewProduct) }}
+                  className="px-4 py-2 rounded-lg bg-accent-green hover:bg-accent-green/90 text-white text-sm font-medium flex items-center gap-2 transition-colors"
+                >
+                  <RotateCcw size={14} /> Restore Product
+                </button>
+              )}
+
+              {/* Edit button — only for non-deleted products */}
+              {deriveStatus(viewProduct) !== 'deleted_by_seller' && (
+                <button
+                  onClick={() => { setViewProduct(null); setEditProductId(viewProduct.id) }}
+                  className="px-4 py-2 rounded-lg bg-accent-red hover:bg-accent-red/90 text-white text-sm font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Edit2 size={14} /> Edit Product
+                </button>
+              )}
             </div>
           </div>
         )}
       </Modal>
 
-      {/* ── Confirm modal (approve / disable / delete) ── */}
+      {/* ── Confirm modal (approve / disable / delete / force_delete) ── */}
       <Modal
         open={!!confirmModal}
         onClose={() => setConfirmModal(null)}
-        title={
-          confirmModal?.type === 'approve' ? 'Approve Product' :
-          confirmModal?.type === 'disable' ? 'Disable Product' : 'Delete Product'
-        }
+        title={confirmTitle()}
         size="sm"
       >
         <p className="text-text-secondary text-sm mb-5">
-          {confirmModal?.type === 'approve' && `Approve "${confirmModal.product.name}" and make it visible to customers?`}
-          {confirmModal?.type === 'disable' && `Disable "${confirmModal?.product.name}"? It will be hidden from customers.`}
-          {confirmModal?.type === 'delete'  && `Permanently delete "${confirmModal?.product.name}"? This cannot be undone.`}
+          {confirmBody()}
         </p>
         <div className="flex gap-3 justify-end">
           <button
@@ -525,9 +662,11 @@ export default function ProductsPage() {
             onClick={handleAction}
             disabled={!!actionLoading}
             className={`px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 ${
-              confirmModal?.type === 'approve' ? 'bg-accent-green hover:bg-accent-green/90' :
-              confirmModal?.type === 'disable' ? 'bg-accent-orange hover:bg-accent-orange/90' :
-              'bg-accent-red hover:bg-accent-red/90'
+              confirmModal?.type === 'approve'
+                ? 'bg-accent-green hover:bg-accent-green/90'
+                : confirmModal?.type === 'disable'
+                ? 'bg-accent-orange hover:bg-accent-orange/90'
+                : 'bg-accent-red hover:bg-accent-red/90'
             }`}
           >
             {actionLoading ? 'Processing…' : 'Confirm'}

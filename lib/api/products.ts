@@ -51,4 +51,12 @@ export const productsApi = {
   async delete(id: number) {
     await api.delete(`/admin/products/${id}`)
   },
+
+  async restore(id: number) {
+    await api.post(`/admin/products/${id}/restore`)
+  },
+
+  async forceDelete(id: number) {
+    await api.delete(`/admin/products/${id}/force`)
+  },
 }
