@@ -48,6 +48,7 @@ const STATUS_COLORS: Record<string, string> = {
   delivered:  '#14b8a6',
   cancelled:  '#ef4444',
   refunded:   '#a855f7',
+  out_for_delivery: '#8b5cf6',
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -476,9 +477,11 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                     <select value={newStatus} onChange={e => { setNewStatus(e.target.value); setSuccess('') }}
                       style={{ width: '100%', appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 36px 10px 14px', fontSize: 13, fontWeight: 600, color: newStatus ? '#f1f5f9' : '#64748b', cursor: 'pointer', outline: 'none' }}>
                       <option value="" style={{ background: '#0f1623', color: '#64748b' }}>— Select new status —</option>
-                      {['pending', 'processing', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
-                        <option key={s} value={s} style={{ background: '#0f1623', color: '#f1f5f9' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                      ))}
+                        {['pending', 'processing', 'out_for_delivery', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
+                          <option key={s} value={s} style={{ background: '#0f1623', color: '#f1f5f9' }}>
+                            {s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          </option>
+                        ))}
                     </select>
                     <ChevronDown size={13} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                   </div>
@@ -645,12 +648,12 @@ export default function OrdersPage() {
               className="w-full bg-bg-primary border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple transition-colors" />
           </div>
           <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
-            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
-            <option value="">All Status</option>
-            {['pending', 'processing', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
-              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-            ))}
-          </select>
+              className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
+              <option value="">All Status</option>
+              {['pending', 'processing', 'out_for_delivery', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+              ))}
+            </select>
           <select value={payMethod} onChange={e => { setPayMethod(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
             <option value="">All Methods</option>
