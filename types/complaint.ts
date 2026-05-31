@@ -1,10 +1,11 @@
 /**
- * FILE: types/complaint.ts  ← REPLACE existing file (same in both frontends)
+ * FILE: types/complaint.ts  (customer frontend + admin panel)  ← REPLACE BOTH
  *
- * Changes from v1:
- *   - Added 'seller_rejected_pending_admin' to ComplaintStatus
- *   - Added STATUS_CONFIG entry for new status
- *   - Added seller_decision field to Complaint interface
+ * Changes:
+ *   - Added ResolutionType type
+ *   - Added resolution_type to Complaint interface
+ *   - Added hours_left and window_hours to EligibleOrder response
+ *   - ComplaintFormPayload now requires resolution_type
  */
 
 export type ComplaintStatus =
@@ -21,7 +22,21 @@ export type ComplaintType =
   | 'damaged_product'
   | 'other'
 
-// ─── Label maps ───────────────────────────────────────────────────────────────
+// ← NEW
+export type ResolutionType = 'exchange' | 'return_refund'
+
+export const RESOLUTION_TYPE_LABELS: Record<ResolutionType, { label: string; description: string; icon: string }> = {
+  exchange: {
+    label:       'Exchange',
+    description: 'Receive a replacement item instead',
+    icon:        '🔄',
+  },
+  return_refund: {
+    label:       'Return & Refund',
+    description: 'Return the item and get your money back',
+    icon:        '💰',
+  },
+}
 
 export const COMPLAINT_TYPE_LABELS: Record<ComplaintType, string> = {
   wrong_product:   'Wrong product received',
@@ -67,23 +82,23 @@ export const STATUS_CONFIG: Record<
   },
 }
 
-// ─── Eligible Order ───────────────────────────────────────────────────────────
-
 export interface EligibleOrderItem {
+  id:           number
   product_name: string
   quantity:     number
+  unit_price:   number
+  image_url:    string | null
 }
 
 export interface EligibleOrder {
   id:           number
   order_number: string
   delivered_at: string
-  days_left:    number
+  hours_left:   number   // ← NEW (48h window)
+  days_left:    number   // kept for backward compat
   total_amount: number
   items:        EligibleOrderItem[]
 }
-
-// ─── Nested shapes ────────────────────────────────────────────────────────────
 
 export interface ComplaintOrderItem {
   id:           number
@@ -111,14 +126,14 @@ export interface ComplaintUser {
   email: string
 }
 
-// ─── Main Complaint ───────────────────────────────────────────────────────────
-
 export interface Complaint {
   id:               number
   user_id:          number
   order_id:         number
+  order_item_ids:   number[] | null
   seller_id:        number | null
   complaint_type:   ComplaintType
+  resolution_type:  ResolutionType | null   // ← NEW
   other_reason:     string | null
   description:      string
   image_path:       string | null
@@ -126,7 +141,7 @@ export interface Complaint {
   status:           ComplaintStatus
   rejection_reason: string | null
   seller_note:      string | null
-  seller_decision:  'approved' | 'rejected' | null  // NEW
+  seller_decision:  'approved' | 'rejected' | null
   reviewed_at:      string | null
   resolved_at:      string | null
   created_at:       string
@@ -134,14 +149,17 @@ export interface Complaint {
   order?:           ComplaintOrder
   user?:            ComplaintUser
   seller?:          ComplaintUser
+  complained_items?: ComplaintOrderItem[]
+  refund_status?:   'pending' | 'assigned' | 'picked_up' | 'completed' | null
+  refund_task_id?:  number | null
 }
 
-// ─── Form payload ─────────────────────────────────────────────────────────────
-
 export interface ComplaintFormPayload {
-  order_id:       number
-  complaint_type: ComplaintType
-  other_reason?:  string
-  description:    string
-  image?:         File | null
+  order_id:         number
+  complaint_type:   ComplaintType
+  resolution_type:  ResolutionType   // ← NEW, required
+  other_reason?:    string
+  description:      string
+  image?:           File | null
+  item_ids?:        number[]
 }

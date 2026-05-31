@@ -1,11 +1,9 @@
 /**
- * FILE: lib/complaintApi.ts  (Admin Frontend — port 3001)
+ * FILE: lib/complaintApi.ts  (admin panel — port 3001)  ← REPLACE
  *
- * BUG FIX: getToken() was reading from localStorage('ct_auth_token')
- * but auth.ts saves the token in a cookie called 'admin_token'.
- * Fixed to use js-cookie (already installed) to read 'admin_token'.
- *
- * Only getToken() was changed. Everything else is identical.
+ * Changes from previous version:
+ *   - complaintApi.submit() now appends item_ids[] to FormData when provided.
+ *   - getToken() reads from cookie 'admin_token' (unchanged from previous fix).
  */
 
 import Cookies from 'js-cookie'
@@ -14,7 +12,6 @@ import type { Complaint, ComplaintFormPayload, EligibleOrder } from '@/types/com
 const RAW_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api'
 const API_URL = RAW_URL.endsWith('/api') ? RAW_URL : `${RAW_URL}/api`
 
-// ✅ FIXED: was localStorage.getItem('ct_auth_token') — wrong place, wrong key
 function getToken(): string | null {
   return Cookies.get('admin_token') ?? null
 }
@@ -61,22 +58,37 @@ export const complaintApi = {
     jsonRequest<{ success: boolean; window_days: number; data: EligibleOrder[] }>(
       'GET', '/client/complaints/eligible-orders'
     ),
+
   getAll: (params: Record<string, any> = {}) => {
     const qs = new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
     ).toString()
-    return jsonRequest<{ success: boolean; data: any }>('GET', `/client/complaints${qs ? `?${qs}` : ''}`)
+    return jsonRequest<{ success: boolean; data: any }>(
+      'GET', `/client/complaints${qs ? `?${qs}` : ''}`
+    )
   },
+
   getOne: (id: number) =>
     jsonRequest<{ success: boolean; data: Complaint }>('GET', `/client/complaints/${id}`),
+
   submit: (payload: ComplaintFormPayload) => {
     const fd = new FormData()
-    fd.append('order_id', String(payload.order_id))
+    fd.append('order_id',       String(payload.order_id))
     fd.append('complaint_type', payload.complaint_type)
-    fd.append('description', payload.description)
+    fd.append('description',    payload.description)
     if (payload.other_reason) fd.append('other_reason', payload.other_reason)
-    if (payload.image) fd.append('image', payload.image)
-    return formRequest<{ success: boolean; message: string; data: Complaint }>('/client/complaints', fd)
+    if (payload.image)        fd.append('image', payload.image)
+
+    // ↓ NEW: append each selected item ID
+    if (payload.item_ids && payload.item_ids.length > 0) {
+      payload.item_ids.forEach(id => fd.append('item_ids[]', String(id)))
+    }
+
+    return formRequest<{ success: boolean; message: string; data: Complaint }>(
+      '/client/complaints', fd
+    )
   },
 }
 
@@ -88,9 +100,13 @@ export const sellerComplaintApi = {
 
   getAll: (params: Record<string, any> = {}) => {
     const qs = new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
     ).toString()
-    return jsonRequest<{ success: boolean; data: any }>('GET', `/seller/complaints${qs ? `?${qs}` : ''}`)
+    return jsonRequest<{ success: boolean; data: any }>(
+      'GET', `/seller/complaints${qs ? `?${qs}` : ''}`
+    )
   },
 
   getOne: (id: number) =>
@@ -101,13 +117,11 @@ export const sellerComplaintApi = {
       'PATCH', `/seller/complaints/${id}/note`, { seller_note }
     ),
 
-  /** Seller approves → status = APPROVED (direct, client notified) */
   approve: (id: number, seller_note?: string) =>
     jsonRequest<{ success: boolean; message: string; data: Complaint }>(
       'PATCH', `/seller/complaints/${id}/approve`, { seller_note }
     ),
 
-  /** Seller rejects → status = SELLER_REJECTED_PENDING_ADMIN (admin notified) */
   reject: (id: number, seller_note: string, rejection_reason: string) =>
     jsonRequest<{ success: boolean; message: string; data: Complaint }>(
       'PATCH', `/seller/complaints/${id}/reject`, { seller_note, rejection_reason }
@@ -122,9 +136,13 @@ export const adminComplaintApi = {
 
   getAll: (params: Record<string, any> = {}) => {
     const qs = new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
     ).toString()
-    return jsonRequest<{ success: boolean; data: any }>('GET', `/admin/complaints${qs ? `?${qs}` : ''}`)
+    return jsonRequest<{ success: boolean; data: any }>(
+      'GET', `/admin/complaints${qs ? `?${qs}` : ''}`
+    )
   },
 
   getOne: (id: number) =>
@@ -140,13 +158,11 @@ export const adminComplaintApi = {
       'PATCH', `/admin/complaints/${id}/reject`, { rejection_reason }
     ),
 
-  /** Admin confirms seller's rejection → status = REJECTED (final) */
   confirmRejection: (id: number) =>
     jsonRequest<{ success: boolean; message: string; data: Complaint }>(
       'PATCH', `/admin/complaints/${id}/confirm-rejection`
     ),
 
-  /** Admin overrides seller's rejection → status = APPROVED (final) */
   overrideToApproved: (id: number) =>
     jsonRequest<{ success: boolean; message: string; data: Complaint }>(
       'PATCH', `/admin/complaints/${id}/override-approve`

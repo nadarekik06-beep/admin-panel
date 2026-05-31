@@ -26,6 +26,8 @@ interface OrderDetail extends Order {
     commission_amount?:      number | null
     seller_amount?:          number | null
     plan_used?:              string | null
+    item_status?: 'returned' | 'exchanged' | null
+    is_returned?: boolean
   })[]
   user?: { id: number; name: string; email: string }
   has_platform_items?: boolean
@@ -37,6 +39,12 @@ interface OrderDetail extends Order {
     subtotal: number
     seller?: { id: number; name: string; email: string }
   }>
+  commission_summary?: {
+  gross_total: number;
+  total_commission: number;
+  total_seller: number;
+} | null
+
 }
 
 // ─── Status config ─────────────────────────────────────────────────────────────
@@ -130,10 +138,34 @@ function OrderItemRow({ item }: { item: any }) {
 
       {/* Product + commission line */}
       <td style={{ padding: '10px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-          <p style={{ fontWeight: 700, fontSize: 13, color: '#f1f5f9', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{item.product_name}</p>
-          {item.is_platform_item && <PlatformBadge />}
-        </div>
+        // REPLACE WITH:
+<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+  <p style={{
+    fontWeight: 700, fontSize: 13, margin: 0,
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160,
+    color: item.item_status ? '#475569' : '#f1f5f9',
+    textDecoration: item.item_status ? 'line-through' : 'none',
+  }}>
+    {item.product_name}
+  </p>
+  {item.is_platform_item && <PlatformBadge />}
+  {item.item_status === 'returned' && (
+    <span style={{
+      flexShrink: 0, fontSize: 9, fontWeight: 800,
+      padding: '2px 7px', borderRadius: 999,
+      background: 'rgba(219,20,46,0.15)', color: '#db142e',
+      border: '1px solid rgba(219,20,46,0.35)',
+    }}>↩ Returned</span>
+  )}
+  {item.item_status === 'exchanged' && (
+    <span style={{
+      flexShrink: 0, fontSize: 9, fontWeight: 800,
+      padding: '2px 7px', borderRadius: 999,
+      background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+      border: '1px solid rgba(245,158,11,0.35)',
+    }}>↔ Exchanged</span>
+  )}
+</div>
         {options.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
             {options.map(([slug, opt]: any) => (
@@ -187,15 +219,23 @@ function OrderItemRow({ item }: { item: any }) {
 
 // ─── Commission Summary Card ────────────────────────────────────────────────────
 
-function CommissionSummary({ items, grossTotal }: { items: any[]; grossTotal: number }) {
-  const totalCommission = items.reduce((s, i) => s + Number(i.commission_amount ?? 0), 0)
-  const totalSeller     = items.reduce((s, i) => s + Number(i.seller_amount ?? 0), 0)
-  const hasData         = totalCommission > 0 || totalSeller > 0
+function CommissionSummary({ items, grossTotal, commissionSummary }: {
+  items: any[];
+  grossTotal: number;
+  commissionSummary?: { gross_total: number; total_commission: number; total_seller: number } | null;
+}) {
+  // Use backend-provided summary (excludes returned items) if available,
+  // otherwise fall back to summing from items
+  const effectiveGross    = commissionSummary?.gross_total      ?? grossTotal
+  const totalCommission   = commissionSummary?.total_commission
+    ?? items.filter(i => i.item_status !== 'returned').reduce((s, i) => s + Number(i.commission_amount ?? 0), 0)
+  const totalSeller       = commissionSummary?.total_seller
+    ?? items.filter(i => i.item_status !== 'returned').reduce((s, i) => s + Number(i.seller_amount ?? 0), 0)
+  const hasData           = totalCommission > 0 || totalSeller > 0
 
   if (!hasData) return null
 
-  const commissionPct = grossTotal > 0 ? ((totalCommission / grossTotal) * 100).toFixed(1) : '0'
-
+  const commissionPct = effectiveGross > 0 ? ((totalCommission / effectiveGross) * 100).toFixed(1) : '0'
   return (
     <div style={{
       background: 'rgba(255,255,255,0.02)',
@@ -235,9 +275,9 @@ function CommissionSummary({ items, grossTotal }: { items: any[]; grossTotal: nu
           <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
             Gross Total
           </p>
-          <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0, letterSpacing: '-0.01em' }}>
-            {formatCurrency(grossTotal)}
-          </p>
+          <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0 }}>
+  {formatCurrency(effectiveGross)}
+</p>
           <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Customer paid</p>
         </div>
 
@@ -467,8 +507,11 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
               </div>
 
               {/* ── Commission Revenue Split ── */}
-              <CommissionSummary items={items} grossTotal={Number(detail.total_amount)} />
-
+<CommissionSummary
+  items={items}
+  grossTotal={Number(detail.total_amount)}
+  commissionSummary={(detail as any).commission_summary ?? null}
+/>
               {/* ── Update Order Status ── */}
               <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 14, padding: 18 }}>
                 <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#818cf8', margin: '0 0 12px' }}>Update Order Status</p>
