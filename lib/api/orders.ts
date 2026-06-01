@@ -20,6 +20,33 @@ export const ordersApi = {
       ...(d17Reference ? { d17_reference: d17Reference } : {}),
     }),
 
+  // lib/api/orders.ts  — add these two methods to the ordersApi object
+
+async confirmOrder(
+  id: number,
+  action: 'confirmed' | 'cancelled',
+  adminNote?: string
+) {
+  try {
+    const res = await api.patch(`/admin/orders/${id}/confirm-order`, {
+      action,
+      admin_note: adminNote ?? null,
+    })
+    return res.data
+  } catch (err: any) {
+    const msg = err?.response?.data?.message ?? `Failed to ${action} order.`
+    throw new Error(msg)
+  }
+},
+
+async saveNote(id: number, adminNote: string) {
+  try {
+    const res = await api.patch(`/admin/orders/${id}/note`, { admin_note: adminNote })
+    return res.data
+  } catch (err: any) {
+    throw new Error(err?.response?.data?.message ?? 'Failed to save note.')
+  }
+},
   async list(params: OrdersParams = {}): Promise<PaginatedResponse<Order>> {
     const res = await api.get('/admin/orders', { params })
     return res.data.data

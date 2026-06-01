@@ -2,12 +2,14 @@ import clsx from 'clsx'
 
 type BadgeVariant =
   | 'pending'
+  | 'confirmed'
   | 'approved'
   | 'rejected'
   | 'suspended'
   | 'delivered'
   | 'completed'
   | 'processing'
+  | 'out_for_delivery'
   | 'canceled'
   | 'cancelled'
   | 'active'
@@ -23,35 +25,41 @@ type BadgeVariant =
 
 const variantClasses: Record<BadgeVariant, string> = {
   // ── Green (success states) ─────────────────────────────
-  approved:   'bg-accent-green/15 text-accent-green border-accent-green/30',
-  active:     'bg-accent-green/15 text-accent-green border-accent-green/30',
-  delivered:  'bg-accent-green/15 text-accent-green border-accent-green/30',
-  completed:  'bg-accent-green/15 text-accent-green border-accent-green/30',
-  success:    'bg-accent-green/15 text-accent-green border-accent-green/30',
-  paid:       'bg-accent-green/15 text-accent-green border-accent-green/30',
+  approved:         'bg-accent-green/15 text-accent-green border-accent-green/30',
+  active:           'bg-accent-green/15 text-accent-green border-accent-green/30',
+  delivered:        'bg-accent-green/15 text-accent-green border-accent-green/30',
+  completed:        'bg-accent-green/15 text-accent-green border-accent-green/30',
+  success:          'bg-accent-green/15 text-accent-green border-accent-green/30',
+  paid:             'bg-accent-green/15 text-accent-green border-accent-green/30',
+
+  // ── Blue (confirmed) ──────────────────────────────────
+  confirmed:        'bg-accent-blue/15 text-accent-blue border-accent-blue/30',
+
+  // ── Purple (out for delivery) ─────────────────────────
+  out_for_delivery: 'bg-accent-purple/15 text-accent-purple border-accent-purple/30',
 
   // ── Red (error / danger states) ───────────────────────
-  rejected:   'bg-accent-red/15 text-accent-red border-accent-red/30',
-  canceled:   'bg-accent-red/15 text-accent-red border-accent-red/30',
-  cancelled:  'bg-accent-red/15 text-accent-red border-accent-red/30',
-  banned:     'bg-accent-red/15 text-accent-red border-accent-red/30',
-  error:      'bg-accent-red/15 text-accent-red border-accent-red/30',
-  unpaid:     'bg-accent-red/15 text-accent-red border-accent-red/30',
+  rejected:         'bg-accent-red/15 text-accent-red border-accent-red/30',
+  canceled:         'bg-accent-red/15 text-accent-red border-accent-red/30',
+  cancelled:        'bg-accent-red/15 text-accent-red border-accent-red/30',
+  banned:           'bg-accent-red/15 text-accent-red border-accent-red/30',
+  error:            'bg-accent-red/15 text-accent-red border-accent-red/30',
+  unpaid:           'bg-accent-red/15 text-accent-red border-accent-red/30',
 
   // ── Orange (warning / pending states) ─────────────────
-  pending:    'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
-  warning:    'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
-  refunded:   'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
+  pending:          'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
+  warning:          'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
+  refunded:         'bg-accent-orange/15 text-accent-orange border-accent-orange/30',
 
   // ── Cyan (in-progress states) ─────────────────────────
-  processing: 'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30',
-  info:       'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30',
+  processing:       'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30',
+  info:             'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30',
 
   // ── Pink (suspended) ──────────────────────────────────
-  suspended:  'bg-accent-pink/15 text-accent-pink border-accent-pink/30',
+  suspended:        'bg-accent-pink/15 text-accent-pink border-accent-pink/30',
 
   // ── Gray (inactive / disabled) ────────────────────────
-  disabled:   'bg-text-muted/15 text-text-muted border-text-muted/30',
+  disabled:         'bg-text-muted/15 text-text-muted border-text-muted/30',
 }
 
 interface BadgeProps {

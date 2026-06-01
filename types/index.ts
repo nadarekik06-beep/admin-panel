@@ -118,7 +118,7 @@ export interface OrderItem {
 }
 
 // ── Order ─────────────────────────────────────────────────────────
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'delivered' | 'refunded'
+export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delivered' | 'refunded' | 'out_for_delivery'
 
 export interface Order {
   id: number
@@ -131,6 +131,8 @@ export interface Order {
   wilaya?: string | null
   address?: string | null
   phone?: string | null
+  admin_note?: string | null      // ← NEW
+  confirmed_at?: string | null    // ← NEW
   items?: OrderItem[]
   created_at: string
   updated_at: string
@@ -156,5 +158,5 @@ export interface DashboardData {
 
 // ── Statistics ────────────────────────────────────────────────────
 export interface RevenuePoint  { month: string; revenue: number }
-export interface OrderTrendPoint { month: string; pending: number; processing: number; delivered: number; canceled: number }
+export interface OrderTrendPoint { month: string; pending: number; confirmed: number; delivered: number; canceled: number }
 export interface CategoryPoint  { name: string; count: number }
