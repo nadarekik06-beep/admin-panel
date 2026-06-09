@@ -20,6 +20,7 @@ import {
   Tag,
   Crown,
   Star,
+  CreditCard,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -36,7 +37,8 @@ const navItems = [
   { href: '/',                    label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/users',               label: 'Users',        icon: Users           },
   { href: '/sellers',             label: 'Sellers',      icon: Store           },
-  
+  { href: '/subscriptions',       label: 'Subscriptions', icon: CreditCard      },
+
   { href: '/seller-applications', label: 'Applications', icon: FileText        },
 
   { href: '/products',            label: 'Products',     icon: Package         },
