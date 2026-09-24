@@ -27,26 +27,41 @@ interface OrderDetail extends Order {
     commission_amount?:     number | null
     seller_amount?:         number | null
     plan_used?:             string | null
+    discount_amount?:       number | null   // share of the seller coupon
+    net_total?:             number | null   // total − discount (commission base)
     item_status?: 'returned' | 'exchanged' | null
     is_returned?: boolean
   })[]
+  subtotal?:        number        // items before coupon
+  discount_amount?: number        // seller coupons, 0 when none
+  coupon_codes?:    string[]
+  shipping_fee?:    number
   user?: { id: number; name: string; email: string }
   has_platform_items?: boolean
   admin_note?: string | null
   confirmed_at?: string | null
-  sellerOrders?: Array<{
-    id: number
-    seller_id: number
-    status: string
-    payment_status: string
-    subtotal: number
-    seller?: { id: number; name: string; email: string }
-  }>
-  commission_summary?: {
-    gross_total: number
-    total_commission: number
-    total_seller: number
-  } | null
+  sellerOrders?: SellerSubOrder[]
+  seller_orders?: SellerSubOrder[]   // Laravel serializes the relation in snake_case
+  commission_summary?: CommissionSummaryData | null
+}
+
+interface SellerSubOrder {
+  id: number
+  seller_id: number
+  status: string
+  payment_status: string
+  subtotal: number
+  coupon_code?: string | null
+  discount_amount?: number
+  seller?: { id: number; name: string; email: string }
+}
+
+interface CommissionSummaryData {
+  gross_total: number
+  total_discount?: number
+  net_total?: number
+  total_commission: number
+  total_seller: number
 }
 
 // ─── Status config ─────────────────────────────────────────────────────────────
@@ -529,6 +544,8 @@ function OrderItemRow({ item }: { item: any }) {
   const commissionPct = Number(item.commission_percentage ?? 0)
   const commissionAmt = Number(item.commission_amount ?? 0)
   const sellerAmt     = Number(item.seller_amount ?? 0)
+  const discountAmt   = Number(item.discount_amount ?? 0)
+  const netTotal      = Number(item.net_total ?? item.total ?? 0)
   const planUsed      = item.plan_used as string | null
   const planColor     = PLAN_COLORS[planUsed ?? 'free'] ?? '#94a3b8'
 
@@ -602,8 +619,17 @@ function OrderItemRow({ item }: { item: any }) {
               background: 'rgba(219,20,46,0.12)', color: '#db142e',
               border: '1px solid rgba(219,20,46,0.2)',
             }}>
-              Fee {commissionPct}% → {commissionAmt.toFixed(3)} DT
+              Fee {commissionPct}%{discountAmt > 0 ? ` of ${netTotal.toFixed(3)}` : ''} → {commissionAmt.toFixed(3)} DT
             </span>
+            {discountAmt > 0 && (
+              <span style={{
+                fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+                background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
+                border: '1px solid rgba(245,158,11,0.2)',
+              }}>
+                Coupon −{discountAmt.toFixed(3)} DT
+              </span>
+            )}
             <span style={{
               fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
               background: 'rgba(16,185,129,0.1)', color: '#10b981',
@@ -635,9 +661,11 @@ function OrderItemRow({ item }: { item: any }) {
 function CommissionSummary({ items, grossTotal, commissionSummary }: {
   items: any[]
   grossTotal: number
-  commissionSummary?: { gross_total: number; total_commission: number; total_seller: number } | null
+  commissionSummary?: CommissionSummaryData | null
 }) {
-  const effectiveGross  = commissionSummary?.gross_total      ?? grossTotal
+  // Split is on item prices AFTER the seller-funded coupon (shipping excluded)
+  const totalDiscount   = Number(commissionSummary?.total_discount ?? 0)
+  const effectiveGross  = commissionSummary?.net_total ?? commissionSummary?.gross_total ?? grossTotal
   const totalCommission = commissionSummary?.total_commission
     ?? items.filter(i => i.item_status !== 'returned').reduce((s, i) => s + Number(i.commission_amount ?? 0), 0)
   const totalSeller     = commissionSummary?.total_seller
@@ -676,9 +704,13 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
         <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Gross Total</p>
+          <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Item Sales</p>
           <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0 }}>{formatCurrency(effectiveGross)}</p>
-          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Customer paid</p>
+          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>
+            {totalDiscount > 0
+              ? `${Number(commissionSummary?.gross_total).toFixed(3)} − ${totalDiscount.toFixed(3)} coupon`
+              : 'Excl. shipping'}
+          </p>
         </div>
         <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)', background: 'rgba(219,20,46,0.03)' }}>
           <p style={{ fontSize: 9, fontWeight: 800, color: '#db142e', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Platform Fee</p>
@@ -769,6 +801,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
 
   const statusColor = STATUS_COLORS[detail?.status ?? ''] ?? '#94a3b8'
   const items       = detail?.items ?? []
+  const subOrders   = detail?.seller_orders ?? detail?.sellerOrders ?? []
 
   return (
     <>
@@ -905,7 +938,8 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                   { icon: User,        label: 'Customer', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
                   { icon: MapPin,      label: 'Wilaya',   value: (detail as any).wilaya ?? '—' },
                   { icon: Phone,       label: 'Phone',    value: (detail as any).phone  ?? '—' },
-                  { icon: ShoppingBag, label: 'Total',    value: formatCurrency(detail.total_amount) },
+                  { icon: ShoppingBag, label: 'Total paid', value: formatCurrency(detail.total_amount),
+                    sub: detail.shipping_fee !== undefined ? `incl. ${formatCurrency(detail.shipping_fee)} shipping` : undefined },
                 ].map(({ icon: Icon, label, value, sub }) => (
                   <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569', marginBottom: 6 }}>
@@ -918,11 +952,11 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
               </div>
 
               {/* Sub-orders */}
-              {(detail.sellerOrders ?? []).length > 0 && (
+              {subOrders.length > 0 && (
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', margin: '0 0 10px' }}>Seller Sub-orders</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(detail.sellerOrders ?? []).map(so => {
+                    {subOrders.map(so => {
                       const isPlatform = so.seller?.name === "CHOOSE'Tounsi"
                       return (
                         <div key={so.id} style={{
@@ -939,7 +973,14 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                             )}
                             <StatusChip status={so.status} />
                           </div>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa' }}>{formatCurrency(so.subtotal)}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {Number(so.discount_amount ?? 0) > 0 && (
+                              <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 999, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                −{formatCurrency(Number(so.discount_amount))}{so.coupon_code ? ` (${so.coupon_code})` : ''}
+                              </span>
+                            )}
+                            <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa' }}>{formatCurrency(Number(so.subtotal) - Number(so.discount_amount ?? 0))}</span>
+                          </div>
                         </div>
                       )
                     })}
@@ -967,8 +1008,30 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                       {items.map((item: any) => <OrderItemRow key={item.id} item={item} />)}
                     </tbody>
                     <tfoot>
+                      {detail.subtotal !== undefined && (
+                        <>
+                          <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)' }}>
+                            <td colSpan={4} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#64748b', fontSize: 12 }}>Items Subtotal</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>{formatCurrency(detail.subtotal)}</td>
+                          </tr>
+                          {Number(detail.discount_amount ?? 0) > 0 && (
+                            <tr>
+                              <td colSpan={4} style={{ padding: '4px 12px', textAlign: 'right', fontWeight: 700, color: '#f59e0b', fontSize: 12 }}>
+                                Coupon{detail.coupon_codes?.length ? ` (${detail.coupon_codes.join(', ')})` : ''} · seller-funded
+                              </td>
+                              <td style={{ padding: '4px 12px', textAlign: 'right', fontWeight: 800, color: '#f59e0b', fontSize: 12 }}>−{formatCurrency(Number(detail.discount_amount))}</td>
+                            </tr>
+                          )}
+                          <tr>
+                            <td colSpan={4} style={{ padding: '4px 12px 8px', textAlign: 'right', fontWeight: 700, color: '#64748b', fontSize: 12 }}>Shipping</td>
+                            <td style={{ padding: '4px 12px 8px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>
+                              {Number(detail.shipping_fee ?? 0) > 0 ? formatCurrency(Number(detail.shipping_fee)) : 'Free'}
+                            </td>
+                          </tr>
+                        </>
+                      )}
                       <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>Gross Total</td>
+                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>Total Paid by Customer</td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, color: '#94a3b8', fontSize: 14 }}>{formatCurrency(detail.total_amount)}</td>
                       </tr>
                     </tfoot>
@@ -978,7 +1041,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
 
               <CommissionSummary
                 items={items}
-                grossTotal={Number(detail.total_amount)}
+                grossTotal={Number(detail.subtotal ?? detail.total_amount) - Number(detail.discount_amount ?? 0)}
                 commissionSummary={(detail as any).commission_summary ?? null}
               />
 
