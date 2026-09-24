@@ -1,4 +1,5 @@
 import api from '../axios'
+import type { ProductReview } from '@/types/productReview'
 
 interface ProductsParams {
   status?: string
@@ -40,8 +41,24 @@ export const productsApi = {
     await api.patch(`/admin/products/${id}/approve`)
   },
 
-  async reject(id: number, reason?: string) {
-    await api.patch(`/admin/products/${id}/reject`, { reason: reason ?? null })
+  /** Full moderation payload for the review page. */
+  async review(id: number): Promise<ProductReview> {
+    const res = await api.get(`/admin/products/${id}/review`)
+    return res.data.data
+  },
+
+  /** Reject with predefined reason codes (required) and an optional comment. */
+  async reject(id: number, reasons: string[], note?: string) {
+    await api.patch(`/admin/products/${id}/reject`, { reasons, note: note || null })
+  },
+
+  /** Send back to the seller with notes; returns to pending when they edit it. */
+  async requestChanges(id: number, reasons: string[], note: string) {
+    await api.patch(`/admin/products/${id}/request-changes`, { reasons, note })
+  },
+
+  async setFeatured(id: number, featured: boolean) {
+    await api.patch(`/admin/products/${id}/featured`, { featured })
   },
 
   async disable(id: number) {

@@ -113,6 +113,13 @@ export default function SellersPage() {
     finally { setViewLoading(false) }
   }
 
+  // Deep link: /sellers?view={id} opens that seller's details (used by the product review page)
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('view'))
+    if (id) openView({ id } as Seller)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {}
     if (!editForm.name?.trim())  errors.name  = 'Name is required.'

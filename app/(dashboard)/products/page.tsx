@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import {
   Search, CheckCircle, XCircle, EyeOff, Trash2,
   Eye, X, Loader2, Edit2, RotateCcw, AlertTriangle,
@@ -10,6 +11,8 @@ import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
 import AdminEditProductModal from './AdminEditProductModal'
+import ModerationActionModal from './ModerationActionModal'
+import { STATUS_META } from './reviewUtils'
 import { productsApi, ProductUpdatePayload } from '@/lib/api/products'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
@@ -105,15 +108,12 @@ export default function ProductsPage() {
   const [page, setPage]                   = useState(1)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
-  const [viewProduct, setViewProduct]   = useState<AdminProduct | null>(null)
   const [toast, setToast]               = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [confirmModal, setConfirmModal] = useState<{ type: ActionType; product: AdminProduct } | null>(null)
 
   const [editProductId, setEditProductId] = useState<number | null>(null)
 
-  const [rejectModal,   setRejectModal]   = useState<{ product: AdminProduct } | null>(null)
-  const [rejectReason,  setRejectReason]  = useState('')
-  const [rejectLoading, setRejectLoading] = useState(false)
+  const [moderation, setModeration] = useState<{ mode: 'reject' | 'request_changes'; product: AdminProduct } | null>(null)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -138,15 +138,6 @@ export default function ProductsPage() {
   }, [fetchProducts])
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const openView = async (product: AdminProduct) => {
-    try {
-      const full: AdminProduct = await productsApi.get(product.id)
-      setViewProduct(full)
-    } catch {
-      setToast({ message: 'Failed to load product details.', type: 'error' })
-    }
-  }
-
   const handleAction = async () => {
     if (!confirmModal) return
     setActionLoading(confirmModal.product.id)
@@ -162,22 +153,6 @@ export default function ProductsPage() {
       setToast({ message: 'Action failed. Please try again.', type: 'error' })
     } finally {
       setActionLoading(null)
-    }
-  }
-
-  const handleReject = async () => {
-    if (!rejectModal) return
-    setRejectLoading(true)
-    try {
-      await productsApi.reject(rejectModal.product.id, rejectReason.trim() || undefined)
-      setRejectModal(null)
-      setRejectReason('')
-      setToast({ message: 'Product rejected.', type: 'success' })
-      fetchProducts()
-    } catch {
-      setToast({ message: 'Failed to reject product.', type: 'error' })
-    } finally {
-      setRejectLoading(false)
     }
   }
 
@@ -267,7 +242,9 @@ export default function ProductsPage() {
                 🗑 Deleted by Seller
               </span>
             ) : (
-              <Badge variant={s as 'pending' | 'approved' | 'disabled' | 'rejected'}>{s}</Badge>
+              <Badge variant={STATUS_META[s as keyof typeof STATUS_META]?.badge ?? 'info'}>
+                {STATUS_META[s as keyof typeof STATUS_META]?.label ?? s}
+              </Badge>
             )}
             {/* Truncated reason shown inline under badge when rejected */}
             {s === 'rejected' && row.rejection_reason && row.rejection_reason !== '__deleted_by_seller__' && (
@@ -306,13 +283,13 @@ export default function ProductsPage() {
           <div className="flex items-center gap-1.5">
 
             {/* View — always */}
-            <button
-              onClick={() => openView(row)}
+            <Link
+              href={`/products/${row.id}`}
               className="p-1.5 rounded-md text-text-muted hover:text-accent-purple-light hover:bg-accent-purple/10 transition-colors"
-              title="View details"
+              title="Review details"
             >
               <Eye size={15} />
-            </button>
+            </Link>
 
             {/* Edit — not for deleted_by_seller */}
             {s !== 'deleted_by_seller' && (
@@ -326,7 +303,7 @@ export default function ProductsPage() {
             )}
 
             {/* ── PENDING: approve or reject ── */}
-            {s === 'pending' && (
+            {(s === 'pending' || s === 'changes_requested') && (
               <>
                 <button
                   onClick={() => setConfirmModal({ type: 'approve', product: row })}
@@ -336,7 +313,7 @@ export default function ProductsPage() {
                   <CheckCircle size={15} />
                 </button>
                 <button
-                  onClick={() => { setRejectReason(''); setRejectModal({ product: row }) }}
+                  onClick={() => setModeration({ mode: 'reject', product: row })}
                   className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors"
                   title="Reject with reason"
                 >
@@ -487,8 +464,9 @@ export default function ProductsPage() {
             onChange={(e) => { setStatus(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
           >
-            <option value="">All</option>
+            <option value="all">All</option>
             <option value="pending">Pending</option>
+            <option value="changes_requested">Changes requested</option>
             <option value="rejected">Rejected</option>
             <option value="approved">Approved</option>
             <option value="disabled">Disabled</option>
@@ -534,113 +512,6 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ── View Modal ── */}
-      <Modal open={!!viewProduct} onClose={() => setViewProduct(null)} title="Product Details" size="lg">
-        {viewProduct && (
-          <div className="space-y-5">
-
-            {/* Deleted by seller warning inside view modal */}
-            {deriveStatus(viewProduct) === 'deleted_by_seller' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                borderRadius: 10, padding: '10px 14px',
-              }}>
-                <AlertTriangle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />
-                <p style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, margin: 0 }}>
-                  This product was deleted by the seller.
-                  {viewProduct.deleted_at && ` Deleted on ${format(new Date(viewProduct.deleted_at), 'MMM d, yyyy')}.`}
-                </p>
-              </div>
-            )}
-
-            {viewProduct.images?.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {viewProduct.images.map((img) => {
-                  const url = resolveImageUrl(img.url ?? img.image_path)
-                  return url ? (
-                    <div
-                      key={img.id}
-                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                        img.is_primary ? 'border-accent-purple' : 'border-border'
-                      }`}
-                    >
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ) : null
-                })}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                { label: 'Product ID', value: `#${viewProduct.id}` },
-                { label: 'Status',     value: deriveStatus(viewProduct) },
-                { label: 'Price',      value: formatCurrency(viewProduct.price) },
-                { label: 'Stock',      value: String(viewProduct.stock) },
-                { label: 'Category',   value: viewProduct.category?.name ?? '—' },
-                { label: 'Seller',     value: viewProduct.seller?.name   ?? '—' },
-                { label: 'Added',      value: format(new Date(viewProduct.created_at), 'MMM d, yyyy') },
-                { label: 'Featured',   value: viewProduct.featured ? 'Yes' : 'No' },
-              ] as { label: string; value: string }[]).map(({ label, value }) => (
-                <div key={label} className="p-3 bg-bg-primary rounded-lg border border-border">
-                  <p className="text-xs text-text-muted mb-0.5">{label}</p>
-                  <p className="text-sm font-medium text-text-primary">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Rejection reason — hide the internal sentinel value */}
-            {viewProduct.rejection_reason && viewProduct.rejection_reason !== '__deleted_by_seller__' && (
-              <div className="p-3 bg-accent-red/5 border border-accent-red/20 rounded-lg">
-                <p className="text-xs text-accent-red font-bold uppercase tracking-wider mb-1">
-                  Rejection Reason
-                </p>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {viewProduct.rejection_reason}
-                </p>
-              </div>
-            )}
-
-            {viewProduct.description && (
-              <div className="p-3 bg-bg-primary rounded-lg border border-border">
-                <p className="text-xs text-text-muted mb-1">Description</p>
-                <p className="text-sm text-text-secondary leading-relaxed">{viewProduct.description}</p>
-              </div>
-            )}
-
-            <div className="flex gap-3 justify-end pt-1">
-              <button
-                onClick={() => setViewProduct(null)}
-                className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm"
-              >
-                Close
-              </button>
-
-              {/* Restore button inside view modal for deleted products */}
-              {deriveStatus(viewProduct) === 'deleted_by_seller' && (
-                <button
-                  onClick={() => { setViewProduct(null); handleRestore(viewProduct) }}
-                  className="px-4 py-2 rounded-lg bg-accent-green hover:bg-accent-green/90 text-white text-sm font-medium flex items-center gap-2 transition-colors"
-                >
-                  <RotateCcw size={14} /> Restore Product
-                </button>
-              )}
-
-              {/* Edit button — only for non-deleted products */}
-              {deriveStatus(viewProduct) !== 'deleted_by_seller' && (
-                <button
-                  onClick={() => { setViewProduct(null); setEditProductId(viewProduct.id) }}
-                  className="px-4 py-2 rounded-lg bg-accent-red hover:bg-accent-red/90 text-white text-sm font-medium flex items-center gap-2 transition-colors"
-                >
-                  <Edit2 size={14} /> Edit Product
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
       {/* ── Confirm modal (approve / disable / delete / force_delete) ── */}
       <Modal
         open={!!confirmModal}
@@ -674,66 +545,18 @@ export default function ProductsPage() {
         </div>
       </Modal>
 
-      {/* ── Rejection Reason Modal ── */}
-      <Modal
-        open={!!rejectModal}
-        onClose={() => { setRejectModal(null); setRejectReason('') }}
-        title="Reject Product"
-        size="sm"
-      >
-        {rejectModal && (
-          <div className="space-y-4">
-            <p className="text-text-secondary text-sm">
-              Rejecting{' '}
-              <span className="font-semibold text-text-primary">
-                "{rejectModal.product.name}"
-              </span>
-              . The seller will be notified immediately.
-            </p>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1.5">
-                Rejection Reason
-                <span className="ml-1 font-normal normal-case text-text-muted">
-                  (optional but recommended)
-                </span>
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="e.g. Images are low quality, price is missing, description violates policy…"
-                rows={4}
-                maxLength={1000}
-                autoFocus
-                className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red focus:ring-1 focus:ring-accent-red/20 resize-none transition-colors"
-              />
-              <p className="text-[10px] text-text-muted mt-1 text-right">
-                {rejectReason.length}/1000
-              </p>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-1">
-              <button
-                onClick={() => { setRejectModal(null); setRejectReason('') }}
-                className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={rejectLoading}
-                className="px-4 py-2 rounded-lg bg-accent-red hover:bg-accent-red/90 text-white text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-60"
-              >
-                {rejectLoading ? (
-                  <><Loader2 size={13} className="animate-spin" /> Rejecting…</>
-                ) : (
-                  <><XCircle size={13} /> Reject Product</>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* ── Reject / request changes (reasons required) ── */}
+      <ModerationActionModal
+        open={!!moderation}
+        mode={moderation?.mode ?? 'reject'}
+        product={moderation?.product ?? null}
+        onClose={() => setModeration(null)}
+        onDone={(message) => {
+          setModeration(null)
+          setToast({ message, type: 'success' })
+          fetchProducts()
+        }}
+      />
 
       {/* ── Admin Edit Product Modal ── */}
       {editProductId !== null && (

@@ -47,7 +47,7 @@ export default function Header() {
     );
   }, []);
 
-  const title = pageTitles[pathname] ?? 'Admin Panel';
+  const title = pageTitles[pathname] ?? (/^\/products\/\d+$/.test(pathname) ? 'Product Review' : 'Admin Panel');
 
   return (
     <header
