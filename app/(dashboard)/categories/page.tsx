@@ -90,7 +90,7 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
 }) {
   const isEdit = !!initial
   const [form, setForm] = useState<CategoryPayload>({
-    name: initial?.name ?? '', name_ar: initial?.name_ar ?? '',
+    name: initial?.name ?? '', name_fr: initial?.name_fr ?? '', name_ar: initial?.name_ar ?? '',
     description: initial?.description ?? '', icon: initial?.icon ?? '',
     is_active: initial?.is_active ?? true, order: initial?.order ?? 0,
   })
@@ -114,6 +114,7 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
       <form onSubmit={handleSubmit}>
         {error && <div className="flex items-center gap-2 bg-accent-red/10 border border-accent-red/25 rounded-xl px-3 py-2.5 text-xs text-accent-red mb-4"><AlertCircle size={12} /> {error}</div>}
         <Field label="Name (EN) *"><input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Electronics" className={inputCls} /></Field>
+        <Field label="Name (FR)"><input value={form.name_fr ?? ''} onChange={e => set('name_fr', e.target.value)} placeholder="e.g. Électronique" className={inputCls} /></Field>
         <Field label="Name (AR)"><input value={form.name_ar ?? ''} onChange={e => set('name_ar', e.target.value)} placeholder="e.g. إلكترونيات" className={inputCls} style={{ direction: 'rtl' }} /></Field>
         <Field label="Description"><textarea value={form.description ?? ''} onChange={e => set('description', e.target.value)} rows={3} placeholder="Short description…" className={`${inputCls} resize-none`} /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -151,7 +152,7 @@ function SubcategoryFormModal({ initial, categories, defaultCategoryId, onClose,
   const isEdit = !!initial
   const [form, setForm] = useState<SubcategoryPayload>({
     category_id: initial?.category_id ?? defaultCategoryId ?? (categories[0]?.id ?? 0),
-    name: initial?.name ?? '', name_ar: initial?.name_ar ?? '',
+    name: initial?.name ?? '', name_fr: initial?.name_fr ?? '', name_ar: initial?.name_ar ?? '',
     icon: initial?.icon ?? '', is_active: initial?.is_active ?? true, order: initial?.order ?? 0,
   })
   const [saving, setSaving] = useState(false)
@@ -181,6 +182,7 @@ function SubcategoryFormModal({ initial, categories, defaultCategoryId, onClose,
           </select>
         </Field>
         <Field label="Name (EN) *"><input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Smartphones" className={inputCls} /></Field>
+        <Field label="Name (FR)"><input value={form.name_fr ?? ''} onChange={e => set('name_fr', e.target.value)} placeholder="e.g. Smartphones" className={inputCls} /></Field>
         <Field label="Name (AR)"><input value={form.name_ar ?? ''} onChange={e => set('name_ar', e.target.value)} placeholder="e.g. هواتف ذكية" className={inputCls} style={{ direction: 'rtl' }} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Icon (emoji)"><input value={form.icon ?? ''} onChange={e => set('icon', e.target.value)} placeholder="📱" className={inputCls} /></Field>
@@ -235,7 +237,11 @@ function NewAttributeModal({ onClose, onCreated }: {
     <Modal title="Create New Attribute" onClose={onClose} size="sm">
       <form onSubmit={handleSubmit}>
         {error && <div className="flex items-center gap-2 bg-accent-red/10 border border-accent-red/25 rounded-xl px-3 py-2.5 text-xs text-accent-red mb-4"><AlertCircle size={12} /> {error}</div>}
-        <Field label="Name *"><input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Size, Color, Material" className={inputCls} /></Field>
+        <Field label="Name (EN) *"><input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Size, Color, Material" className={inputCls} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Name (FR)"><input value={form.name_fr ?? ''} onChange={e => set('name_fr', e.target.value)} placeholder="e.g. Taille" className={inputCls} /></Field>
+          <Field label="Name (AR)"><input value={form.name_ar ?? ''} onChange={e => set('name_ar', e.target.value)} placeholder="e.g. المقاس" className={inputCls} style={{ direction: 'rtl' }} /></Field>
+        </div>
         <Field label="Type">
           <select value={form.type} onChange={e => set('type', e.target.value as any)} className={inputCls}>
             <option value="select">Select (single choice)</option>
@@ -254,6 +260,79 @@ function NewAttributeModal({ onClose, onCreated }: {
           </button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// ─── Attribute translations (FR / AR) ─────────────────────────────────────────
+// English stays the base value; the storefront shows FR / AR when the shopper picks
+// that language (empty FR/AR fields fall back to French, then English).
+
+function AttributeTranslationsModal({ attr, onClose, onSaved }: {
+  attr: SubcategoryAttribute; onClose: () => void; onSaved: () => void
+}) {
+  const [name, setName] = useState({ fr: attr.name_fr ?? '', ar: attr.name_ar ?? '' })
+  const [opts, setOpts] = useState<Record<number, { fr: string; ar: string }>>(
+    () => Object.fromEntries(attr.options.map(o => [o.id, { fr: o.value_fr ?? '', ar: o.value_ar ?? '' }]))
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const setOpt = (id: number, k: 'fr' | 'ar', v: string) =>
+    setOpts(prev => ({ ...prev, [id]: { ...prev[id], [k]: v } }))
+
+  const handleSave = async () => {
+    setSaving(true); setError('')
+    try {
+      const calls: Promise<unknown>[] = []
+      if (name.fr !== (attr.name_fr ?? '') || name.ar !== (attr.name_ar ?? '')) {
+        calls.push(adminAttributesApi.update(attr.id, { name_fr: name.fr, name_ar: name.ar }))
+      }
+      for (const o of attr.options) {
+        const t = opts[o.id]
+        if (t && (t.fr !== (o.value_fr ?? '') || t.ar !== (o.value_ar ?? ''))) {
+          calls.push(adminAttributesApi.updateOption(attr.id, o.id, { value_fr: t.fr, value_ar: t.ar }))
+        }
+      }
+      await Promise.all(calls)
+      onSaved()
+    } catch (err: any) { setError(err?.response?.data?.message ?? 'Failed to save translations.') }
+    finally { setSaving(false) }
+  }
+
+  const cell = 'w-full bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red transition-colors'
+
+  return (
+    <Modal title={`Translations — ${attr.name}`} onClose={onClose} size="md">
+      {error && <div className="flex items-center gap-2 bg-accent-red/10 border border-accent-red/25 rounded-xl px-3 py-2.5 text-xs text-accent-red mb-4"><AlertCircle size={12} /> {error}</div>}
+      <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1.5">
+        <span>English (base)</span><span>Français</span><span>العربية</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 items-center pb-3 mb-3 border-b border-border">
+        <span className="text-xs font-bold text-text-primary">{attr.name}</span>
+        <input value={name.fr} onChange={e => setName(n => ({ ...n, fr: e.target.value }))} placeholder="Nom" className={cell} />
+        <input value={name.ar} onChange={e => setName(n => ({ ...n, ar: e.target.value }))} placeholder="الاسم" dir="rtl" className={cell} />
+      </div>
+      <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
+        {attr.options.map(o => (
+          <div key={o.id} className="grid grid-cols-3 gap-2 items-center">
+            <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+              {attr.type === 'color' && o.color_hex && <span className="w-3 h-3 rounded-full border border-border flex-shrink-0" style={{ background: o.color_hex }} />}
+              {o.value}
+            </span>
+            <input value={opts[o.id]?.fr ?? ''} onChange={e => setOpt(o.id, 'fr', e.target.value)} placeholder={o.value} className={cell} />
+            <input value={opts[o.id]?.ar ?? ''} onChange={e => setOpt(o.id, 'ar', e.target.value)} placeholder={o.value} dir="rtl" className={cell} />
+          </div>
+        ))}
+        {attr.options.length === 0 && <p className="text-[11px] text-text-muted italic">No values yet.</p>}
+      </div>
+      <div className="flex gap-3 mt-5">
+        <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:bg-bg-hover transition-colors">Cancel</button>
+        <button type="button" onClick={handleSave} disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
+          {saving && <Loader2 size={13} className="animate-spin" />}
+          Save translations
+        </button>
+      </div>
     </Modal>
   )
 }
@@ -281,6 +360,9 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
   // Option management
   const [addingOptionFor,  setAddingOptionFor]  = useState<number | null>(null)
   const [newOptionValue,   setNewOptionValue]   = useState('')
+  const [newOptionFr,      setNewOptionFr]      = useState('')
+  const [newOptionAr,      setNewOptionAr]      = useState('')
+  const [translating,      setTranslating]      = useState<SubcategoryAttribute | null>(null)
   const [newOptionHex,     setNewOptionHex]     = useState('#000000')
   const [savingOption,     setSavingOption]      = useState(false)
   const [removingId,       setRemovingId]        = useState<number | null>(null)
@@ -346,10 +428,14 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
     try {
       await adminAttributesApi.addOption(attr.id, {
         value:     newOptionValue.trim(),
+        value_fr:  newOptionFr.trim() || undefined,
+        value_ar:  newOptionAr.trim() || undefined,
         color_hex: attr.type === 'color' ? newOptionHex : undefined,
         order:     attr.options.length,
       })
       setNewOptionValue('')
+      setNewOptionFr('')
+      setNewOptionAr('')
       setNewOptionHex('#000000')
       setAddingOptionFor(null)
       load()
@@ -515,12 +601,20 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
                           <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
                             Values ({attr.options.length})
                           </span>
-                          <button
-                            onClick={() => setAddingOptionFor(addingOptionFor === attr.id ? null : attr.id)}
-                            className="flex items-center gap-1 text-[10px] font-bold text-accent-red hover:opacity-80 transition-opacity"
-                          >
-                            <Plus size={10} /> Add value
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setTranslating(attr)}
+                              className="flex items-center gap-1 text-[10px] font-bold text-text-muted hover:text-text-primary transition-colors"
+                            >
+                              🌐 Translations
+                            </button>
+                            <button
+                              onClick={() => setAddingOptionFor(addingOptionFor === attr.id ? null : attr.id)}
+                              className="flex items-center gap-1 text-[10px] font-bold text-accent-red hover:opacity-80 transition-opacity"
+                            >
+                              <Plus size={10} /> Add value
+                            </button>
+                          </div>
                         </div>
 
                         {/* Existing options */}
@@ -557,8 +651,21 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
                               value={newOptionValue}
                               onChange={e => setNewOptionValue(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddOption(attr))}
-                              placeholder={attr.type === 'color' ? 'e.g. Red' : 'e.g. XL'}
-                              className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red transition-colors"
+                              placeholder={attr.type === 'color' ? 'EN: Red' : 'EN: XL'}
+                              className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red transition-colors"
+                            />
+                            <input
+                              value={newOptionFr}
+                              onChange={e => setNewOptionFr(e.target.value)}
+                              placeholder={attr.type === 'color' ? 'FR: Rouge' : 'FR (optional)'}
+                              className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red transition-colors"
+                            />
+                            <input
+                              value={newOptionAr}
+                              onChange={e => setNewOptionAr(e.target.value)}
+                              placeholder={attr.type === 'color' ? 'AR: أحمر' : 'AR (optional)'}
+                              dir="rtl"
+                              className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-red transition-colors"
                             />
                             <button onClick={() => handleAddOption(attr)} disabled={savingOption || !newOptionValue.trim()}
                               className="px-3 py-1.5 bg-accent-red hover:bg-accent-red/90 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1">
@@ -580,6 +687,15 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
           </div>
         </div>
       </div>
+
+      {/* Attribute / value translations (above drawer) */}
+      {translating && (
+        <AttributeTranslationsModal
+          attr={translating}
+          onClose={() => setTranslating(null)}
+          onSaved={() => { setTranslating(null); load() }}
+        />
+      )}
 
       {/* New Attribute Modal (above drawer) */}
       {showNewAttr && (

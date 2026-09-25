@@ -9,6 +9,7 @@ export interface Category {
   id: number
   name: string
   name_ar: string | null
+  name_fr: string | null
   slug: string
   description: string | null
   icon: string | null
@@ -27,6 +28,7 @@ export interface Subcategory {
   category_id: number
   name: string
   name_ar: string | null
+  name_fr: string | null
   slug: string
   icon: string | null
   is_active: boolean
@@ -42,6 +44,7 @@ export interface AttributeOption {
   attribute_id: number
   value: string
   value_ar: string | null
+  value_fr: string | null
   color_hex: string | null
   order: number
 }
@@ -50,6 +53,7 @@ export interface Attribute {
   id: number
   name: string
   name_ar: string | null
+  name_fr: string | null
   slug: string
   type: 'select' | 'multiselect' | 'text' | 'number' | 'boolean' | 'color'
   is_filterable: boolean
@@ -67,6 +71,7 @@ export interface SubcategoryAttribute extends Attribute {
 export interface CategoryPayload {
   name: string
   name_ar?: string
+  name_fr?: string
   description?: string
   icon?: string
   image?: string
@@ -78,6 +83,7 @@ export interface SubcategoryPayload {
   category_id: number
   name: string
   name_ar?: string
+  name_fr?: string
   icon?: string
   is_active?: boolean
   order?: number
@@ -86,6 +92,7 @@ export interface SubcategoryPayload {
 export interface AttributePayload {
   name: string
   name_ar?: string
+  name_fr?: string
   type: Attribute['type']
   is_filterable?: boolean
   is_visible?: boolean
@@ -95,6 +102,7 @@ export interface AttributePayload {
 export interface AttributeOptionPayload {
   value: string
   value_ar?: string
+  value_fr?: string
   color_hex?: string
   order?: number
 }
