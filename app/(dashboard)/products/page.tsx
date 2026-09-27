@@ -4,16 +4,15 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Search, CheckCircle, XCircle, EyeOff, Trash2,
-  Eye, X, Loader2, Edit2, RotateCcw, AlertTriangle,
+  Eye, X, Loader2, Edit2, RotateCcw, AlertTriangle, UserCog,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
-import AdminEditProductModal from './AdminEditProductModal'
 import ModerationActionModal from './ModerationActionModal'
 import { STATUS_META } from './reviewUtils'
-import { productsApi, ProductUpdatePayload } from '@/lib/api/products'
+import { productsApi } from '@/lib/api/products'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
@@ -47,6 +46,7 @@ interface AdminProduct {
   deleted_at?: string | null
   primary_image_url: string | null
   rejection_reason?: string | null
+  admin_edited_at?: string | null
   seller: { id: number; name: string; email: string } | null
   category: { id: number; name: string } | null
   images: ProductImage[]
@@ -110,8 +110,6 @@ export default function ProductsPage() {
 
   const [toast, setToast]               = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [confirmModal, setConfirmModal] = useState<{ type: ActionType; product: AdminProduct } | null>(null)
-
-  const [editProductId, setEditProductId] = useState<number | null>(null)
 
   const [moderation, setModeration] = useState<{ mode: 'reject' | 'request_changes'; product: AdminProduct } | null>(null)
 
@@ -195,7 +193,17 @@ export default function ProductsPage() {
           </div>
           <div>
             <p className="font-medium text-text-primary">{row.name}</p>
-            <p className="text-xs text-text-muted">{row.category?.name ?? 'Uncategorized'}</p>
+            <p className="text-xs text-text-muted flex items-center gap-1.5">
+              {row.category?.name ?? 'Uncategorized'}
+              {row.admin_edited_at && (
+                <span
+                  title={`Edited by an admin on ${format(new Date(row.admin_edited_at), 'MMM d, yyyy HH:mm')}`}
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#db142e]/10 text-[#f87171] border border-[#db142e]/30"
+                >
+                  <UserCog size={9} /> Edited by admin
+                </span>
+              )}
+            </p>
           </div>
         </div>
       ),
@@ -291,15 +299,18 @@ export default function ProductsPage() {
               <Eye size={15} />
             </Link>
 
-            {/* Edit — not for deleted_by_seller */}
+            {/* Edit — full editor; not for deleted_by_seller */}
             {s !== 'deleted_by_seller' && (
-              <button
-                onClick={() => setEditProductId(row.id)}
-                className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors"
+              <Link
+                href={`/products/${row.id}/edit`}
+                className={(s === 'pending' || s === 'changes_requested')
+                  ? 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold text-[#f87171] border border-[#db142e]/40 hover:bg-[#db142e]/10 transition-colors'
+                  : 'p-1.5 rounded-md text-text-muted hover:text-[#f87171] hover:bg-[#db142e]/10 transition-colors'}
                 title="Edit product"
               >
-                <Edit2 size={15} />
-              </button>
+                <Edit2 size={(s === 'pending' || s === 'changes_requested') ? 12 : 15} />
+                {(s === 'pending' || s === 'changes_requested') && 'Edit'}
+              </Link>
             )}
 
             {/* ── PENDING: approve or reject ── */}
@@ -557,19 +568,6 @@ export default function ProductsPage() {
           fetchProducts()
         }}
       />
-
-      {/* ── Admin Edit Product Modal ── */}
-      {editProductId !== null && (
-        <AdminEditProductModal
-          productId={editProductId}
-          onClose={() => setEditProductId(null)}
-          onSaved={() => {
-            setEditProductId(null)
-            setToast({ message: 'Product updated successfully.', type: 'success' })
-            fetchProducts()
-          }}
-        />
-      )}
 
     </div>
   )

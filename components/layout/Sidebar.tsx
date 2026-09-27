@@ -16,11 +16,11 @@ import {
   ChevronRight,
   FileText,
   AlertTriangle,
-  FileEdit,
   Tag,
   Crown,
   Star,
   CreditCard,
+  History,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -42,7 +42,7 @@ const navItems = [
   { href: '/seller-applications', label: 'Applications', icon: FileText        },
 
   { href: '/products',            label: 'Products',     icon: Package         },
-  { href: '/product-update-requests', label: 'Update Requests', icon: FileEdit },
+  { href: '/product-changes',     label: 'Product Changes', icon: History },
 
   { href: '/packs',                   label: 'Packs',           icon: Package2        },
 

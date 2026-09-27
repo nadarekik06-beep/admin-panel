@@ -14,6 +14,13 @@ function fmt(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
 
+// Every order has a real agency shipping cost; this is who covered it.
+const SHIPPING_PAYER: Record<string, { label: string; color: string }> = {
+  customer: { label: 'Customer', color: '#3b82f6' },
+  seller:   { label: 'Seller (free shipping)', color: '#f59e0b' },
+  platform: { label: 'Platform', color: '#ef4444' },
+}
+
 const PAYOUT_COLORS: Record<string, string> = {
   pending:   '#f59e0b',
   ready:     '#3b82f6',
@@ -472,9 +479,15 @@ export default function FinancePage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <KpiCard label="Gross Revenue"   value={fmt(overview.kpis.gross_revenue)}         color="#94a3b8" icon={DollarSign}  />
-                <KpiCard label="Platform Profit" value={fmt(overview.kpis.total_platform_profit)} color="#10b981" icon={TrendingUp}  />
+                <KpiCard label="Platform Profit" value={fmt(overview.kpis.total_platform_profit)} color="#10b981" icon={TrendingUp}
+                  sub="Commission + shipping collected − paid to agency" />
                 <KpiCard label="Commissions"     value={fmt(overview.kpis.total_commission)}      color="#db142e" icon={TrendingDown} />
-                <KpiCard label="Delivery Fees"   value={fmt(overview.kpis.total_delivery_fees)}   color="#3b82f6" icon={Package}      />
+                <KpiCard label="Shipping · Customers" value={fmt(overview.kpis.total_delivery_fees)} color="#3b82f6" icon={Package}
+                  sub="Delivery fees paid at checkout" />
+                <KpiCard label="Shipping · Sellers" value={fmt(overview.kpis.total_seller_shipping ?? 0)} color="#f59e0b" icon={Package}
+                  sub="Free-shipping orders, deducted from payouts" />
+                <KpiCard label="Paid to Agency"  value={fmt(overview.kpis.total_shipping_cost ?? 0)} color="#ef4444" icon={TrendingDown}
+                  sub={`Net shipping: ${fmt(Number(overview.kpis.total_delivery_fees ?? 0) + Number(overview.kpis.total_seller_shipping ?? 0) - Number(overview.kpis.total_shipping_cost ?? 0))}`} />
                 <KpiCard label="Seller Payouts"  value={fmt(overview.kpis.total_seller_payouts)}  color="#a78bfa" icon={DollarSign}  />
                 <KpiCard label="Orders"          value={String(overview.kpis.orders_count)}       color="#f59e0b" icon={Package}      />
               </div>
@@ -525,7 +538,9 @@ export default function FinancePage() {
                           <th style={th(true)}>Orders</th>
                           <th style={th(true)}>Gross</th>
                           <th style={th(true)}>Commission</th>
-                          <th style={th(true)}>Delivery Fees</th>
+                          <th style={th(true)}>Shipping · Customers</th>
+                          <th style={th(true)}>Shipping · Sellers</th>
+                          <th style={th(true)}>Paid to Agency</th>
                           <th style={th(true)}>Platform Profit</th>
                           <th style={th(true)}>Seller Payouts</th>
                         </tr>
@@ -540,6 +555,8 @@ export default function FinancePage() {
                             <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.gross)}</td>
                             <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.commission)}</td>
                             <td style={{ ...td(true), color: '#3b82f6', fontWeight: 700 }}>{fmt(row.delivery_fees)}</td>
+                            <td style={{ ...td(true), color: '#f59e0b', fontWeight: 700 }}>{fmt(row.seller_shipping ?? 0)}</td>
+                            <td style={{ ...td(true), color: '#ef4444', fontWeight: 700 }}>−{fmt(row.shipping_cost ?? 0)}</td>
                             <td style={{ ...td(true), color: '#10b981', fontWeight: 800 }}>{fmt(row.platform_profit)}</td>
                             <td style={{ ...td(true), color: '#a78bfa', fontWeight: 700 }}>{fmt(row.seller_payouts)}</td>
                           </tr>
@@ -590,7 +607,7 @@ export default function FinancePage() {
                         <th style={th()}>Seller</th>
                         <th style={th(true)}>Gross</th>
                         <th style={th(true)}>Commission</th>
-                        <th style={th(true)}>Delivery Fee</th>
+                        <th style={th(true)}>Shipping</th>
                         <th style={th(true)}>Platform</th>
                         <th style={th(true)}>Seller Net</th>
                         <th style={th(true)}>Payout</th>
@@ -610,9 +627,29 @@ export default function FinancePage() {
                           </td>
                           <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.subtotal)}</td>
                           <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.commission_amount)}</td>
-                          <td style={{ ...td(true), color: '#3b82f6' }}>{fmt(row.delivery_fee)}</td>
+                          <td style={{ ...td(true) }}>
+                            {Number(row.shipping_cost ?? 0) > 0 ? (() => {
+                              const payer = SHIPPING_PAYER[row.shipping_paid_by] ?? SHIPPING_PAYER.customer
+                              const collected = Number(row.delivery_fee ?? 0) + Number(row.seller_shipping_charge ?? 0)
+                              return (
+                                <>
+                                  <p style={{ margin: 0, color: '#ef4444', fontWeight: 700 }}>−{fmt(row.shipping_cost)} agency</p>
+                                  <p style={{ margin: 0, fontSize: 10, color: payer.color, fontWeight: 700 }}>
+                                    {payer.label}{collected > 0 ? ` +${fmt(collected)}` : ''}
+                                  </p>
+                                </>
+                              )
+                            })() : Number(row.delivery_fee ?? 0) > 0
+                              ? <span style={{ color: '#3b82f6' }}>{fmt(row.delivery_fee)}</span>
+                              : <span style={{ color: '#475569' }}>—</span>}
+                          </td>
                           <td style={{ ...td(true), color: '#10b981', fontWeight: 700 }}>{fmt(row.platform_profit)}</td>
-                          <td style={{ ...td(true), color: '#a78bfa', fontWeight: 800 }}>{fmt(row.seller_net_amount)}</td>
+                          <td style={{ ...td(true), color: '#a78bfa', fontWeight: 800 }}>
+                            {fmt(row.seller_net_amount)}
+                            {Number(row.seller_shipping_charge ?? 0) > 0 && (
+                              <p style={{ margin: 0, fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>after −{fmt(row.seller_shipping_charge)} shipping</p>
+                            )}
+                          </td>
                           <td style={{ ...td(true) }}><PayoutBadge status={row.payout_status} /></td>
                           <td style={{ ...td(true) }}>
                             {row.payout_status === 'pending' && row.status === 'delivered' && (
@@ -650,6 +687,7 @@ export default function FinancePage() {
                       <th style={th(true)}>Orders</th>
                       <th style={th(true)}>Gross Revenue</th>
                       <th style={th(true)}>Commission</th>
+                      <th style={th(true)}>Shipping (paid by seller)</th>
                       <th style={th(true)}>Total Net</th>
                       <th style={th(true)}>Paid Out</th>
                       <th style={th(true)}>Pending</th>
@@ -668,6 +706,7 @@ export default function FinancePage() {
                         <td style={{ ...td(true), color: '#94a3b8' }}>{row.orders_count}</td>
                         <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.gross_revenue)}</td>
                         <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.total_commission)}</td>
+                        <td style={{ ...td(true), color: '#f59e0b', fontWeight: 700 }}>{Number(row.total_shipping ?? 0) > 0 ? `−${fmt(row.total_shipping)}` : '—'}</td>
                         <td style={{ ...td(true), color: '#a78bfa', fontWeight: 800 }}>{fmt(row.total_net)}</td>
                         <td style={{ ...td(true), color: '#10b981', fontWeight: 700 }}>{fmt(row.total_paid_out)}</td>
                         <td style={{ ...td(true), color: '#f59e0b' }}>{fmt(row.pending_payout)}</td>

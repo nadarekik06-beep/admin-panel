@@ -8,7 +8,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import {
   Bell, CheckCheck, RefreshCw,
   PackagePlus, PackageCheck, PackageX,
-  CheckCircle, XCircle, Store, Package,
+  CheckCircle, XCircle, Store, Package, AlertTriangle,
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/Usenotifications';
 import type { AppNotification } from '@/lib/Notificationapi';
@@ -41,6 +41,7 @@ function NotifIcon({ icon }: { icon: string }) {
     'check-circle':  <CheckCircle  className={cls} />,
     'x-circle':      <XCircle      className={cls} />,
     'store':         <Store        className={cls} />,
+    'alert-triangle': <AlertTriangle className={cls} />,
   };
   return <>{map[icon] ?? <Package className={cls} />}</>;
 }

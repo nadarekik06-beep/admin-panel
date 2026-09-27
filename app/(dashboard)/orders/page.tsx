@@ -62,6 +62,17 @@ interface CommissionSummaryData {
   net_total?: number
   total_commission: number
   total_seller: number
+  // Shipping: the agency bills every order; free shipping = the seller pays it
+  shipping_cost?: number | null
+  shipping_paid_by?: 'customer' | 'seller' | 'platform' | null
+  seller_shipping?: number
+  total_seller_net?: number
+}
+
+const SHIPPING_PAYER_LABEL: Record<string, string> = {
+  customer: 'Paid by customer',
+  seller:   'Paid by seller (free shipping)',
+  platform: 'Absorbed by platform',
 }
 
 // ─── Status config ─────────────────────────────────────────────────────────────
@@ -675,6 +686,10 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
   if (!hasData) return null
 
   const commissionPct = effectiveGross > 0 ? ((totalCommission / effectiveGross) * 100).toFixed(1) : '0'
+  const shippingCost   = Number(commissionSummary?.shipping_cost ?? 0)
+  const sellerShipping = Number(commissionSummary?.seller_shipping ?? 0)
+  const sellerNet      = commissionSummary?.total_seller_net ?? totalSeller - sellerShipping
+  const payer          = commissionSummary?.shipping_paid_by ?? null
 
   return (
     <div style={{
@@ -702,7 +717,7 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
           ADMIN EARNS {commissionPct}%
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${shippingCost > 0 ? 4 : 3}, 1fr)` }}>
         <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Item Sales</p>
           <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0 }}>{formatCurrency(effectiveGross)}</p>
@@ -717,10 +732,21 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
           <p style={{ fontSize: 15, fontWeight: 900, color: '#db142e', margin: 0 }}>{formatCurrency(totalCommission)}</p>
           <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Admin income ✓</p>
         </div>
+        {shippingCost > 0 && (
+          <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)', background: 'rgba(245,158,11,0.03)' }}>
+            <p style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+              {sellerShipping > 0 ? 'Shipping (paid by seller)' : 'Shipping → Agency'}
+            </p>
+            <p style={{ fontSize: 15, fontWeight: 900, color: '#f59e0b', margin: 0 }}>−{formatCurrency(sellerShipping > 0 ? sellerShipping : shippingCost)}</p>
+            <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>{payer ? SHIPPING_PAYER_LABEL[payer] : 'Delivery agency'}</p>
+          </div>
+        )}
         <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.03)' }}>
           <p style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Seller Gets</p>
-          <p style={{ fontSize: 15, fontWeight: 900, color: '#10b981', margin: 0 }}>{formatCurrency(totalSeller)}</p>
-          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>Paid to sellers</p>
+          <p style={{ fontSize: 15, fontWeight: 900, color: '#10b981', margin: 0 }}>{formatCurrency(sellerNet)}</p>
+          <p style={{ fontSize: 9, color: '#475569', margin: '2px 0 0' }}>
+            {sellerShipping > 0 ? `${formatCurrency(totalSeller)} − ${formatCurrency(sellerShipping)} shipping` : 'Paid to sellers'}
+          </p>
         </div>
       </div>
     </div>
@@ -1026,6 +1052,11 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                             <td colSpan={4} style={{ padding: '4px 12px 8px', textAlign: 'right', fontWeight: 700, color: '#64748b', fontSize: 12 }}>Shipping</td>
                             <td style={{ padding: '4px 12px 8px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>
                               {Number(detail.shipping_fee ?? 0) > 0 ? formatCurrency(Number(detail.shipping_fee)) : 'Free'}
+                              {Number(detail.shipping_fee ?? 0) === 0 && Number((detail as any).commission_summary?.seller_shipping ?? 0) > 0 && (
+                                <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 700, color: '#f59e0b' }}>
+                                  Seller pays {formatCurrency(Number((detail as any).commission_summary.seller_shipping))} to agency
+                                </p>
+                              )}
                             </td>
                           </tr>
                         </>

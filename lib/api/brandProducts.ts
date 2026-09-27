@@ -6,7 +6,6 @@
  *
  * buildFormData mirrors sellerApi.ts exactly, adding:
  *   - featured field
- *   - variant_images (keyed by variant DB id, for edit mode)
  *   - color_images   (keyed by groupKey with | replaced by _ for PHP multipart)
  */
 
@@ -83,14 +82,12 @@ export interface BrandProductPayload {
   variants?: VariantPayload[]
   /** color_images[groupKey][j] — groupKey is sorted color option IDs joined by "|" */
   color_images?: Record<string, File[]>
-  /** variant_images[variantId][j] — new images for existing variants in edit mode */
-  variant_images?: Record<number, File[]>
   [key: string]: any
 }
 
 // ─── FormData builder ─────────────────────────────────────────────────────────
 // Mirrors sellerApi.ts buildFormData exactly.
-// Extra fields: featured, variant_images.
+// Extra fields: featured.
 
 export function buildFormData(payload: BrandProductPayload, isUpdate = false): FormData {
   const fd = new FormData()
@@ -155,17 +152,6 @@ export function buildFormData(payload: BrandProductPayload, isUpdate = false): F
       if (!Array.isArray(files)) return
       const safeKey = groupKey.replace(/\|/g, '_')
       files.forEach((file, j) => fd.append(`color_images[${safeKey}][${j}]`, file))
-    })
-  }
-
-  // Variant-level images (edit mode only): variant_images[variantId][j]
-  // Backend saveVariantImages() reads this key to attach images to specific variants.
-  if (payload.variant_images) {
-    Object.entries(payload.variant_images).forEach(([variantId, files]) => {
-      if (!Array.isArray(files)) return
-      files.forEach((file, j) =>
-        fd.append(`variant_images[${variantId}][${j}]`, file)
-      )
     })
   }
 

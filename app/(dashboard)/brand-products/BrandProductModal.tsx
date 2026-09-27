@@ -7,7 +7,6 @@
  * Uses the EXACT SAME seller components:
  *   - VariantBuilder  (color groups, multi-select, Step 1 + Step 2)
  *   - ColorGroupImageUploader  (one zone per color group)
- *   - VariantImageManager  (edit mode: existing images + upload)
  *   - DynamicAttributeSection  (informational attributes)
  *
  * KEY DIFFERENCES from seller modal:
@@ -25,7 +24,6 @@ import VariantBuilder, {
   type VariantRow, normalizeVariantRow, calculateTotalStock, validateVariantStocks,
 } from '@/components/VariantBuilder'
 import ColorGroupImageUploader from '@/components/ColorGroupImageUploader'
-import VariantImageManager, { type VariantForImageManager } from '@/components/VariantImageManager'
 import DynamicAttributeSection from '@/components/attributes/DynamicAttributeSection'
 import type { Attribute, AttributeValues } from '@/components/types'
 
@@ -153,9 +151,6 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
   )
   const [colorGroupImages,  setColorGroupImages]  = useState<Record<string, File[]>>({})
   const [variantStockErrors,setVariantStockErrors]= useState<Record<number, string>>({})
-  const [variantImageChanges, setVariantImageChanges] = useState<{
-    newImagesByVariantId: Record<number, File[]>; deleteImageIds: number[]
-  }>({ newImagesByVariantId: {}, deleteImageIds: [] })
 
   const hasVariantRows    = variantRows.length > 0
   const variantTotalStock = useMemo(() => calculateTotalStock(variantRows), [variantRows])
@@ -163,33 +158,6 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
   useEffect(() => {
     if (hasVariantRows) setForm(f => ({ ...f, stock: String(variantTotalStock) }))
   }, [variantTotalStock, hasVariantRows])
-
-  // Build VariantForImageManager for edit mode
-  const variantsForImageManager = useMemo((): VariantForImageManager[] => {
-    if (!isEdit) return []
-    const serverVariants = ((p as any)?.variant_rows ?? []) as any[]
-    if (serverVariants.length === 0) return []
-    const imagesByVariantId: Record<number, Array<{ id: number; url: string; is_primary?: boolean }>> = {}
-    if ((p as any)?.images) {
-      for (const img of (p as any).images) {
-        if (img.variant_id != null) {
-          const url = resolveUrl(img.url ?? img.image_path)
-          if (!url) continue
-          if (!imagesByVariantId[img.variant_id]) imagesByVariantId[img.variant_id] = []
-          imagesByVariantId[img.variant_id].push({ id: img.id, url, is_primary: img.is_primary })
-        }
-      }
-    }
-    return serverVariants.filter((v: any) => v.id != null).map((v: any) => ({
-      id:              v.id,
-      label:           v.label ?? '',
-      option_map:      v.option_map,
-      image_urls:      v.image_urls ?? [],
-      existing_images: imagesByVariantId[v.id] ?? [],
-    }))
-  }, [isEdit, p])
-
-  const showVariantImageManager = isEdit && variantsForImageManager.length > 0
 
   // Categories / subcategories / attributes
   const [categories,    setCategories]    = useState<Category[]>([])
@@ -340,7 +308,7 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
           }))
         : undefined
 
-      const allDeletedIds = [...deletedImageIds, ...variantImageChanges.deleteImageIds]
+      const allDeletedIds = [...deletedImageIds]
 
       const payload = {
         name:              form.name.trim(),
@@ -359,8 +327,6 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
         variants:          validVariants,
         attributes:        Object.keys(serializedAttrs).length ? serializedAttrs : undefined,
         color_images:      Object.keys(colorGroupImages).length ? colorGroupImages : undefined,
-        variant_images:    Object.keys(variantImageChanges.newImagesByVariantId).length
-                             ? variantImageChanges.newImagesByVariantId : undefined,
       }
 
       if (isEdit) {
@@ -564,21 +530,10 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
             </section>
           )}
 
-          {/* ── Variant Image Manager (edit mode) ── */}
-          {showVariantImageManager && (
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <VariantImageManager
-                variants={variantsForImageManager}
-                onChange={setVariantImageChanges}
-                disabled={saving}
-              />
-            </section>
-          )}
-
           {/* ── Product-level Images ──
               Show when: no variant rows (simple product), or edit with existing product-level images
           ── */}
-          {(!hasVariantRows || (isEdit && existingImages.length > 0)) && !showVariantImageManager && (
+          {(!hasVariantRows || (isEdit && existingImages.length > 0)) && (
             <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: `1px solid ${border}` }}>
                 <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted, margin: 0 }}>Images</p>

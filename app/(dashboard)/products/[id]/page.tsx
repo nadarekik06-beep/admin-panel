@@ -12,7 +12,6 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { productsApi } from '@/lib/api/products'
 import type { ProductReview } from '@/types/productReview'
-import AdminEditProductModal from '../AdminEditProductModal'
 import ModerationActionModal from '../ModerationActionModal'
 import { STATUS_META, apiErrorMessage } from '../reviewUtils'
 import MediaGallery, { type GalleryFilter } from './_components/MediaGallery'
@@ -34,7 +33,6 @@ export default function ProductReviewPage() {
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [confirm, setConfirm]   = useState<Confirm | null>(null)
   const [actionModal, setActionModal] = useState<'reject' | 'request_changes' | null>(null)
-  const [editing, setEditing]   = useState(false)
   const [filter, setFilter]     = useState<GalleryFilter>({ kind: 'all' })
   const [autoAdvance, setAutoAdvance] = useState(true)
   const [showKeys, setShowKeys] = useState(false)
@@ -118,7 +116,7 @@ export default function ProductReviewPage() {
   }, [product, load])
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
-  const anyModal = !!confirm || !!actionModal || editing
+  const anyModal = !!confirm || !!actionModal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (anyModal || !product || e.metaKey || e.ctrlKey || e.altKey) return
@@ -132,14 +130,14 @@ export default function ProductReviewPage() {
       else if (k === 'c' && (s === 'pending' || s === 'changes_requested')) setActionModal('request_changes')
       else if (k === 'f' && s !== 'deleted_by_seller') toggleFeatured()
       else if (k === 'n') goNext()
-      else if (k === 'e' && s !== 'deleted_by_seller') setEditing(true)
+      else if (k === 'e' && s !== 'deleted_by_seller') router.push(`/products/${product.id}/edit`)
       else if (k === '?') setShowKeys((v) => !v)
       else return
       e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [anyModal, product, goNext, toggleFeatured])
+  }, [anyModal, product, goNext, toggleFeatured, router])
 
   // ── States ─────────────────────────────────────────────────────────────────
   if (loading && !product) return <ReviewSkeleton />
@@ -242,9 +240,9 @@ export default function ProductReviewPage() {
                   {busy === 'featured' ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} className={product.featured ? 'fill-accent-orange' : ''} />}
                   {product.featured ? 'Featured' : 'Feature'}
                 </button>
-                <button onClick={() => setEditing(true)} className={clsx(btn, 'border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary')} title="Edit (E)">
-                  <Edit2 size={14} /> Edit
-                </button>
+                <Link href={`/products/${product.id}/edit`} className={clsx(btn, 'border border-[#db142e]/50 text-[#f87171] hover:bg-[#db142e]/10')} title="Open the full editor (E)">
+                  <Edit2 size={14} /> Edit product
+                </Link>
                 {product.status === 'approved' && (
                   <button onClick={() => setConfirm('disable')} className={clsx(btn, 'border border-accent-orange/40 text-accent-orange hover:bg-accent-orange/10')}>
                     <EyeOff size={14} /> Disable
@@ -376,13 +374,6 @@ export default function ProductReviewPage() {
         onDone={(msg) => { setActionModal(null); afterDecision(msg, isQueued) }}
       />
 
-      {editing && (
-        <AdminEditProductModal
-          productId={product.id}
-          onClose={() => setEditing(false)}
-          onSaved={() => { setEditing(false); setToast({ message: 'Product updated.', type: 'success' }); load(true) }}
-        />
-      )}
     </div>
   )
 }
