@@ -1210,6 +1210,12 @@ export default function OrdersPage() {
 
   const openDetail = (id: number) => { setSelectedId(id); setDetailOpen(true) }
 
+  // Deep link: /orders?order=<id> opens that order's drawer (used by Finance → Orders)
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('order'))
+    if (Number.isInteger(id) && id > 0) openDetail(id)
+  }, [])
+
   const columns: Column<Order>[] = [
     {
       key: 'order_number', header: 'Order',

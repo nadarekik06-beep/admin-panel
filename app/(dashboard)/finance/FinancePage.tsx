@@ -5,44 +5,12 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   DollarSign, TrendingUp, TrendingDown, Package,
   CheckCircle, Clock, AlertCircle, RefreshCw, Search,
-  Plus, X, Loader2,
+  Plus, X, Loader2, Eye,
 } from 'lucide-react'
 import api from '@/lib/axios'
 import { format } from 'date-fns'
-
-function fmt(v: number | string) {
-  return `${Number(v).toFixed(3)} DT`
-}
-
-// Every order has a real agency shipping cost; this is who covered it.
-const SHIPPING_PAYER: Record<string, { label: string; color: string }> = {
-  customer: { label: 'Customer', color: '#3b82f6' },
-  seller:   { label: 'Seller (free shipping)', color: '#f59e0b' },
-  platform: { label: 'Platform', color: '#ef4444' },
-}
-
-const PAYOUT_COLORS: Record<string, string> = {
-  pending:   '#f59e0b',
-  ready:     '#3b82f6',
-  paid:      '#10b981',
-  cancelled: '#ef4444',
-  draft:     '#a78bfa',
-}
-
-function PayoutBadge({ status }: { status: string }) {
-  const color = PAYOUT_COLORS[status] ?? '#94a3b8'
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 999,
-      background: `${color}18`, color, border: `1px solid ${color}30`,
-      textTransform: 'capitalize',
-    }}>
-      <span style={{ width: 5, height: 5, borderRadius: '50%', background: color }} />
-      {status}
-    </span>
-  )
-}
+import { fmt, SHIPPING_PAYER, PayoutBadge } from './financeShared'
+import FinanceOrderDrawer from './FinanceOrderDrawer'
 
 function KpiCard({
   label, value, sub, color, icon: Icon,
@@ -270,6 +238,7 @@ export default function FinancePage() {
   const [confirming,  setConfirming]  = useState<number | null>(null)
   const [cancelling,  setCancelling]  = useState<number | null>(null)
   const [showCreate,  setShowCreate]  = useState(false)
+  const [detailRow,   setDetailRow]   = useState<any>(null)
   const [sellersList, setSellersList] = useState<Seller[]>([])
 
   const [search,           setSearch]           = useState('')
@@ -416,6 +385,15 @@ export default function FinancePage() {
             await fetchSettlements()
             await fetchSellers()
           }}
+        />
+      )}
+
+      {/* Seller-order details drawer (Orders tab) — fetched lazily on open */}
+      {detailRow && (
+        <FinanceOrderDrawer
+          sellerOrderId={detailRow.id}
+          orderNumber={detailRow.order_number}
+          onClose={() => setDetailRow(null)}
         />
       )}
 
@@ -617,7 +595,34 @@ export default function FinancePage() {
                     <tbody>
                       {(orders?.data ?? []).map((row: any) => (
                         <tr key={row.id}>
-                          <td style={{ ...td(), fontFamily: 'monospace', fontWeight: 700, color: '#f1f5f9', fontSize: 11 }}>{row.order_number}</td>
+                          <td style={td()}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#f1f5f9', fontSize: 11 }}>{row.order_number}</span>
+                              <button
+                                onClick={() => setDetailRow(row)}
+                                title="View order details"
+                                aria-label={`View details of order ${row.order_number}`}
+                                style={{
+                                  width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                                  border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  color: '#94a3b8', cursor: 'pointer',
+                                }}
+                              >
+                                <Eye size={13} />
+                              </button>
+                            </div>
+                            {row.items_count != null && (
+                              <span style={{
+                                display: 'inline-block', marginTop: 4,
+                                fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 999,
+                                background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                              }}>
+                                {row.items_count} {Number(row.items_count) === 1 ? 'item' : 'items'}
+                              </span>
+                            )}
+                          </td>
                           <td style={td()}>
                             <p style={{ fontWeight: 700, color: '#f1f5f9', margin: 0, fontSize: 12 }}>{row.seller_name}</p>
                             <p style={{ color: '#64748b', margin: 0, fontSize: 10 }}>{row.seller_email}</p>
