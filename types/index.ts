@@ -158,5 +158,5 @@ export interface DashboardData {
 
 // ── Statistics ────────────────────────────────────────────────────
 export interface RevenuePoint  { month: string; revenue: number }
-export interface OrderTrendPoint { month: string; pending: number; confirmed: number; delivered: number; canceled: number }
+export interface OrderTrendPoint { month: string; pending: number; processing: number; confirmed: number; delivered: number; canceled: number }
 export interface CategoryPoint  { name: string; count: number }

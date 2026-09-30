@@ -468,6 +468,9 @@ export default function FinancePage() {
                   sub={`Net shipping: ${fmt(Number(overview.kpis.total_delivery_fees ?? 0) + Number(overview.kpis.total_seller_shipping ?? 0) - Number(overview.kpis.total_shipping_cost ?? 0))}`} />
                 <KpiCard label="Seller Payouts"  value={fmt(overview.kpis.total_seller_payouts)}  color="#a78bfa" icon={DollarSign}  />
                 <KpiCard label="Orders"          value={String(overview.kpis.orders_count)}       color="#f59e0b" icon={Package}      />
+                {/* Paid click charges only; free plan credit is not revenue */}
+                <KpiCard label="Ad Revenue"      value={fmt(overview.kpis.ad_revenue ?? 0)} color="#22c55e" icon={TrendingUp}
+                  sub={`Plan credit used: ${fmt(overview.kpis.ad_credit_spent ?? 0)}`} />
               </div>
 
               <div style={{ background: '#161b27', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden' }}>

@@ -21,6 +21,7 @@ import {
   Star,
   CreditCard,
   History,
+  Megaphone,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -52,6 +53,7 @@ const navItems = [
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },
   { href: '/reviews',         label: 'Reviews',      icon: Star          },  // ← ADD
   { href: '/vip-requests',  label: 'VIP Requests', icon: Crown         }, 
+  { href: '/sponsoring',    label: 'Sponsoring',   icon: Megaphone     },
   { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/statistics',          label: 'Statistics',   icon: BarChart3       },
   { href: '/brand-products',          label: 'Brand Products',  icon: ShoppingBag     },
