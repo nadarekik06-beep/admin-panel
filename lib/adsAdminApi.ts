@@ -50,7 +50,7 @@ export interface AdminCampaign {
   readiness_score: number | null
   ad_copy: string | null
   tips: { code: string; params?: Record<string, unknown> }[]
-  stats: { impressions: number; clicks: number; ctr: number | null; orders: number; revenue: number }
+  stats: { impressions: number; clicks: number; ctr: number | null; spend: number; orders: number; revenue: number }   // all time, AdMetrics definitions (spend net of refunds)
   created_at: string
 }
 

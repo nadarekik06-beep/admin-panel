@@ -52,7 +52,7 @@ function CampaignsInner() {
                 <td style={td}>{c.seller?.name}<br /><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.seller?.email}</span></td>
                 <td style={td}><StatusChip status={c.status} reason={c.paused_reason} /></td>
                 <td style={td}>{c.pricing_model === 'cpc' ? `${money(c.daily_budget)} · ${money(c.max_cpc)}` : 'Legacy prepaid'}</td>
-                <td style={td}>{money(c.spent_total)}</td>
+                <td style={td}>{money(c.stats.spend)}</td>
                 <td style={td}>{c.stats.clicks}</td>
                 <td style={td}>{c.stats.orders}</td>
               </tr>
