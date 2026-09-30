@@ -22,9 +22,11 @@ import {
   CreditCard,
   History,
   Megaphone,
+  Wallet,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
+import { paymentRequestsApi, PENDING_EVENT } from '@/lib/paymentRequestsApi';
 import { Admin } from '@/types';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,6 +51,7 @@ const navItems = [
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/finance', label: 'Finance', icon: Banknote },
+  { href: '/payment-requests', label: 'Demandes de paiement', icon: Wallet },
 
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },
   { href: '/reviews',         label: 'Reviews',      icon: Star          },  // ← ADD
@@ -95,6 +98,16 @@ export default function Sidebar() {
   const [admin,      setAdmin]      = useState<Admin | null>(null);
 
   useEffect(() => { setAdmin(authStorage.getAdmin()); }, []);
+
+  // Badge: pending manual (WhatsApp) payment requests — refreshed every minute and after a decision.
+  const [pendingPayments, setPendingPayments] = useState(0);
+  useEffect(() => {
+    const refresh = () => paymentRequestsApi.pendingCount().then(setPendingPayments).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener(PENDING_EVENT, refresh);
+    return () => { clearInterval(timer); window.removeEventListener(PENDING_EVENT, refresh); };
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -160,8 +173,19 @@ export default function Sidebar() {
               }
               onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.color = '#fcfdfd'; } }}
               onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = isComplaints ? '#f97316' : '#9ca3af'; } }}>
-              <Icon size={18} className="flex-shrink-0" style={{ color: isActive ? '#db142e' : 'inherit' }} />
+              <span className="relative flex-shrink-0">
+                <Icon size={18} style={{ color: isActive ? '#db142e' : 'inherit' }} />
+                {collapsed && item.href === '/payment-requests' && pendingPayments > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
+                )}
+              </span>
               {!collapsed && <span className="text-sm font-medium truncate">{item.label}</span>}
+              {!collapsed && item.href === '/payment-requests' && pendingPayments > 0 && (
+                <span aria-label={`${pendingPayments} en attente`} className="ml-auto text-[11px] font-black px-1.5 min-w-[20px] text-center rounded-full"
+                  style={{ background: '#f59e0b', color: '#111318' }}>
+                  {pendingPayments > 99 ? '99+' : pendingPayments}
+                </span>
+              )}
               {isActive && !collapsed && (
                 <span className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: '#db142e', boxShadow: '0 0 6px #db142e' }} />

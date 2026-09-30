@@ -39,6 +39,10 @@ export default function SponsoringOverviewPage() {
             <Stat label="Active campaigns" value={(data.campaigns.active ?? 0).toLocaleString()} hint={`${data.campaigns.paused ?? 0} paused`} />
             <Stat label="Pending top-ups" value={data.pending_top_ups} tone={data.pending_top_ups ? GOLD : undefined}
               hint={data.pending_top_ups ? <Link href="/sponsoring/wallets" style={{ color: GOLD }}>Review</Link> : 'None'} />
+            <Stat label="Top-ups received" value={money(data.top_ups_received?.amount)} tone={GREEN}
+              hint={`${data.top_ups_received?.count ?? 0} approved · all time ${money(data.top_ups_received_all_time?.amount)}`} />
+            <Stat label="WhatsApp top-up requests" value={data.pending_payment_requests ?? 0} tone={data.pending_payment_requests ? GOLD : undefined}
+              hint={data.pending_payment_requests ? <Link href="/payment-requests" style={{ color: GOLD }}>Review</Link> : 'None pending'} />
           </div>
 
           <section style={card}>

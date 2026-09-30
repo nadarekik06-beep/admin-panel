@@ -471,6 +471,11 @@ export default function FinancePage() {
                 {/* Paid click charges only; free plan credit is not revenue */}
                 <KpiCard label="Ad Revenue"      value={fmt(overview.kpis.ad_revenue ?? 0)} color="#22c55e" icon={TrendingUp}
                   sub={`Plan credit used: ${fmt(overview.kpis.ad_credit_spent ?? 0)}`} />
+                {/* Cash in: approved ad-wallet top-ups (WhatsApp / transfers) and plan payments */}
+                <KpiCard label="Ad Top-ups Received" value={fmt(overview.kpis.ad_top_ups_received ?? 0)} color="#10b981" icon={DollarSign}
+                  sub={`${overview.kpis.ad_top_ups_count ?? 0} approved top-up(s) — real money`} />
+                <KpiCard label="Subscription Revenue" value={fmt(overview.kpis.subscription_revenue ?? 0)} color="#8b5cf6" icon={DollarSign}
+                  sub="Plan payments received" />
               </div>
 
               <div style={{ background: '#161b27', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden' }}>

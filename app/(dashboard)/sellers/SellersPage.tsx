@@ -6,6 +6,7 @@ import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
+import DirectPaymentActions from '@/components/payments/DirectPaymentActions'
 import { sellersApi, SellerUpdatePayload } from '@/lib/api/sellers'
 import { Seller, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
@@ -363,6 +364,18 @@ export default function SellersPage() {
                 </div>
               </div>
             </div>
+
+            {/* ── Payments received outside a request (WhatsApp / D17 / cash) ── */}
+            {viewSeller.app_status === 'approved' && (
+              <details className="p-3 rounded-lg border" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
+                <summary className="text-[10px] font-semibold uppercase tracking-widest cursor-pointer" style={{ color: '#6b7280' }}>
+                  Paiement reçu — recharger le portefeuille / changer de plan
+                </summary>
+                <div className="mt-3">
+                  <DirectPaymentActions sellerId={viewSeller.id} onDone={text => setToast({ message: text, type: 'success' })} />
+                </div>
+              </details>
+            )}
 
             {/* ── Business description ── */}
             {viewSeller.business_description && (

@@ -1,12 +1,14 @@
 'use client'
 
-// Ad wallets: pending manual top-ups (confirm once / reject), seller wallets, ledger and
-// manual adjustments (balance and/or free credit, with a note).
+// Ad wallets: pending manual top-ups (confirm once / reject), seller wallets, ledger,
+// manual adjustments (balance and/or free credit, with a note) and payments received
+// directly (same records as an approved WhatsApp payment request).
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { adsAdminApi, money, type TopUp, type WalletRow, type WalletTx } from '@/lib/adsAdminApi'
 import { Btn, card, input, Notice, SponsoringShell } from '../_components/ui'
+import DirectPaymentActions from '@/components/payments/DirectPaymentActions'
 
 function WalletsInner() {
   const params = useSearchParams()
@@ -127,6 +129,13 @@ function WalletDetail({ sellerId, onMessage }: { sellerId: number; onMessage: (m
         <input required placeholder="Note (required)" value={note} onChange={e => setNote(e.target.value)} style={{ ...input, gridColumn: '1 / -1' }} />
         <div><Btn type="submit" tone="gold" disabled={busy || (!balance && !credit) || !note.trim()}>Apply adjustment</Btn></div>
       </form>
+
+      <details>
+        <summary style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text-primary)', cursor: 'pointer' }}>Paiement reçu — recharger (argent réel) / changer de plan</summary>
+        <div style={{ marginTop: 10 }}>
+          <DirectPaymentActions sellerId={sellerId} onDone={text => { onMessage({ tone: 'ok', text }); load() }} />
+        </div>
+      </details>
 
       <div style={{ maxHeight: 360, overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

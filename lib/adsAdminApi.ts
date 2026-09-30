@@ -76,6 +76,9 @@ export interface AdsOverview {
     high_ctr: { campaign_id: number; seller: string; placement: string; ctr: number; expected: number }[]
   }
   pending_top_ups: number
+  top_ups_received: { amount: number; count: number }            // approved top-ups = real money received
+  top_ups_received_all_time: { amount: number; count: number }
+  pending_payment_requests: number                                // WhatsApp top-up requests waiting
 }
 
 export interface WalletRow { seller: { id: number; name: string; email: string }; balance: number; credit_balance: number; credit_expires_at: string | null }
