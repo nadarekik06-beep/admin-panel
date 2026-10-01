@@ -5,7 +5,7 @@ import {
   Search, Eye, Loader2, ShoppingBag, MapPin, Phone,
   Package, User, CheckCircle, X, ChevronDown,
   Store, Tag, TrendingDown, PhoneCall, MessageSquare,
-  CheckCheck, XCircle, Save,
+  CheckCheck, XCircle, Save, FileDown, AlertTriangle,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
@@ -13,6 +13,11 @@ import Pagination from '@/components/ui/Pagination'
 import { ordersApi } from '@/lib/api/orders'
 import type { Order, OrderItem, PaginatedResponse, OrderStatus } from '@/types'
 import { format } from 'date-fns'
+import {
+  ShippingAddressCard, PickupBlock, ExportMenu, ExportedBadge, Toast, useToast,
+  EXPORT_TYPE_LABEL,
+  type ShippingAddress, type SellerPickup, type SlipMoney, type ExportReadiness, type ExportHistoryEntry,
+} from './_components/delivery'
 
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
@@ -43,6 +48,11 @@ interface OrderDetail extends Order {
   sellerOrders?: SellerSubOrder[]
   seller_orders?: SellerSubOrder[]   // Laravel serializes the relation in snake_case
   commission_summary?: CommissionSummaryData | null
+  // Delivery documents (see _components/delivery.tsx)
+  shipping_address?:   ShippingAddress | null
+  export_readiness?:   ExportReadiness | null
+  export_history?:     ExportHistoryEntry[]
+  slips_exported_at?:  string | null
 }
 
 interface SellerSubOrder {
@@ -54,6 +64,10 @@ interface SellerSubOrder {
   coupon_code?: string | null
   discount_amount?: number
   seller?: { id: number; name: string; email: string }
+  pickup?:       SellerPickup
+  reference?:    string
+  is_shippable?: boolean
+  slip_money?:   SlipMoney | null
 }
 
 interface CommissionSummaryData {
@@ -313,10 +327,10 @@ function ContactModal({
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { icon: User,   label: 'Name',    value: order.user?.name ?? `User #${(order as any).user_id}` },
+                  { icon: User,   label: 'Name',    value: (order as OrderDetail).shipping_address?.recipient_name ?? order.user?.name ?? `User #${(order as any).user_id}` },
                   { icon: Phone,  label: 'Phone',   value: phone ?? '—' },
                   { icon: MapPin, label: 'Wilaya',  value: (order as any).wilaya ?? '—' },
-                  { icon: MapPin, label: 'Address', value: (order as any).address ?? '—' },
+                  { icon: MapPin, label: 'Address', value: (order as OrderDetail).shipping_address?.formatted || ((order as any).address ?? '—') },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} style={{
                     background: 'rgba(255,255,255,0.03)',
@@ -755,11 +769,27 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
 
 // ─── Order Detail Drawer ──────────────────────────────────────────────────────
 
-function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
+const PICKUP_ISSUE = 'Pickup address incomplete'
+
+function exportableSubOrders(detail: OrderDetail, subOrders: SellerSubOrder[]) {
+  const orderIssue = (detail.export_readiness?.issues ?? []).find(i => !i.startsWith(PICKUP_ISSUE))
+  return subOrders.filter(so => so.is_shippable).map(so => {
+    const pickupIssue = so.pickup && !so.pickup.complete ? `${PICKUP_ISSUE}: missing ${so.pickup.missing.join(', ')}` : undefined
+    return {
+      id:       so.id,
+      shopName: so.pickup?.shop_name ?? so.seller?.name ?? `Seller #${so.seller_id}`,
+      ready:    !orderIssue && !pickupIssue,
+      reason:   orderIssue ?? pickupIssue,
+    }
+  })
+}
+
+function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
   orderId: number | null
   open: boolean
   onClose: () => void
   onUpdated: () => void
+  notify: (type: 'success' | 'error', msg: string) => void
 }) {
   const [detail,       setDetail]       = useState<OrderDetail | null>(null)
   const [loading,      setLoading]      = useState(false)
@@ -784,6 +814,12 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
   }, [orderId, open])
 
   useEffect(() => { loadDetail() }, [loadDetail])
+
+  // Re-fetch without the full-screen spinner (after an export or a pickup fix)
+  const refreshDetail = useCallback(() => {
+    if (!orderId) return
+    ordersApi.get(orderId).then(res => setDetail(res as OrderDetail)).catch(() => {})
+  }, [orderId])
 
   useEffect(() => {
     if (!open) return
@@ -863,11 +899,21 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <p style={{ fontSize: 15, fontWeight: 900, color: '#f1f5f9', margin: 0 }}>Order Details</p>
                 {detail?.has_platform_items && <PlatformBadge />}
+                {detail?.slips_exported_at && <ExportedBadge at={detail.slips_exported_at} />}
               </div>
               {detail && <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: 'monospace', fontWeight: 700 }}>{detail.order_number ?? `#${detail.id}`}</p>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {detail && (
+              <ExportMenu
+                orderId={detail.id}
+                readiness={detail.export_readiness}
+                subOrders={exportableSubOrders(detail, subOrders)}
+                onExported={() => { refreshDetail(); onUpdated() }}
+                notify={notify}
+              />
+            )}
             {/* Phone / Contact button */}
             {detail && (
               <button
@@ -961,9 +1007,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
               {/* Customer info grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { icon: User,        label: 'Customer', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
-                  { icon: MapPin,      label: 'Wilaya',   value: (detail as any).wilaya ?? '—' },
-                  { icon: Phone,       label: 'Phone',    value: (detail as any).phone  ?? '—' },
+                  { icon: User,        label: 'Customer account', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
                   { icon: ShoppingBag, label: 'Total paid', value: formatCurrency(detail.total_amount),
                     sub: detail.shipping_fee !== undefined ? `incl. ${formatCurrency(detail.shipping_fee)} shipping` : undefined },
                 ].map(({ icon: Icon, label, value, sub }) => (
@@ -977,6 +1021,9 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                 ))}
               </div>
 
+              {/* Shipping address snapshot (taken at checkout) */}
+              <ShippingAddressCard address={detail.shipping_address} />
+
               {/* Sub-orders */}
               {subOrders.length > 0 && (
                 <div>
@@ -986,12 +1033,15 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                       const isPlatform = so.seller?.name === "CHOOSE'Tounsi"
                       return (
                         <div key={so.id} style={{
-                          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${so.is_shippable && so.pickup && !so.pickup.complete ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.07)'}`,
                           borderRadius: 10, padding: '10px 14px',
+                        }}>
+                        <div style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           flexWrap: 'wrap', gap: 8,
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             {isPlatform ? <PlatformBadge /> : (
                               <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 999, background: 'rgba(99,102,241,0.12)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.25)' }}>
                                 {so.seller?.name ?? `Seller #${so.seller_id}`}
@@ -1007,6 +1057,25 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                             )}
                             <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa' }}>{formatCurrency(Number(so.subtotal) - Number(so.discount_amount ?? 0))}</span>
                           </div>
+                        </div>
+                        {so.slip_money && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11, color: '#64748b', flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{so.reference}</span>
+                            <span>·</span>
+                            <span>
+                              COD on slip: <strong style={{ color: so.slip_money.cod > 0 ? '#f1f5f9' : '#10b981' }}>{formatCurrency(so.slip_money.cod)}</strong>
+                              {so.slip_money.shipping > 0 && ` (incl. ${formatCurrency(so.slip_money.shipping)} shipping)`}
+                              {so.slip_money.cod === 0 && ' — prepaid'}
+                            </span>
+                          </div>
+                        )}
+                        {so.pickup && so.is_shippable && (
+                          <PickupBlock
+                            sellerId={so.seller_id}
+                            pickup={so.pickup}
+                            onSaved={() => { notify('success', 'Pickup address saved.'); refreshDetail(); onUpdated() }}
+                          />
+                        )}
                         </div>
                       )
                     })}
@@ -1069,6 +1138,22 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
                   </table>
                 </div>
               </div>
+
+              {(detail.export_history?.length ?? 0) > 0 && (
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', margin: '0 0 8px' }}>Export history</p>
+                  <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden' }}>
+                    {detail.export_history!.slice(0, 8).map(e => (
+                      <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '7px 12px', fontSize: 11, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
+                          {EXPORT_TYPE_LABEL[e.type] ?? e.type}{e.seller_order_id ? ` · sub-order ${e.seller_order_id}` : ''}
+                        </span>
+                        <span style={{ color: '#64748b' }}>{e.exported_by ?? 'unknown'} · {format(new Date(e.created_at), 'MMM d, HH:mm')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <CommissionSummary
                 items={items}
@@ -1166,6 +1251,13 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated }: {
 
 type SellerTypeFilter = 'all' | 'platform' | 'sellers'
 
+/** List row extras from GET /api/admin/orders */
+type ListOrder = Order & {
+  slips_exported_at?: string | null
+  address_status?:    'complete' | 'legacy' | 'missing'
+  export_issues?:     string[]
+}
+
 const SELLER_TYPE_TABS: { value: SellerTypeFilter; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'all',      label: 'All Orders',    icon: ShoppingBag, color: '#3b82f6' },
   { value: 'platform', label: "CHOOSE'Tounsi", icon: Store,       color: '#db142e' },
@@ -1184,6 +1276,11 @@ export default function OrdersPage() {
   const [page,       setPage]       = useState(1)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [needsSlips, setNeedsSlips] = useState(false)
+  // Rows ticked for bulk export, kept across pages (id → row, for its export_issues)
+  const [picked,     setPicked]     = useState<Map<number, ListOrder>>(new Map())
+  const [bulkBusy,   setBulkBusy]   = useState(false)
+  const { toast, show: notify, dismiss } = useToast()
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -1195,13 +1292,14 @@ export default function OrdersPage() {
         seller_type:    sellerType !== 'all' ? sellerType : undefined,
         date_from:      dateFrom    || undefined,
         date_to:        dateTo      || undefined,
+        needs_slips:    needsSlips  ? 1 : undefined,
         page,
       })
       setOrders(res)
     } finally {
       setLoading(false)
     }
-  }, [search, status, payMethod, sellerType, dateFrom, dateTo, page])
+  }, [search, status, payMethod, sellerType, dateFrom, dateTo, needsSlips, page])
 
   useEffect(() => {
     const t = setTimeout(fetchOrders, 300)
@@ -1209,6 +1307,39 @@ export default function OrdersPage() {
   }, [fetchOrders])
 
   const openDetail = (id: number) => { setSelectedId(id); setDetailOpen(true) }
+
+  // ── Bulk selection & export ──────────────────────────────────────────────
+  const pageRows   = (orders?.data ?? []) as ListOrder[]
+  const allPicked  = pageRows.length > 0 && pageRows.every(r => picked.has(r.id))
+  const togglePick = (row: ListOrder) => setPicked(prev => {
+    const next = new Map(prev)
+    next.has(row.id) ? next.delete(row.id) : next.set(row.id, row)
+    return next
+  })
+  const togglePage = () => setPicked(prev => {
+    const next = new Map(prev)
+    pageRows.forEach(r => allPicked ? next.delete(r.id) : next.set(r.id, r))
+    return next
+  })
+  const blockedPicks = Array.from(picked.values()).filter(r => (r.export_issues?.length ?? 0) > 0)
+  const bulkBlockedReason = blockedPicks.length
+    ? `${blockedPicks.length} selected order(s) can't be exported: ${blockedPicks.slice(0, 3).map(r => `${r.order_number} — ${r.export_issues![0]}`).join(' | ')}`
+    : undefined
+
+  const handleBulkExport = async () => {
+    if (!picked.size || bulkBlockedReason) return
+    setBulkBusy(true)
+    try {
+      const name = await ordersApi.exportBulkSlips(Array.from(picked.keys()))
+      notify('success', `Downloaded ${name} (${picked.size} order${picked.size > 1 ? 's' : ''}).`)
+      setPicked(new Map())
+      fetchOrders()
+    } catch (e: any) {
+      notify('error', e.message)
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   // Deep link: /orders?order=<id> opens that order's drawer (used by Finance → Orders)
   useEffect(() => {
@@ -1218,13 +1349,29 @@ export default function OrdersPage() {
 
   const columns: Column<Order>[] = [
     {
+      key: 'select',
+      header: (
+        <input type="checkbox" checked={allPicked} onChange={togglePage}
+          aria-label="Select all orders on this page" style={{ accentColor: '#14b8a6', cursor: 'pointer' }} />
+      ),
+      className: 'w-8',
+      render: row => (
+        <input type="checkbox" checked={picked.has(row.id)} onChange={() => togglePick(row as ListOrder)}
+          aria-label={`Select order ${row.order_number}`} style={{ accentColor: '#14b8a6', cursor: 'pointer' }} />
+      ),
+    },
+    {
       key: 'order_number', header: 'Order',
       render: row => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span className="font-mono text-xs font-bold text-text-primary bg-bg-hover px-2 py-0.5 rounded">
             {row.order_number}
           </span>
           {(row as any).has_platform_items && <PlatformBadge />}
+          {(row as ListOrder).slips_exported_at && <ExportedBadge at={(row as ListOrder).slips_exported_at!} />}
+          {(row as ListOrder).address_status === 'missing' && (
+            <span title="Legacy order without a shipping address" style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b' }}>⚠ no address</span>
+          )}
         </div>
       ),
     },
@@ -1327,6 +1474,16 @@ export default function OrdersPage() {
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-muted focus:outline-none focus:border-accent-purple transition-colors" />
           <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-muted focus:outline-none focus:border-accent-purple transition-colors" />
+          <button onClick={() => { setNeedsSlips(v => !v); setPage(1) }} aria-pressed={needsSlips}
+            title="Confirmed orders whose delivery slips were never exported"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              background: needsSlips ? 'rgba(20,184,166,0.15)' : 'transparent',
+              border: `1px solid ${needsSlips ? 'rgba(20,184,166,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              color: needsSlips ? '#14b8a6' : '#94a3b8', cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+            <FileDown size={14} /> Needs slips
+          </button>
         </div>
       </div>
 
@@ -1337,11 +1494,32 @@ export default function OrdersPage() {
             {sellerType === 'platform' ? "CHOOSE'Tounsi Orders" : sellerType === 'sellers' ? 'Seller Orders' : 'All Orders'}
             {orders && <span className="ml-2 text-xs font-normal text-text-muted">({orders.total} total)</span>}
           </h2>
-          {sellerType === 'platform' && (
-            <span style={{ fontSize: 11, color: '#db142e', fontWeight: 700, background: 'rgba(219,20,46,0.08)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(219,20,46,0.2)' }}>
-              🏪 Platform brand products only
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {sellerType === 'platform' && (
+              <span style={{ fontSize: 11, color: '#db142e', fontWeight: 700, background: 'rgba(219,20,46,0.08)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(219,20,46,0.2)' }}>
+                🏪 Platform brand products only
+              </span>
+            )}
+            {picked.size > 0 && (
+              <>
+                <button onClick={() => setPicked(new Map())} style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                  Clear ({picked.size})
+                </button>
+                <button onClick={handleBulkExport} disabled={bulkBusy || !!bulkBlockedReason}
+                  title={bulkBlockedReason ?? 'One PDF with every delivery slip of the selected orders'}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9,
+                    background: bulkBlockedReason ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg,#14b8a6,#0d9488)',
+                    border: bulkBlockedReason ? '1px solid rgba(245,158,11,0.35)' : 'none',
+                    color: bulkBlockedReason ? '#f59e0b' : '#fff', fontSize: 12, fontWeight: 700,
+                    cursor: bulkBusy ? 'wait' : bulkBlockedReason ? 'not-allowed' : 'pointer', opacity: bulkBusy ? 0.75 : 1,
+                  }}>
+                  {bulkBusy ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : bulkBlockedReason ? <AlertTriangle size={13} /> : <FileDown size={13} />}
+                  {bulkBusy ? 'Generating…' : `Export delivery slips (${picked.size})`}
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <DataTable columns={columns} data={orders?.data ?? []} loading={loading} emptyMessage="No orders found." keyField="id" />
         {orders && orders.last_page > 1 && (
@@ -1354,7 +1532,10 @@ export default function OrdersPage() {
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         onUpdated={fetchOrders}
+        notify={notify}
       />
+
+      <Toast toast={toast} onClose={dismiss} />
     </div>
   )
 }

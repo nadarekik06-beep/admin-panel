@@ -3,6 +3,53 @@
 import api from '../axios'
 import type { Order, PaginatedResponse } from '@/types'
 
+export interface PickupAddressInput {
+  full_name:          string
+  phone_number:       string
+  pickup_address:     string
+  city:               string
+  pickup_postal_code: string
+  wilaya:             string
+  pickup_notes?:      string
+}
+
+// ── PDF downloads ──────────────────────────────────────────────────────────
+// The API answers a PDF on success, or JSON { message, issues } on error —
+// with responseType 'blob' the error body must be decoded by hand.
+
+async function errorMessage(err: any, fallback: string): Promise<string> {
+  const data = err?.response?.data
+  if (data instanceof Blob) {
+    try {
+      const json = JSON.parse(await data.text())
+      return json.message ?? fallback
+    } catch { return fallback }
+  }
+  return data?.message ?? fallback
+}
+
+function filenameFrom(disposition: string | undefined, fallback: string): string {
+  const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+  return match ? decodeURIComponent(match[1]) : fallback
+}
+
+async function downloadPdf(request: () => Promise<any>, fallbackName: string): Promise<string> {
+  try {
+    const res  = await request()
+    const name = filenameFrom(res.headers?.['content-disposition'], fallbackName)
+    const url  = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+    const a    = document.createElement('a')
+    a.href = url; a.download = name
+    document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    return name
+  } catch (err: any) {
+    throw new Error(await errorMessage(err, 'Could not generate the PDF.'))
+  }
+}
+
+const PDF = { responseType: 'blob' as const, timeout: 120_000 }
+
 interface OrdersParams {
   status?:          string
   search?:          string
@@ -10,6 +57,7 @@ interface OrdersParams {
   seller_type?:     'all' | 'platform' | 'sellers'  // ← NEW
   date_from?:       string
   date_to?:         string
+  needs_slips?:     1          // confirmed orders whose delivery slips were never exported
   page?:            number
   per_page?:        number
 }
@@ -70,6 +118,32 @@ async saveNote(id: number, adminNote: string) {
         err?.response?.data?.debug ??
         `Failed to update status to "${status}".`
       throw new Error(msg)
+    }
+  },
+
+  /** One seller sub-order's delivery slip. Resolves with the downloaded file name. */
+  exportSlip: (orderId: number, sellerOrderId: number) =>
+    downloadPdf(() => api.get(`/admin/orders/${orderId}/export/slips/${sellerOrderId}`, PDF), `order-${orderId}-slip.pdf`),
+
+  /** Every slip of the order, one page per seller sub-order. */
+  exportSlips: (orderId: number) =>
+    downloadPdf(() => api.get(`/admin/orders/${orderId}/export/slips`, PDF), `order-${orderId}-slips.pdf`),
+
+  /** INTERNAL summary with financials — admin records only. */
+  exportSummary: (orderId: number) =>
+    downloadPdf(() => api.get(`/admin/orders/${orderId}/export/summary`, PDF), `order-${orderId}-INTERNAL-summary.pdf`),
+
+  /** Slips of several orders merged into one PDF. */
+  exportBulkSlips: (orderIds: number[]) =>
+    downloadPdf(() => api.post('/admin/orders/export/slips', { order_ids: orderIds }, PDF), 'delivery-slips.pdf'),
+
+  async updateSellerPickup(sellerId: number, data: PickupAddressInput) {
+    try {
+      const res = await api.put(`/admin/sellers/${sellerId}/pickup-address`, data)
+      return res.data.data
+    } catch (err: any) {
+      const errors = err?.response?.data?.errors as Record<string, string[]> | undefined
+      throw new Error(errors ? Object.values(errors)[0][0] : (err?.response?.data?.message ?? 'Failed to save the pickup address.'))
     }
   },
 
