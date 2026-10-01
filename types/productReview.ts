@@ -97,7 +97,9 @@ export interface ProductReview {
   is_sponsored: boolean
   hidden_reason: string | null
   rejection_reason: string | null
-  seasons: { value: string; label: string }[]
+  pack_quantity: number | null
+  pack_contents: string | null
+  occasions: { value: string; label: string }[]
 
   created_at: string | null
   updated_at: string | null

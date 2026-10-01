@@ -31,8 +31,10 @@ export interface EditorState {
   subcategory_id: string
   is_active: boolean
   is_pack: boolean
+  pack_quantity: string
+  pack_contents: string
   free_delivery: boolean
-  seasons: string[]
+  occasions: string[]
   admin_note: string
   attributes: Record<string, any>
   variants: VariantRow[]
@@ -76,8 +78,10 @@ export function fromPayload(p: EditorPayload): EditorState {
     subcategory_id:    pr.subcategory_id ? String(pr.subcategory_id) : '',
     is_active:         pr.is_active,
     is_pack:           pr.is_pack,
+    pack_quantity:     pr.pack_quantity != null ? String(pr.pack_quantity) : '',
+    pack_contents:     pr.pack_contents ?? '',
     free_delivery:     pr.free_delivery,
-    seasons:           pr.seasons?.length ? pr.seasons : ['all_seasons'],
+    occasions:         pr.occasions?.length ? pr.occasions : ['all_season'],
     admin_note:        pr.admin_note ?? '',
     attributes:        { ...(p.attributes ?? {}) },
     variants: p.variants.map((v) => ({
@@ -167,8 +171,11 @@ export function toDocument(s: EditorState, loadedUpdatedAt: string, colorAxis: A
     subcategory_id:    s.subcategory_id ? Number(s.subcategory_id) : null,
     is_active:         s.is_active,
     is_pack:           s.is_pack,
+    pack_quantity:     s.is_pack && s.pack_quantity.trim() ? Number(s.pack_quantity) : null,
+    pack_contents:     s.is_pack ? nullIfBlank(s.pack_contents) : null,
     free_delivery:     s.free_delivery,
-    seasons:           s.seasons,
+    // Categories without occasions are stored as all_season by the backend
+    occasions:         s.occasions.length ? s.occasions : ['all_season'],
     admin_note:        nullIfBlank(s.admin_note),
     attributes:        Object.fromEntries(Object.entries(s.attributes).filter(([, v]) => !isEmptyValue(v))),
     variants: s.variants.map((v) => ({
@@ -202,7 +209,7 @@ export function isEmptyValue(v: unknown) {
 
 export function validate(
   s: EditorState,
-  ctx: { variantAxes: Attribute[]; infoAxes: Attribute[]; approve: boolean; galleryMax: number; setMax: number; maxColors: number },
+  ctx: { variantAxes: Attribute[]; infoAxes: Attribute[]; approve: boolean; galleryMax: number; setMax: number; maxColors: number; occasionsApply: boolean },
 ): Errors {
   const e: Errors = {}
   const colorAxis = ctx.variantAxes.find(isColorAxis) ?? null
@@ -219,7 +226,11 @@ export function validate(
   if (s.price.trim() === '' || isNaN(Number(s.price))) e.price = 'Enter a price.'
   else if (Number(s.price) <= 0) e.price = 'Price must be greater than 0.'
   if (s.variants.length === 0 && (!/^\d+$/.test(s.stock.trim()))) e.stock = 'Stock must be a whole number ≥ 0.'
-  if (s.seasons.length === 0) e.seasons = 'Select at least one season.'
+  if (ctx.occasionsApply && s.occasions.length === 0) e.occasions = 'Select at least one season / occasion.'
+  if (s.is_pack && (!/^\d+$/.test(s.pack_quantity.trim()) || Number(s.pack_quantity) < 2 || Number(s.pack_quantity) > 1000)) {
+    e.pack_quantity = 'Enter how many units the multi-pack contains (at least 2).'
+  }
+  if (s.pack_contents.length > 500) e.pack_contents = 'At most 500 characters.'
   if (s.sku.length > 100) e.sku = 'At most 100 characters.'
 
   if (s.slug.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s.slug.trim())) e.slug = 'Use lowercase letters, numbers and single hyphens only.'
@@ -267,7 +278,7 @@ export function tabOf(errorKey: string): TabId {
   if (errorKey.startsWith('variants')) return 'variants'
   if (errorKey.startsWith('images.color')) return 'variants'
   if (errorKey.startsWith('images')) return 'images'
-  if (['price', 'stock', 'seasons', 'sku', 'is_active', 'is_pack', 'free_delivery'].includes(errorKey)) return 'pricing'
+  if (['price', 'stock', 'occasions', 'sku', 'is_active', 'is_pack', 'pack_quantity', 'pack_contents', 'free_delivery'].includes(errorKey)) return 'pricing'
   if (['slug', 'admin_note'].includes(errorKey)) return 'seo'
   return 'general'
 }

@@ -54,8 +54,10 @@ export interface EditorPayload {
     is_active: boolean
     is_approved: boolean
     is_pack: boolean
+    pack_quantity: number | null
+    pack_contents: string | null
     featured: boolean
-    seasons: string[]
+    occasions: string[]
     free_delivery: boolean
     admin_note: string | null
     admin_edited_at: string | null
@@ -79,7 +81,8 @@ export interface EditorPayload {
   history: EditLogEntry[]
   moderation: ModerationEntry[]
   limits: { gallery_max: number; set_max: number; max_colors_per_group: number; max_file_kb: number }
-  seasons: Record<string, string>
+  /** Season / Occasion values (value → label) and the category slugs that use them */
+  occasions: { values: Record<string, string>; category_slugs: string[] }
 }
 
 // ── Save document (POST /admin/products/{id}/editor) ─────────────────────────
@@ -101,8 +104,10 @@ export interface EditorDocument {
   subcategory_id: number | null
   is_active: boolean
   is_pack: boolean
+  pack_quantity: number | null
+  pack_contents: string | null
   free_delivery: boolean
-  seasons: string[]
+  occasions: string[]
   admin_note: string | null
   attributes: Record<string, any>
   variants: {

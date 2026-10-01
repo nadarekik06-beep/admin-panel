@@ -139,10 +139,15 @@ export default function ProductEditorPage() {
   const dirty = !!state && fingerprint(state, null) !== baseline
   const limits = payload?.limits ?? { gallery_max: 8, set_max: 5, max_colors_per_group: 5, max_file_kb: 5120 }
 
+  // Season / Occasion only applies to the categories the backend lists (App\Support\Occasions)
+  const categorySlug   = categories.find((c) => String(c.id) === categoryId)?.slug
+  const occasionsApply = !!categorySlug && !!payload?.occasions.category_slugs.includes(categorySlug)
+
   const validationCtx = useCallback((approve: boolean) => ({
     variantAxes, infoAxes, approve,
     galleryMax: limits.gallery_max, setMax: limits.set_max, maxColors: limits.max_colors_per_group,
-  }), [variantAxes, infoAxes, limits])
+    occasionsApply,
+  }), [variantAxes, infoAxes, limits, occasionsApply])
 
   const clientErrors = useMemo(
     () => (state && showErrors ? validate(state, validationCtx(false)) : {}),
@@ -443,18 +448,38 @@ export default function ProductEditorPage() {
                 />
               </Field>
               <Toggle checked={state.is_active} onChange={(v) => set('is_active', v)} label="Active" description="Inactive products stay hidden even once approved." />
-              <Toggle checked={state.is_pack} onChange={(v) => set('is_pack', v)} label="Sold as a pack / bundle" />
+              <Toggle checked={state.is_pack} onChange={(v) => set('is_pack', v)} label="Multi-pack"
+                description="Several units of the same product sold together. Not a bundle of different products." />
+              {state.is_pack && (
+                <div className="grid grid-cols-[140px_1fr] gap-3">
+                  <Field label="Units per pack" required error={errors.pack_quantity}>
+                    <input
+                      type="number" min={2} max={1000} step={1} inputMode="numeric"
+                      value={state.pack_quantity}
+                      onChange={(e) => set('pack_quantity', e.target.value.replace(/[^\d]/g, ''))}
+                      className={inputCls(!!errors.pack_quantity)}
+                    />
+                  </Field>
+                  <Field label="Pack contents" error={errors.pack_contents} hint="Optional, shown on the product page.">
+                    <input value={state.pack_contents} onChange={(e) => set('pack_contents', e.target.value)} maxLength={500} className={inputCls(!!errors.pack_contents)} />
+                  </Field>
+                </div>
+              )}
             </div>
           </Card>
 
-          <Card title="Seasons" description="When the product is promoted. At least one." className="lg:col-span-2">
+          {occasionsApply && <Card title="Season / Occasion" description="When the product sells best: storefront filter and sales forecasts. At least one." className="lg:col-span-2">
             <div className="flex flex-wrap gap-2">
-              {Object.entries(payload.seasons).map(([key, label]) => {
-                const on = state.seasons.includes(key)
+              {Object.entries(payload.occasions.values).map(([key, label]) => {
+                const on = state.occasions.includes(key)
+                // all_season is exclusive: picking it clears the others, picking another clears it
+                const next = key === 'all_season'
+                  ? (on ? [] : ['all_season'])
+                  : on ? state.occasions.filter((x) => x !== key) : [...state.occasions.filter((x) => x !== 'all_season'), key]
                 return (
                   <button
                     key={key} type="button"
-                    onClick={() => set('seasons', on ? state.seasons.filter((x) => x !== key) : [...state.seasons, key])}
+                    onClick={() => set('occasions', next)}
                     className={clsx('px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
                       on ? 'bg-[#198f41]/15 border-[#198f41]/60 text-[#34d399]' : 'border-border text-text-muted hover:bg-bg-hover')}
                     aria-pressed={on}
@@ -464,8 +489,8 @@ export default function ProductEditorPage() {
                 )
               })}
             </div>
-            {errors.seasons && <p className="text-[11px] text-[#f87171] mt-2" data-field-error>{errors.seasons}</p>}
-          </Card>
+            {errors.occasions && <p className="text-[11px] text-[#f87171] mt-2" data-field-error>{errors.occasions}</p>}
+          </Card>}
         </div>
       )}
 

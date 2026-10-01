@@ -82,14 +82,18 @@ export default function SummaryPanel({ product }: { product: ProductReview }) {
             : `${formatDT(pricing.delivery.fee)}${pricing.delivery.is_default ? ' (platform default)' : ''}`}
         </Row>
         <Row label="Featured">{product.featured ? <span className="text-accent-orange">★ Featured</span> : 'No'}</Row>
-        {product.seasons.length > 0 && (
-          <Row label="Seasons">{product.seasons.map((s) => s.label).join(', ')}</Row>
+        {product.occasions.length > 0 && (
+          <Row label="Season / occasion">{product.occasions.map((s) => s.label).join(', ')}</Row>
         )}
         {(product.is_pack || product.is_sponsored) && (
           <Row label="Flags">
-            {[product.is_pack && 'Pack', product.is_sponsored && 'Sponsored'].filter(Boolean).join(' · ')}
+            {[
+              product.is_pack && (product.pack_quantity ? `Multi-pack ×${product.pack_quantity}` : 'Multi-pack (units not set)'),
+              product.is_sponsored && 'Sponsored',
+            ].filter(Boolean).join(' · ')}
           </Row>
         )}
+        {product.is_pack && product.pack_contents && <Row label="Pack contents">{product.pack_contents}</Row>}
         <Row label="Submitted">{fmtDate(product.submitted_at)}</Row>
         <Row label="Created">{fmtDate(product.created_at)}</Row>
         <Row label="Last update">{fmtDate(product.updated_at)}</Row>
