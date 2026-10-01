@@ -31,7 +31,7 @@ export default function SummaryPanel({ product }: { product: ProductReview }) {
             {ranged ? `${formatDT(pricing.min_price)} – ${formatDT(pricing.max_price)}` : formatDT(pricing.effective_price)}
           </span>
           {pricing.discount_amount > 0 && !ranged && (
-            <span className="text-sm text-text-muted line-through tabular-nums">{formatDT(pricing.base_price)}</span>
+            <span className="text-sm text-text-muted line-through tabular-nums">{formatDT(pricing.original_price ?? pricing.base_price)}</span>
           )}
         </div>
         {ranged && (

@@ -119,6 +119,8 @@ export interface ProductReview {
     min_price: number
     max_price: number
     effective_price: number
+    original_price: number    // crossed-out price (lowest of the last 30 days when discounted)
+    discount_percent: number
     discount_amount: number
     active_promotion: ReviewPromotion | null
     promotions: ReviewPromotion[]
