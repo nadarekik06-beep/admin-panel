@@ -24,6 +24,7 @@ import {
   Megaphone,
   Wallet,
   SearchX,
+  CalendarDays,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -60,6 +61,7 @@ const navItems = [
   { href: '/sponsoring',    label: 'Sponsoring',   icon: Megaphone     },
   { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/search',     label: 'Missed searches', icon: SearchX },
+  { href: '/calendar',   label: 'Tunisian calendar', icon: CalendarDays },
   { href: '/statistics',          label: 'Statistics',   icon: BarChart3       },
   { href: '/brand-products',          label: 'Brand Products',  icon: ShoppingBag     },
 ];
