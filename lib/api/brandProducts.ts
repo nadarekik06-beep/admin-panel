@@ -172,6 +172,17 @@ function buildQs(params: Record<string, any>): string {
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export const brandProductsApi = {
+  // ── WearTounsi visibility on the storefront (site feature flag) ──────────
+  async visibility(): Promise<boolean> {
+    const res = await api.get('/admin/site-features')
+    return !!res.data?.data?.wear_tounsi
+  },
+
+  async setVisibility(enabled: boolean): Promise<boolean> {
+    const res = await api.put('/admin/site-features', { wear_tounsi: enabled })
+    return !!res.data?.data?.wear_tounsi
+  },
+
   // ── Stats ────────────────────────────────────────────────────────────────
   async stats() {
     const res = await api.get('/admin/brand-products/stats')

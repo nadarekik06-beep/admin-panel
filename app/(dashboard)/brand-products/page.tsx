@@ -13,7 +13,7 @@ import {
   Plus, Search, Filter, Edit2, Trash2, Package,
   CheckCircle, XCircle, ChevronLeft, ChevronRight,
   Loader2, Image as ImageIcon, Eye, Layers, Star,
-  BarChart2,
+  BarChart2, Globe, EyeOff,
 } from 'lucide-react'
 import { brandProductsApi, type BrandProduct } from '@/lib/api/brandProducts'
 import BrandProductModal from './BrandProductModal'
@@ -67,6 +67,9 @@ export default function BrandProductsPage() {
   const [modal,      setModal]      = useState<ModalState>(MODAL_CLOSED)
   const [deleting,   setDeleting]   = useState<number | null>(null)
   const [stats,      setStats]      = useState<any>(null)
+  // WearTounsi on the storefront (navbar, home section, /brand page); null = loading
+  const [visible,    setVisible]    = useState<boolean | null>(null)
+  const [toggling,   setToggling]   = useState(false)
 
   // dark theme tokens — matching the rest of the admin panel
   const border    = 'rgba(255,255,255,0.07)'
@@ -117,6 +120,23 @@ export default function BrandProductsPage() {
 
   useEffect(() => { fetchProducts() }, [fetchProducts])
   useEffect(() => { fetchStats() }, [fetchStats])
+  useEffect(() => { brandProductsApi.visibility().then(setVisible).catch(() => {}) }, [])
+
+  const toggleVisibility = async () => {
+    if (visible === null) return
+    const next = !visible
+    if (!confirm(next
+      ? 'Show WearTounsi to shoppers? The navbar link, home section and /brand page go live.'
+      : 'Hide WearTounsi from shoppers? The navbar link, home section and /brand page disappear.')) return
+    setToggling(true)
+    try {
+      setVisible(await brandProductsApi.setVisibility(next))
+    } catch {
+      alert('Could not update WearTounsi visibility.')
+    } finally {
+      setToggling(false)
+    }
+  }
 
   const openAddModal  = () => setModal({ open: true, product: null })
   const closeModal    = () => setModal(MODAL_CLOSED)
@@ -188,6 +208,50 @@ export default function BrandProductsPage() {
             <Plus size={15} /> Add Brand Product
           </button>
         </div>
+
+        {/* ── Storefront visibility ── */}
+        {visible !== null && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+            background: cardBg, border: `1px solid ${visible ? 'rgba(16,185,129,0.3)' : border}`,
+            borderRadius: 14, padding: '14px 16px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: visible ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.05)',
+                color: visible ? '#10b981' : textMuted,
+              }}>
+                {visible ? <Globe size={17} /> : <EyeOff size={17} />}
+              </div>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 800, color: textMain, margin: 0 }}>
+                  WearTounsi is {visible ? 'visible on the storefront' : 'hidden from shoppers'}
+                </p>
+                <p style={{ fontSize: 11, color: textMuted, margin: '2px 0 0', fontWeight: 500 }}>
+                  Controls the navbar &amp; footer link, the home section and the /brand page. You can keep adding products while it&apos;s hidden.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleVisibility}
+              disabled={toggling}
+              role="switch"
+              aria-checked={visible}
+              aria-label="WearTounsi visible on the storefront"
+              style={{
+                position: 'relative', width: 46, height: 26, borderRadius: 999, border: 'none', flexShrink: 0,
+                background: visible ? '#10b981' : 'rgba(255,255,255,0.15)',
+                cursor: toggling ? 'wait' : 'pointer', opacity: toggling ? 0.6 : 1, transition: 'background .2s',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3, left: visible ? 23 : 3, width: 20, height: 20, borderRadius: '50%',
+                background: '#fff', transition: 'left .2s',
+              }} />
+            </button>
+          </div>
+        )}
 
         {/* ── Stats ── */}
         {stats && (
