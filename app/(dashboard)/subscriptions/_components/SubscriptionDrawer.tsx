@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { format, formatDistanceToNow } from 'date-fns'
 import {
-  X, Loader2, ArrowRightLeft, CalendarDays, FlaskConical, Percent, ShieldAlert,
+  X, ArrowRightLeft, CalendarDays, FlaskConical, Percent, ShieldAlert,
   History, CreditCard, Bot, UserCog, AlertTriangle, Store,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -12,6 +12,7 @@ import { subscriptionsApi, apiError } from '@/lib/api/subscriptions'
 import type { HistoryEvent, Plan, SellerSubscriptionRow } from '@/types/subscriptions'
 import { Btn, Field, PlanBadge, ReasonField, SourceBadge, StatusBadge, formatDT, inputCls, reasonOk } from './ui'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type Tab = 'plan' | 'dates' | 'trial' | 'commission' | 'status'
 
 interface Props {
@@ -110,7 +111,7 @@ export default function SubscriptionDrawer({ sellerId, plans, onClose, onChanged
 
         <div className="flex-1 overflow-y-auto">
           {!sub || loading && !sub ? (
-            <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-text-muted" /></div>
+            <BrandLoader variant="section" minHeight={240} />
           ) : (
             <div className="p-5 space-y-5">
               <Overview sub={sub} />
@@ -237,7 +238,7 @@ function PlanAction({ sub, plans, run }: { sub: SellerSubscriptionRow; plans: Pl
       <div className="flex justify-end">
         <Btn variant="primary" disabled={busy || !reasonOk(reason) || (plan === sub.current_plan && !endDate && period === sub.billing_period)}
           onClick={wrap(() => run(() => subscriptionsApi.assignPlan(sub.user_id, { plan, billing_period: period, end_date: endDate || null, reason })))}>
-          {busy && <Loader2 size={13} className="animate-spin" />} {direction} to {target?.name ?? plan}
+          {busy && <BrandLoader variant="inline" size={13} />} {direction} to {target?.name ?? plan}
         </Btn>
       </div>
     </div>
@@ -277,7 +278,7 @@ function DatesAction({ sub, run }: { sub: SellerSubscriptionRow; run: Run }) {
           onClick={wrap(() => run(() => mode === 'days'
             ? subscriptionsApi.grantFreeDays(sub.user_id, { days, reason })
             : subscriptionsApi.changeEndDate(sub.user_id, { end_date: endDate, reason })))}>
-          {busy && <Loader2 size={13} className="animate-spin" />} {mode === 'days' ? `Add ${days} days` : 'Update end date'}
+          {busy && <BrandLoader variant="inline" size={13} />} {mode === 'days' ? `Add ${days} days` : 'Update end date'}
         </Btn>
       </div>
     </div>
@@ -310,7 +311,7 @@ function TrialAction({ sub, plans, run }: { sub: SellerSubscriptionRow; plans: P
       <div className="flex justify-end">
         <Btn variant="primary" disabled={busy || !plan || days < 1 || !reasonOk(reason)}
           onClick={wrap(() => run(() => subscriptionsApi.startTrial(sub.user_id, { plan, days, reason })))}>
-          {busy && <Loader2 size={13} className="animate-spin" />} Start {days}-day trial
+          {busy && <BrandLoader variant="inline" size={13} />} Start {days}-day trial
         </Btn>
       </div>
     </div>
@@ -348,7 +349,7 @@ function CommissionAction({ sub, run }: { sub: SellerSubscriptionRow; run: Run }
         )}
         <Btn variant="primary" disabled={busy || !validRate || !reasonOk(reason)}
           onClick={wrap(() => run(() => subscriptionsApi.setCommissionOverride(sub.user_id, { rate: rateNum, expires_at: expires || null, reason })))}>
-          {busy && <Loader2 size={13} className="animate-spin" />} {sub.commission.override !== null ? 'Update override' : 'Set override'}
+          {busy && <BrandLoader variant="inline" size={13} />} {sub.commission.override !== null ? 'Update override' : 'Set override'}
         </Btn>
       </div>
     </div>

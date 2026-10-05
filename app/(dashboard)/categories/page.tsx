@@ -11,7 +11,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  Plus, Search, Edit2, Trash2, Loader2, CheckCircle, XCircle,
+  Plus, Search, Edit2, Trash2, CheckCircle, XCircle,
   ChevronRight, Layers, Package, Tag, ToggleLeft, ToggleRight,
   AlertCircle, FolderOpen, X, Settings, Zap, Info, PlusCircle,
   Palette, Hash, Type, ToggleLeft as BoolIcon, List,
@@ -24,6 +24,7 @@ import {
   type AttributePayload, type AttributeOptionPayload,
 } from '@/lib/api/categories'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function ActiveBadge({ active }: { active: boolean }) {
@@ -134,7 +135,7 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
         <div className="flex gap-3 mt-2">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors">Cancel</button>
           <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
-            {saving && <Loader2 size={13} className="animate-spin" />}
+            {saving && <BrandLoader variant="inline" size={13} />}
             {isEdit ? 'Save Changes' : 'Create Category'}
           </button>
         </div>
@@ -201,7 +202,7 @@ function SubcategoryFormModal({ initial, categories, defaultCategoryId, onClose,
         <div className="flex gap-3 mt-2">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors">Cancel</button>
           <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
-            {saving && <Loader2 size={13} className="animate-spin" />}
+            {saving && <BrandLoader variant="inline" size={13} />}
             {isEdit ? 'Save Changes' : 'Create Subcategory'}
           </button>
         </div>
@@ -255,7 +256,7 @@ function NewAttributeModal({ onClose, onCreated }: {
         <div className="flex gap-3">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:bg-bg-hover transition-colors">Cancel</button>
           <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
-            {saving && <Loader2 size={13} className="animate-spin" />}
+            {saving && <BrandLoader variant="inline" size={13} />}
             Create
           </button>
         </div>
@@ -329,7 +330,7 @@ function AttributeTranslationsModal({ attr, onClose, onSaved }: {
       <div className="flex gap-3 mt-5">
         <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:bg-bg-hover transition-colors">Cancel</button>
         <button type="button" onClick={handleSave} disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
-          {saving && <Loader2 size={13} className="animate-spin" />}
+          {saving && <BrandLoader variant="inline" size={13} />}
           Save translations
         </button>
       </div>
@@ -527,7 +528,7 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
             <div className="flex gap-2">
               <button onClick={handleAssign} disabled={!selectedAttrId || assigning}
                 className="flex items-center gap-1.5 px-4 py-2 bg-accent-red hover:bg-accent-red/90 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors">
-                {assigning ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+                {assigning ? <BrandLoader variant="inline" size={11} /> : <Plus size={11} />}
                 Assign
               </button>
               <button onClick={() => setShowNewAttr(true)}
@@ -544,9 +545,7 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
             </p>
 
             {loading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 size={20} className="animate-spin text-accent-red" />
-              </div>
+              <BrandLoader variant="section" size="sm" />
             ) : assigned.length === 0 ? (
               <div className="text-center py-10 bg-bg-card border border-dashed border-border rounded-xl">
                 <Layers size={24} className="text-text-muted opacity-30 mx-auto mb-2" />
@@ -590,7 +589,7 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
                         className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors disabled:opacity-40"
                         title="Remove from subcategory"
                       >
-                        {removingId === attr.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        {removingId === attr.id ? <BrandLoader variant="inline" size={13} /> : <Trash2 size={13} />}
                       </button>
                     </div>
 
@@ -631,7 +630,7 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
                                 disabled={deletingOptId === opt.id}
                                 className="ml-0.5 text-text-muted hover:text-accent-red transition-colors opacity-0 group-hover:opacity-100"
                               >
-                                {deletingOptId === opt.id ? <Loader2 size={9} className="animate-spin" /> : <X size={9} />}
+                                {deletingOptId === opt.id ? <BrandLoader variant="inline" size={9} /> : <X size={9} />}
                               </button>
                             </div>
                           ))}
@@ -669,7 +668,7 @@ function AttributeManager({ subcategory, onClose }: AttributeManagerProps) {
                             />
                             <button onClick={() => handleAddOption(attr)} disabled={savingOption || !newOptionValue.trim()}
                               className="px-3 py-1.5 bg-accent-red hover:bg-accent-red/90 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1">
-                              {savingOption ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+                              {savingOption ? <BrandLoader variant="inline" size={10} /> : <Plus size={10} />}
                               Add
                             </button>
                             <button onClick={() => { setAddingOptionFor(null); setNewOptionValue('') }}
@@ -851,7 +850,7 @@ export default function CategoriesPage() {
           </div>
           <div className="max-h-[520px] overflow-y-auto">
             {loadingCats ? (
-              <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-accent-red" /></div>
+              <BrandLoader variant="section" size="sm" minHeight={160} />
             ) : filteredCats.length === 0 ? (
               <p className="text-center text-sm text-text-muted py-10">No categories found</p>
             ) : filteredCats.map(cat => {
@@ -877,13 +876,13 @@ export default function CategoriesPage() {
                   <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <button onClick={() => toggleCategory(cat)} disabled={togglingId === cat.id} title={cat.is_active ? 'Deactivate' : 'Activate'}
                       className={`p-1.5 rounded-md transition-colors ${cat.is_active ? 'text-accent-green hover:bg-accent-green/10' : 'text-text-muted hover:bg-bg-hover'}`}>
-                      {togglingId === cat.id ? <Loader2 size={13} className="animate-spin" /> : cat.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                      {togglingId === cat.id ? <BrandLoader variant="inline" size={13} /> : cat.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                     </button>
                     <button onClick={() => setCatModal({ open: true, item: cat })} title="Edit"
                       className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"><Edit2 size={13} /></button>
                     <button onClick={() => deleteCategory(cat)} disabled={deletingId === cat.id} title="Delete"
                       className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors disabled:opacity-40">
-                      {deletingId === cat.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                      {deletingId === cat.id ? <BrandLoader variant="inline" size={13} /> : <Trash2 size={13} />}
                     </button>
                   </div>
                   {isSelected && <ChevronRight size={13} className="text-accent-red flex-shrink-0" />}
@@ -932,7 +931,7 @@ export default function CategoriesPage() {
               </div>
 
               {loadingSubs ? (
-                <div className="flex justify-center py-12"><Loader2 size={22} className="animate-spin text-accent-red" /></div>
+                <BrandLoader variant="section" size="sm" minHeight={180} />
               ) : filteredSubs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center px-6">
                   <div className="w-12 h-12 rounded-xl bg-bg-primary border border-border flex items-center justify-center mb-3">
@@ -991,7 +990,7 @@ export default function CategoriesPage() {
                                 className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"><Edit2 size={13} /></button>
                               <button onClick={() => deleteSubcategory(sub)} disabled={deletingId === sub.id} title="Delete"
                                 className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors disabled:opacity-40">
-                                {deletingId === sub.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                                {deletingId === sub.id ? <BrandLoader variant="inline" size={13} /> : <Trash2 size={13} />}
                               </button>
                             </div>
                           </td>

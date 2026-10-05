@@ -5,8 +5,7 @@ import Link from 'next/link'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import {
-  AlertTriangle, ChevronDown, Edit2, ExternalLink, EyeOff, Filter, History, Loader2,
-  RotateCcw, Search, ShieldAlert, Store, X,
+  AlertTriangle, ChevronDown, Edit2, ExternalLink, EyeOff, Filter, History, RotateCcw, Search, ShieldAlert, Store, X,
 } from 'lucide-react'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
@@ -18,6 +17,7 @@ import {
 import { Toasts, type ToastMsg } from '../products/[id]/edit/_components/ui'
 import { apiErrorMessage } from '../products/reviewUtils'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 const GROUP_LABEL: Record<ChangeGroup, string> = {
   text: 'Text', price: 'Price', stock: 'Stock', category: 'Category', images: 'Images',
   variants: 'Variants', attributes: 'Details', settings: 'Settings',
@@ -264,7 +264,7 @@ export default function ProductChangesPage() {
         <div className="flex justify-end gap-2">
           <button onClick={() => setDeactivate(null)} className="px-4 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-bg-hover">Cancel</button>
           <button onClick={doDeactivate} disabled={!!busy} className="px-4 py-2 rounded-lg bg-[#db142e] text-white text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2">
-            {busy?.startsWith('deactivate') && <Loader2 size={13} className="animate-spin" />} Deactivate
+            {busy?.startsWith('deactivate') && <BrandLoader variant="inline" size={13} />} Deactivate
           </button>
         </div>
       </Modal>
@@ -361,7 +361,7 @@ function ChangeCard({ set, open, busy, highlighted, onToggle, onRevert, onDeacti
             {pending.length > 0 && (
               <button type="button" onClick={() => onRevert(set)} disabled={!!busy}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-[#db142e]/50 text-[#f87171] hover:bg-[#db142e]/10 disabled:opacity-50">
-                {busy === `revert-${set.id}-all` ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                {busy === `revert-${set.id}-all` ? <BrandLoader variant="inline" size={12} /> : <RotateCcw size={12} />}
                 Revert all{pending.length > 1 ? ` (${pending.length})` : ''}
               </button>
             )}
@@ -456,7 +456,7 @@ function ItemRow({ item, set, busy, onRevert }: {
         ) : item.revertible ? (
           <button type="button" onClick={() => onRevert(set, [item.id])} disabled={!!busy}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-text-secondary border border-border hover:text-[#f87171] hover:border-[#db142e]/50 disabled:opacity-50">
-            {busy === key ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />} Revert
+            {busy === key ? <BrandLoader variant="inline" size={11} /> : <RotateCcw size={11} />} Revert
           </button>
         ) : (
           <span className="text-[10px] text-text-muted" title="Fix images and added/removed variants in the product editor">Use editor</span>

@@ -1,0 +1,230 @@
+/* ─────────────────────────────────────────────────────────────
+   BrandLoader — "Harissa fill"
+   The cart draws itself in green strokes, the chili fills with a
+   rising red liquid, the cap and stem settle, the white stripes
+   swipe in, a small flag star twinkles, then it all fades out
+   and the loop starts again.
+   Only transform, opacity and stroke-dashoffset are animated.
+   Each element has its own keyframes inside one shared cycle (no
+   animation-delay), and every reset happens while the stage is
+   invisible (94–100%), so the loop never visibly jumps.
+   ───────────────────────────────────────────────────────────── */
+
+.ctl {
+  --ctl-red: var(--ct-red, #db142e);
+  --ctl-red-deep: var(--ct-red-dark, #b01025);
+  --ctl-green: var(--ct-green, #198f41);
+  --ctl-cycle: 3.2s;
+  --ctl-ghost: .1;
+  --ctl-surface: #fff;
+  --ctl-ink: var(--ct-ink, #111);
+  --ctl-muted: var(--ct-muted, #5f6368);
+  --ctl-veil: rgba(255, 255, 255, .74);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Fades in after a short delay, so loads under ~150ms never show the loader. */
+  animation: ctl-enter .42s cubic-bezier(.2, .8, .2, 1) .15s both;
+}
+.ctl--dark {
+  --ctl-ghost: .2;
+  --ctl-surface: #0D1117;
+  --ctl-ink: #f5f5f4;
+  --ctl-muted: #a1a1aa;
+  --ctl-veil: rgba(9, 9, 11, .72);
+}
+.ctl.is-instant { animation-delay: 0s; }
+.ctl.is-leaving { animation: ctl-leave .22s cubic-bezier(.4, 0, .2, 1) both; }
+
+@keyframes ctl-leave {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: scale(.985); }
+}
+@keyframes ctl-enter {
+  from { opacity: 0; transform: scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ctl-sr {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ── Variants ──────────────────────────────────────────────── */
+
+.ctl--inline {
+  display: inline-flex;
+  vertical-align: middle;
+  flex-direction: row;
+  /* Inline glyphs sit inside buttons: show right away, the button state already changed. */
+  animation: none;
+}
+
+.ctl--section {
+  width: 100%;
+  min-height: var(--ctl-min-h, 0);
+  padding: 20px 16px;
+  gap: 12px;
+}
+
+.ctl--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100000; /* above the chat widget and toasts */
+  gap: 18px;
+  padding: 24px;
+  background: var(--ctl-veil);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+}
+
+.ctl-label {
+  margin: 0;
+  max-width: 28ch;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  line-height: 1.4;
+  color: var(--ctl-muted);
+}
+.ctl--fullscreen .ctl-label { font-size: 14px; }
+.ctl-label--tagline {
+  font-family: var(--font-syne), system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--ctl-ink);
+  opacity: .72;
+}
+
+/* ── The mark ─────────────────────────────────────────────── */
+
+.ctl-mark {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+.ctl-mark * { transform-box: fill-box; }
+
+.ctl-stage {
+  transform-box: view-box;
+  transform-origin: 50% 55%;
+  animation: ctl-stage var(--ctl-cycle) infinite;
+}
+@keyframes ctl-stage {
+  0%       { opacity: 0; transform: scale(.92); animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  7%, 84%  { opacity: 1; transform: scale(1);   animation-timing-function: cubic-bezier(.55, 0, .45, 1); }
+  95%, 100% { opacity: 0; transform: scale(1.05); }
+}
+
+.ctl-cart { stroke: var(--ctl-green); }
+/* gap longer than the path + start offset 1.1: no zero-length dash, so round caps leave no dot */
+.ctl-draw { stroke-dasharray: 1 1.2; stroke-dashoffset: 0; }
+
+/* stroke drawing: [start%, end%] in the cycle */
+.ctl-d-frame  { animation: ctl-d-frame  var(--ctl-cycle) infinite; }
+.ctl-d-basket { animation: ctl-d-basket var(--ctl-cycle) infinite; }
+.ctl-d-g1     { animation: ctl-d-g1     var(--ctl-cycle) infinite; }
+.ctl-d-g2     { animation: ctl-d-g2     var(--ctl-cycle) infinite; }
+.ctl-d-g3     { animation: ctl-d-g3     var(--ctl-cycle) infinite; }
+.ctl-d-g4     { animation: ctl-d-g4     var(--ctl-cycle) infinite; }
+.ctl-d-stem   { animation: ctl-d-stem   var(--ctl-cycle) infinite; }
+.ctl-d-s1     { animation: ctl-d-s1     var(--ctl-cycle) infinite; }
+.ctl-d-s2     { animation: ctl-d-s2     var(--ctl-cycle) infinite; }
+.ctl-d-tail   { animation: ctl-d-tail   var(--ctl-cycle) infinite; }
+
+@keyframes ctl-d-frame  { 0%      { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.65, 0, .35, 1); } 27%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-basket { 0%, 7%  { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.65, 0, .35, 1); } 31%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-g1     { 0%, 20% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.33, 1, .68, 1); } 33%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-g2     { 0%, 23% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.33, 1, .68, 1); } 36%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-g3     { 0%, 26% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.33, 1, .68, 1); } 39%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-g4     { 0%, 29% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.33, 1, .68, 1); } 42%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-stem   { 0%, 50% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.33, 1, .68, 1); } 61%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-s1     { 0%, 55% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.22, 1, .36, 1); } 64%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-s2     { 0%, 58% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.22, 1, .36, 1); } 67%, 100% { stroke-dashoffset: 0; } }
+@keyframes ctl-d-tail   { 0%, 60% { stroke-dashoffset: 1.1; animation-timing-function: cubic-bezier(.22, 1, .36, 1); } 72%, 100% { stroke-dashoffset: 0; } }
+
+/* wheels pop with a little overshoot */
+.ctl-wheel { transform-origin: center; }
+.ctl-w1 { animation: ctl-w1 var(--ctl-cycle) infinite; }
+.ctl-w2 { animation: ctl-w2 var(--ctl-cycle) infinite; }
+@keyframes ctl-w1 { 0%, 25% { transform: scale(0); animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); } 35%, 100% { transform: scale(1); } }
+@keyframes ctl-w2 { 0%, 28% { transform: scale(0); animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); } 38%, 100% { transform: scale(1); } }
+
+/* chili: faint vessel + liquid rising inside it */
+/* the chili sits in front of the cart: an opaque surface-coloured backer, tinted red */
+.ctl-backer { fill: var(--ctl-surface); }
+.ctl-ghost { fill: var(--ctl-red); opacity: var(--ctl-ghost); }
+.ctl-rise {
+  transform-box: view-box;
+  transform: translateY(11px);
+  animation: ctl-rise var(--ctl-cycle) infinite;
+}
+@keyframes ctl-rise {
+  0%, 17%  { transform: translateY(52px); animation-timing-function: cubic-bezier(.45, .05, .25, 1); }
+  55%, 100% { transform: translateY(11px); }
+}
+.ctl-wave { fill: var(--ctl-red); transform-box: view-box; animation: ctl-sway 1.6s cubic-bezier(.45, 0, .55, 1) infinite alternate; }
+.ctl-wave--back { fill: var(--ctl-red-deep); animation-direction: alternate-reverse; }
+@keyframes ctl-sway { from { transform: translateX(0); } to { transform: translateX(-8px); } }
+
+/* calyx settles from above, stem draws after */
+.ctl-cap { fill: var(--ctl-green); transform-origin: 50% 100%; animation: ctl-cap var(--ctl-cycle) infinite; }
+@keyframes ctl-cap {
+  0%, 45% { opacity: 0; transform: translateY(-3px) scale(.4); animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
+  55%, 100% { opacity: 1; transform: none; }
+}
+.ctl-stem { stroke: var(--ctl-green); }
+
+/* the Tunisian star: a single twinkle on the chili's highlight */
+.ctl-star { fill: #fff; transform-origin: center; opacity: 0; animation: ctl-star var(--ctl-cycle) infinite; }
+@keyframes ctl-star {
+  0%, 66% { opacity: 0; transform: scale(0) rotate(-72deg); animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
+  74%     { opacity: 1; transform: scale(1) rotate(0deg);   animation-timing-function: cubic-bezier(.55, 0, .45, 1); }
+  84%, 100% { opacity: 0; transform: scale(.2) rotate(36deg); }
+}
+
+/* ── Inline glyph: the flag's crescent and star, turning ──── */
+
+.ctl-glyph { display: block; flex-shrink: 0; overflow: visible; }
+.ctl-glyph-turn {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: ctl-turn 1.15s cubic-bezier(.62, .05, .38, .95) infinite;
+}
+.ctl-glyph-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ctl-glyph-star .575s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+}
+@keyframes ctl-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ctl-glyph-star { from { transform: scale(.72); opacity: .7; } to { transform: scale(1); opacity: 1; } }
+
+/* ── Reduced motion: the finished mark, breathing gently ──── */
+
+.ctl--calm .ctl-mark *,
+.ctl--calm .ctl-glyph * { animation: none !important; }
+.ctl--calm .ctl-draw { stroke-dashoffset: 0; }
+.ctl--calm .ctl-star { opacity: 0; }
+.ctl--calm .ctl-stage,
+.ctl--calm .ctl-glyph-turn {
+  animation: ctl-breathe 1.8s cubic-bezier(.45, 0, .55, 1) infinite alternate !important;
+}
+@keyframes ctl-breathe { from { opacity: 1; } to { opacity: .5; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ctl { animation-duration: .01s; }
+  .ctl-mark *,
+  .ctl-glyph * { animation: none !important; }
+  .ctl-draw { stroke-dashoffset: 0; }
+  .ctl-star { opacity: 0; }
+  .ctl-stage,
+  .ctl-glyph-turn {
+    animation: ctl-breathe 1.8s cubic-bezier(.45, 0, .55, 1) infinite alternate !important;
+  }
+}

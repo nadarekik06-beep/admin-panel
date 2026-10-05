@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Loader2, Info } from 'lucide-react'
+import { Plus, Trash2, Info } from 'lucide-react'
 import { plansApi, apiError } from '@/lib/api/subscriptions'
 import type { CommissionTable, Plan } from '@/types/subscriptions'
 import { Btn, Field, ReasonField, inputCls, reasonOk } from './ui'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 interface Row { min: string; max: string; rate: string }
 
 export default function DefaultCommission({ table, plans, onChanged, onError }: {
@@ -86,7 +87,7 @@ export default function DefaultCommission({ table, plans, onChanged, onError }: 
         <ReasonField value={reason} onChange={setReason} placeholder="Why are the default rates changing?" />
         <div className="flex justify-end">
           <Btn variant="danger" onClick={save} disabled={saving || !reasonOk(reason) || rows.some((r) => r.min === '' || r.rate === '')}>
-            {saving && <Loader2 size={13} className="animate-spin" />} Save default commission
+            {saving && <BrandLoader variant="inline" size={13} />} Save default commission
           </Btn>
         </div>
       </div>

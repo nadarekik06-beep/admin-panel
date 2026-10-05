@@ -24,12 +24,12 @@ import {
   Star, Search, RefreshCw, Eye, ChevronRight, Filter,
   RotateCcw, CheckCircle, XCircle, Flag, Trash2, X,
   AlertTriangle, ImageIcon, MessageSquare, User, Package,
-  Store, CalendarDays, ThumbsUp, EyeOff, Loader2,
-  TrendingUp, FileText, ShieldAlert, BadgeCheck, AlertCircle,
+  Store, CalendarDays, ThumbsUp, EyeOff, TrendingUp, FileText, ShieldAlert, BadgeCheck, AlertCircle,
 } from 'lucide-react'
 import { adminReviewsApi } from '@/lib/api/reviews'
 import type { AdminReview, AdminReviewDetail, ReviewStats, AdminReport } from '@/lib/api/reviews'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -288,7 +288,7 @@ function RejectModal({ reviewId, isOpen, onClose, onDone }: {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
           <button className="ct-btn ct-btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="ct-btn ct-btn--primary-danger" onClick={handleReject} disabled={saving}>
-            {saving ? <Loader2 size={14} className="ct-spin" /> : <XCircle size={14} />}
+            {saving ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
             {saving ? 'Rejecting…' : 'Confirm Reject'}
           </button>
         </div>
@@ -327,7 +327,7 @@ function DeleteModal({ reviewId, isOpen, onClose, onDone }: {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
           <button className="ct-btn ct-btn--ghost" onClick={onClose} disabled={deleting}>Cancel</button>
           <button className="ct-btn ct-btn--primary-danger" onClick={handleDelete} disabled={deleting}>
-            {deleting ? <Loader2 size={14} className="ct-spin" /> : <Trash2 size={14} />}
+            {deleting ? <BrandLoader variant="inline" size={14} /> : <Trash2 size={14} />}
             {deleting ? 'Deleting…' : 'Delete Permanently'}
           </button>
         </div>
@@ -526,14 +526,14 @@ function ReviewDrawer({ review, onClose, onRefresh }: {
           {review.status !== 'approved' && (
             <button className="ct-btn ct-btn--success" style={{ flex: 1 }} disabled={acting}
               onClick={() => act(() => adminReviewsApi.approve(review.id), '✅ Review approved', true)}>
-              {acting ? <Loader2 size={15} className="ct-spin" /> : <CheckCircle size={15} />}
+              {acting ? <BrandLoader variant="inline" size={15} /> : <CheckCircle size={15} />}
               Approve
             </button>
           )}
           {review.status !== 'flagged' && (
             <button className="ct-btn ct-btn--flag" style={{ flex: 1 }} disabled={acting}
               onClick={() => act(() => adminReviewsApi.flag(review.id), '🚩 Review flagged', true)}>
-              {acting ? <Loader2 size={15} className="ct-spin" /> : <Flag size={15} />}
+              {acting ? <BrandLoader variant="inline" size={15} /> : <Flag size={15} />}
               Flag
             </button>
           )}

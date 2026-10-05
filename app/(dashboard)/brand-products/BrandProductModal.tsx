@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { X, Upload, Trash2, Star, Loader2, AlertCircle } from 'lucide-react'
+import { X, Upload, Trash2, Star, AlertCircle } from 'lucide-react'
 import { brandProductsApi, buildFormData, type BrandProduct } from '@/lib/api/brandProducts'
 import VariantBuilder, {
   type VariantRow, normalizeVariantRow, calculateTotalStock, validateVariantStocks,
@@ -27,6 +27,7 @@ import ColorGroupImageUploader from '@/components/ColorGroupImageUploader'
 import DynamicAttributeSection from '@/components/attributes/DynamicAttributeSection'
 import type { Attribute, AttributeValues } from '@/components/types'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category    { id: number; name: string; slug: string }
@@ -481,7 +482,7 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
             <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: `1px solid ${border}` }}>
                 <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted, margin: 0 }}>Variants</p>
-                {attrLoading && <Loader2 size={10} style={{ animation: 'spin 0.8s linear infinite', color: textMuted }} />}
+                {attrLoading && <BrandLoader variant="inline" size={10} style={{ color: textMuted }} />}
                 {!attrLoading && variantAxes.length > 0 && (
                   <span style={{ fontSize: 9, fontWeight: 700, color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '1px 7px', borderRadius: 4 }}>
                     axes: {variantAxes.map(a => a.name).join(', ')}
@@ -589,7 +590,7 @@ export default function BrandProductModal({ product, onClose, onSaved }: Props) 
             </button>
             <button type="submit" disabled={saving || catLoading}
               style={{ flex: 1, padding: '11px 0', background: 'linear-gradient(135deg,#db142e,#a00f22)', color: '#fff', fontWeight: 800, fontSize: 13, borderRadius: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(219,20,46,0.3)', opacity: (saving || catLoading) ? 0.6 : 1, fontFamily: 'inherit' }}>
-              {saving && <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />}
+              {saving && <BrandLoader variant="inline" size={14} />}
               {isEdit ? 'Save Changes' : 'Create Product'}
             </button>
           </div>

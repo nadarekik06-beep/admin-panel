@@ -7,7 +7,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import {
   AlertCircle, AlertTriangle, ArrowLeft, CheckCircle, ExternalLink, Eye, History, Image as ImageIcon,
-  Layers, Loader2, RotateCcw, Save, Search, Tag, Wand2, XCircle, DollarSign, UserCog,
+  Layers, RotateCcw, Save, Search, Tag, Wand2, XCircle, DollarSign, UserCog,
 } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -25,6 +25,7 @@ import {
   activeColorGroups, fingerprint, fromPayload, isColorAxis, mapServerErrors, tabOf, toDocument, validate,
 } from './_components/editorModel'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api\/?$/, '')
 const LEAVE_MSG = 'You have unsaved changes. Leave without saving?'
 
@@ -595,7 +596,7 @@ export default function ProductEditorPage() {
           <div className="flex items-center gap-2 text-xs mr-auto min-w-0">
             {saving ? (
               <span className="flex items-center gap-1.5 text-text-secondary">
-                <Loader2 size={13} className="animate-spin" />
+                <BrandLoader variant="inline" size={13} />
                 {progress !== null && progress < 100 ? `Uploading images… ${progress}%` : 'Saving…'}
               </span>
             ) : dirty ? (
@@ -624,14 +625,14 @@ export default function ProductEditorPage() {
             title="Save changes (Ctrl + S)" aria-keyshortcuts="Control+S"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-bg-hover border border-border-light text-text-primary hover:border-text-muted disabled:opacity-50"
           >
-            {saving === 'save' ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save changes
+            {saving === 'save' ? <BrandLoader variant="inline" size={13} /> : <Save size={13} />} Save changes
           </button>
           {canApprove && (
             <button
               type="button" onClick={() => save(true)} disabled={!!saving}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-[#198f41] hover:bg-[#157a37] text-white disabled:opacity-50 shadow-lg shadow-[#198f41]/20"
             >
-              {saving === 'approve' ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} Save &amp; Approve
+              {saving === 'approve' ? <BrandLoader variant="inline" size={13} /> : <CheckCircle size={13} />} Save &amp; Approve
             </button>
           )}
         </div>

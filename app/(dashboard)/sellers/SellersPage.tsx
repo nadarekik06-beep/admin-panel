@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, CheckCircle, XCircle, PauseCircle, Eye, Pencil, X, Save, Loader2 } from 'lucide-react'
+import { Search, CheckCircle, XCircle, PauseCircle, Eye, Pencil, X, Save } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
@@ -11,6 +11,7 @@ import { sellersApi, SellerUpdatePayload } from '@/lib/api/sellers'
 import { Seller, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type ActionType = 'approve' | 'reject' | 'suspend'
 
 // ─── Extended type: merges User + SellerApplication fields ───────────────────
@@ -277,9 +278,7 @@ export default function SellersPage() {
       >
         {/* Loading state */}
         {viewLoading && !viewSeller && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={28} className="animate-spin" style={{ color: '#db142e' }} />
-          </div>
+          <BrandLoader variant="section" minHeight={200} />
         )}
 
         {viewSeller && !editMode && (
@@ -486,7 +485,7 @@ export default function SellersPage() {
               <button onClick={handleSave} disabled={saveLoading}
                 className="px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-60"
                 style={{ background: '#198f41' }}>
-                {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {saveLoading ? <BrandLoader variant="inline" size={14} /> : <Save size={14} />}
                 {saveLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, CheckCircle, XCircle, MessageSquareWarning, Star, ExternalLink, SkipForward,
-  Loader2, Edit2, EyeOff, RotateCcw, AlertTriangle, RefreshCw, Keyboard, Copy, Check,
+  Edit2, EyeOff, RotateCcw, AlertTriangle, RefreshCw, Keyboard, Copy, Check,
 } from 'lucide-react'
 import clsx from 'clsx'
 import Badge from '@/components/ui/Badge'
@@ -18,6 +18,7 @@ import MediaGallery, { type GalleryFilter } from './_components/MediaGallery'
 import SummaryPanel from './_components/SummaryPanel'
 import ReviewTabs from './_components/ReviewTabs'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type Confirm = 'approve' | 'disable' | 'restore'
 const AUTO_ADVANCE_KEY = 'ct_admin_review_auto_advance'
 
@@ -197,7 +198,7 @@ export default function ProductReviewPage() {
                 <h1 className="text-lg font-semibold text-text-primary truncate max-w-[52ch]" title={product.name}>{product.name}</h1>
                 <Badge variant={meta.badge}>{meta.label}</Badge>
                 {product.featured && <Badge variant="warning">★ Featured</Badge>}
-                {loading && <Loader2 size={14} className="animate-spin text-text-muted" />}
+                {loading && <BrandLoader variant="inline" size={14} className="text-text-muted" />}
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
                 <span>ID #{product.id}</span>
@@ -237,7 +238,7 @@ export default function ProductReviewPage() {
                     : 'border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary')}
                   title="Toggle featured (F)"
                 >
-                  {busy === 'featured' ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} className={product.featured ? 'fill-accent-orange' : ''} />}
+                  {busy === 'featured' ? <BrandLoader variant="inline" size={14} /> : <Star size={14} className={product.featured ? 'fill-accent-orange' : ''} />}
                   {product.featured ? 'Featured' : 'Feature'}
                 </button>
                 <Link href={`/products/${product.id}/edit`} className={clsx(btn, 'border border-[#db142e]/50 text-[#f87171] hover:bg-[#db142e]/10')} title="Open the full editor (E)">
@@ -360,7 +361,7 @@ export default function ProductReviewPage() {
               confirm === 'disable' ? 'bg-accent-orange hover:bg-accent-orange/90' : 'bg-accent-green hover:bg-accent-green/90'
             )}
           >
-            {busy ? <><Loader2 size={13} className="animate-spin" /> Processing…</> : 'Confirm'}
+            {busy ? <><BrandLoader variant="inline" size={13} /> Processing…</> : 'Confirm'}
           </button>
         </div>
       </Modal>

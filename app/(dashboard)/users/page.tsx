@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Trash2, UserX, UserCheck, Eye, Pencil, X, Save, Loader2, CheckCircle } from 'lucide-react'
+import { Search, Trash2, UserX, UserCheck, Eye, Pencil, X, Save, CheckCircle } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
@@ -10,6 +10,7 @@ import { usersApi, UserUpdatePayload } from '@/lib/api/users'
 import { User, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Toast notification ───────────────────────────────────────────────────────
 function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
   useEffect(() => {
@@ -303,7 +304,7 @@ export default function UsersPage() {
                   <button onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm">Cancel</button>
                   <button onClick={handleSave} disabled={saveLoading}
                     className="px-4 py-2 rounded-lg bg-accent-green hover:bg-accent-green/90 text-white text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-60">
-                    {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {saveLoading ? <BrandLoader variant="inline" size={14} /> : <Save size={14} />}
                     {saveLoading ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>

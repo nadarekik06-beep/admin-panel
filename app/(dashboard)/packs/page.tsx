@@ -5,11 +5,12 @@ import {
   Package2, Plus, Eye, CheckCircle, XCircle, Trash2,
   AlertCircle, RefreshCw, Search, Clock, Tag,
   TrendingDown, Store, Filter, X, ChevronDown,
-  ShoppingBag, Loader2, ToggleLeft, ToggleRight,
+  ShoppingBag, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import api from '@/lib/axios'
 import { format } from 'date-fns'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Pack {
@@ -334,10 +335,7 @@ function PackDetailDrawer({
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 12 }}>
-              <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite', color: '#db142e' }} />
-              <span style={{ color: '#64748b', fontSize: 13 }}>Loading pack…</span>
-            </div>
+            <BrandLoader variant="section" label="Loading pack…" minHeight={240} />
           ) : error && !detail ? (
             <div style={{
               background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
@@ -593,7 +591,7 @@ function PackDetailDrawer({
                       }}
                     >
                       {approving
-                        ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                        ? <BrandLoader variant="inline" size={13} />
                         : <CheckCircle size={13} />
                       }
                       Approve & Publish
@@ -615,7 +613,7 @@ function PackDetailDrawer({
                     }}
                   >
                     {rejecting
-                      ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                      ? <BrandLoader variant="inline" size={13} />
                       : <XCircle size={13} />
                     }
                     {showRejectInput ? 'Confirm Reject' : 'Reject'}
@@ -637,7 +635,7 @@ function PackDetailDrawer({
                       }}
                     >
                       {toggling
-                        ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                        ? <BrandLoader variant="inline" size={13} />
                         : detail.is_active ? <ToggleRight size={13} /> : <ToggleLeft size={13} />
                       }
                       {detail.is_active ? 'Deactivate' : 'Activate'}
@@ -658,7 +656,7 @@ function PackDetailDrawer({
                     }}
                   >
                     {deleting
-                      ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} />
+                      ? <BrandLoader variant="inline" size={12} />
                       : <Trash2 size={12} />
                     }
                   </button>
@@ -834,7 +832,7 @@ function PackRow({
               }}
             >
               {approving
-                ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+                ? <BrandLoader variant="inline" size={11} />
                 : <CheckCircle size={13} />
               }
             </button>
@@ -855,7 +853,7 @@ function PackRow({
             }}
           >
             {deleting
-              ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+              ? <BrandLoader variant="inline" size={11} />
               : <Trash2 size={13} />
             }
           </button>
@@ -1095,10 +1093,7 @@ export default function AdminPacksPage() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 10, color: '#64748b' }}>
-            <Loader2 size={20} style={{ animation: 'spin 0.8s linear infinite', color: '#db142e' }} />
-            Loading packs…
-          </div>
+          <BrandLoader variant="section" label="Loading packs…" minHeight={200} />
         ) : error ? (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <AlertCircle size={28} color="#db142e" style={{ margin: '0 auto 10px', display: 'block' }} />

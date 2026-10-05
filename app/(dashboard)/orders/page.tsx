@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  Search, Eye, Loader2, ShoppingBag, MapPin, Phone,
+  Search, Eye, ShoppingBag, MapPin, Phone,
   Package, User, CheckCircle, X, ChevronDown,
   Store, Tag, TrendingDown, PhoneCall, MessageSquare,
   CheckCheck, XCircle, Save, FileDown, AlertTriangle,
@@ -19,6 +19,7 @@ import {
   type ShippingAddress, type SellerPickup, type SlipMoney, type ExportReadiness, type ExportHistoryEntry,
 } from './_components/delivery'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
@@ -438,7 +439,7 @@ function ContactModal({
                   }}
                 >
                   {saving
-                    ? <Loader2 size={10} style={{ animation: 'spin 0.8s linear infinite' }} />
+                    ? <BrandLoader variant="inline" size={10} />
                     : <Save size={10} />
                   }
                   Save Note
@@ -477,7 +478,7 @@ function ContactModal({
                   }}
                 >
                   {cancelling
-                    ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+                    ? <BrandLoader variant="inline" size={14} />
                     : <XCircle size={14} />
                   }
                   Cancel Order
@@ -500,7 +501,7 @@ function ContactModal({
                   }}
                 >
                   {confirming
-                    ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+                    ? <BrandLoader variant="inline" size={14} />
                     : <CheckCheck size={14} />
                   }
                   Confirm Order
@@ -952,10 +953,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 12 }}>
-              <Loader2 size={28} style={{ animation: 'spin 0.8s linear infinite', color: '#3b82f6' }} />
-              <p style={{ color: '#64748b', fontSize: 13, fontWeight: 600, margin: 0 }}>Loading order…</p>
-            </div>
+            <BrandLoader variant="section" label="Loading order…" minHeight={240} />
           ) : error && !detail ? (
             <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '14px 16px', color: '#ef4444', fontSize: 13, fontWeight: 600 }}>{error}</div>
           ) : detail ? (
@@ -1179,7 +1177,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                   </div>
                   <button onClick={handleStatusUpdate} disabled={!newStatus || updating}
                     style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#4f46e5)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: (!newStatus || updating) ? 'not-allowed' : 'pointer', opacity: (!newStatus || updating) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                    {updating && <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />}
+                    {updating && <BrandLoader variant="inline" size={13} />}
                     Update
                   </button>
                 </div>
@@ -1204,7 +1202,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                   </div>
                   <button onClick={handlePaymentStatusUpdate} disabled={!newPayStatus || payUpdating}
                     style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: (!newPayStatus || payUpdating) ? 'not-allowed' : 'pointer', opacity: (!newPayStatus || payUpdating) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                    {payUpdating && <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />}
+                    {payUpdating && <BrandLoader variant="inline" size={13} />}
                     Update
                   </button>
                 </div>
@@ -1514,7 +1512,7 @@ export default function OrdersPage() {
                     color: bulkBlockedReason ? '#f59e0b' : '#fff', fontSize: 12, fontWeight: 700,
                     cursor: bulkBusy ? 'wait' : bulkBlockedReason ? 'not-allowed' : 'pointer', opacity: bulkBusy ? 0.75 : 1,
                   }}>
-                  {bulkBusy ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : bulkBlockedReason ? <AlertTriangle size={13} /> : <FileDown size={13} />}
+                  {bulkBusy ? <BrandLoader variant="inline" size={13} /> : bulkBlockedReason ? <AlertTriangle size={13} /> : <FileDown size={13} />}
                   {bulkBusy ? 'Generating…' : `Export delivery slips (${picked.size})`}
                 </button>
               </>

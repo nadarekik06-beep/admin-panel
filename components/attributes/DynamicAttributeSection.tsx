@@ -6,10 +6,10 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import type { Attribute, AttributeValues } from '@/components/types'
 import AttributeField from '../../app/(dashboard)/brand-products/AttributeField'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api\/?$/, '')
 
 interface Props {
@@ -46,7 +46,7 @@ export default function DynamicAttributeSection({
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>
-        <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+        <BrandLoader variant="inline" size={14} />
         Loading attributes…
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>

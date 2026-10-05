@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Search, CheckCircle, XCircle, EyeOff, Trash2,
-  Eye, X, Loader2, Edit2, RotateCcw, AlertTriangle, UserCog,
+  Eye, X, Edit2, RotateCcw, AlertTriangle, UserCog,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
@@ -16,6 +16,7 @@ import { productsApi } from '@/lib/api/products'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type ActionType = 'approve' | 'disable' | 'delete' | 'force_delete'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/api$/, '')
@@ -376,7 +377,7 @@ export default function ProductsPage() {
                   title="Restore to pending review"
                 >
                   {actionLoading === row.id
-                    ? <Loader2 size={15} className="animate-spin" />
+                    ? <BrandLoader variant="inline" size={15} />
                     : <RotateCcw size={15} />
                   }
                 </button>

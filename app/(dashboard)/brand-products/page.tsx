@@ -12,12 +12,13 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Plus, Search, Filter, Edit2, Trash2, Package,
   CheckCircle, XCircle, ChevronLeft, ChevronRight,
-  Loader2, Image as ImageIcon, Eye, Layers, Star,
+  Image as ImageIcon, Eye, Layers, Star,
   BarChart2, Globe, EyeOff,
 } from 'lucide-react'
 import { brandProductsApi, type BrandProduct } from '@/lib/api/brandProducts'
 import BrandProductModal from './BrandProductModal'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface PaginatedData {
@@ -298,9 +299,7 @@ export default function BrandProductsPage() {
         {/* ── Table ── */}
         <div style={{ background: cardBg, borderRadius: 18, border: `1px solid ${border}`, overflow: 'hidden' }}>
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-              <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite', color: '#db142e' }} />
-            </div>
+            <BrandLoader variant="section" minHeight={220} />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -412,7 +411,7 @@ export default function BrandProductsPage() {
                               title="Delete"
                             >
                               {deleting === product.id
-                                ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                ? <BrandLoader variant="inline" size={13} />
                                 : <Trash2 size={13} />
                               }
                             </button>

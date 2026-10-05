@@ -7,10 +7,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   MapPin, Phone, Copy, Check, AlertTriangle, Store, FileDown, ChevronDown,
-  Loader2, FileText, Files, Lock, Pencil, X, Save, CheckCircle, XCircle,
+  FileText, Files, Lock, Pencil, X, Save, CheckCircle, XCircle,
 } from 'lucide-react'
 import { ordersApi, type PickupAddressInput } from '@/lib/api/orders'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ShippingAddress {
@@ -353,7 +354,7 @@ function PickupForm({ sellerId, pickup, onCancel, onSaved }: {
       <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
         <button onClick={onCancel} disabled={saving} style={{ padding: '6px 12px', borderRadius: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
         <button onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: 'linear-gradient(135deg,#6366f1,#4f46e5)', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-          {saving ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Save size={11} />} Save pickup address
+          {saving ? <BrandLoader variant="inline" size={11} /> : <Save size={11} />} Save pickup address
         </button>
       </div>
     </div>
@@ -435,7 +436,7 @@ export function ExportMenu({ orderId, subOrders, readiness, onExported, notify }
           background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.3)',
           color: '#14b8a6', fontSize: 11, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
         }}>
-        {busy ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <FileDown size={13} />}
+        {busy ? <BrandLoader variant="inline" size={13} /> : <FileDown size={13} />}
         {busy ? 'Generating…' : 'Export'}
         {!busy && <ChevronDown size={12} />}
         {!allReady && !busy && <AlertTriangle size={11} color="#f59e0b" />}

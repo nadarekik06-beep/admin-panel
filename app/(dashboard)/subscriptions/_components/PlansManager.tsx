@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Archive, RotateCcw, Power, Star, Users, Check, Loader2, X } from 'lucide-react'
+import { Plus, Pencil, Archive, RotateCcw, Power, Star, Users, Check, X } from 'lucide-react'
 import clsx from 'clsx'
 import { plansApi, apiError, type PlanInput } from '@/lib/api/subscriptions'
 import type { Plan, PlansPayload } from '@/types/subscriptions'
 import { Btn, Field, PlanBadge, ReasonField, formatDT, inputCls, reasonOk } from './ui'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 interface Props {
   data: PlansPayload | null
   showArchived: boolean
@@ -320,7 +321,7 @@ function PlanEditor({ plan, features, onClose, onSaved, onError }: {
         <div className="sticky bottom-0 flex justify-end gap-2 px-5 py-4 border-t border-border bg-bg-card">
           <Btn onClick={onClose}>Cancel</Btn>
           <Btn variant="danger" onClick={save} disabled={saving || !f.name.trim() || (creating && !f.slug) || (f.commission_mode === 'flat' && f.commission_rate === '') || (!!f.reason && f.reason.trim().length < 5)}>
-            {saving && <Loader2 size={13} className="animate-spin" />} {creating ? 'Create plan' : 'Save changes'}
+            {saving && <BrandLoader variant="inline" size={13} />} {creating ? 'Create plan' : 'Save changes'}
           </Btn>
         </div>
       </div>
@@ -350,7 +351,7 @@ function ArchiveDialog({ plan, onClose, onDone, onError }: {
             setBusy(true)
             try { onDone((await plansApi.archive(plan.id, reason)).message) } catch (err) { onError(apiError(err)) } finally { setBusy(false) }
           }}>
-            {busy && <Loader2 size={13} className="animate-spin" />} Archive
+            {busy && <BrandLoader variant="inline" size={13} />} Archive
           </Btn>
         </div>
       </div>

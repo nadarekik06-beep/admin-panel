@@ -14,13 +14,13 @@ import {
   AlertTriangle, CheckCircle, XCircle, Clock, Search,
   Eye, RefreshCw, ChevronRight, FileText, RotateCcw,
   ShieldAlert, User, Store, Package, Image as ImageIcon,
-  CalendarDays, MessageSquare, X, AlertCircle, Loader2,
-  TrendingUp, Filter, ArrowUpRight,
+  CalendarDays, MessageSquare, X, AlertCircle, TrendingUp, Filter, ArrowUpRight,
 } from 'lucide-react'
 import { adminComplaintApi } from '@/lib/complaintApi'
 import type { Complaint } from '@/types/complaint'
 import { STATUS_CONFIG, COMPLAINT_TYPE_LABELS } from '@/types/complaint'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -541,7 +541,7 @@ function RejectModal({ complaintId, isOpen, onClose, onRejected }: {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
           <button className="ct-btn ct-btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="ct-btn ct-btn--primary-danger" onClick={handleReject} disabled={saving}>
-            {saving ? <Loader2 size={14} className="ct-spin" /> : <XCircle size={14} />}
+            {saving ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
             {saving ? 'Rejecting…' : 'Confirm Rejection'}
           </button>
         </div>
@@ -732,12 +732,12 @@ function ComplaintDrawer({ complaint, onClose, onRefresh }: {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <button className="ct-btn ct-btn--success" disabled={acting}
                   onClick={() => act(() => adminComplaintApi.overrideToApproved(complaint.id), '✅ Override approved')}>
-                  {acting ? <Loader2 size={14} className="ct-spin" /> : <CheckCircle size={14} />}
+                  {acting ? <BrandLoader variant="inline" size={14} /> : <CheckCircle size={14} />}
                   Override → Approve
                 </button>
                 <button className="ct-btn ct-btn--primary-danger" disabled={acting}
                   onClick={() => act(() => adminComplaintApi.confirmRejection(complaint.id), '❌ Rejection confirmed')}>
-                  {acting ? <Loader2 size={14} className="ct-spin" /> : <XCircle size={14} />}
+                  {acting ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
                   Confirm Rejection
                 </button>
               </div>
@@ -779,7 +779,7 @@ function ComplaintDrawer({ complaint, onClose, onRefresh }: {
             </button>
             <button className="ct-btn ct-btn--success" style={{ flex: 1 }} disabled={acting}
               onClick={() => act(() => adminComplaintApi.approve(complaint.id), '✅ Complaint approved')}>
-              {acting ? <Loader2 size={15} className="ct-spin" /> : <CheckCircle size={15} />}
+              {acting ? <BrandLoader variant="inline" size={15} /> : <CheckCircle size={15} />}
               {acting ? 'Working…' : 'Approve'}
             </button>
           </div>

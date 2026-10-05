@@ -5,13 +5,14 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   DollarSign, TrendingUp, TrendingDown, Package,
   CheckCircle, Clock, AlertCircle, RefreshCw, Search,
-  Plus, X, Loader2, Eye,
+  Plus, X, Eye,
 } from 'lucide-react'
 import api from '@/lib/axios'
 import { format } from 'date-fns'
 import { fmt, SHIPPING_PAYER, PayoutBadge } from './financeShared'
 import FinanceOrderDrawer from './FinanceOrderDrawer'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 function KpiCard({
   label, value, sub, color, icon: Icon,
 }: {
@@ -214,7 +215,7 @@ function CreateSettlementModal({
               cursor: loading || !sellerId || !batchDate ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              {loading && <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />}
+              {loading && <BrandLoader variant="inline" size={14} />}
               {loading ? 'Creating…' : '✓ Create Settlement Batch'}
             </button>
           </div>

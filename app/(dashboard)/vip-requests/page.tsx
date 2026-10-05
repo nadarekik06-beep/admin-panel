@@ -10,8 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Crown, Clock, CheckCircle, XCircle, Loader2,
-  Search, Eye, RefreshCw, ChevronRight, FileText,
+  Crown, Clock, CheckCircle, XCircle, Search, Eye, RefreshCw, ChevronRight, FileText,
   RotateCcw, User, CalendarDays, MessageSquare, X,
   AlertCircle, Filter, Zap, Star, Headphones,
   PlayCircle, Megaphone, StickyNote, ArrowRight,
@@ -25,6 +24,7 @@ import {
   type VipRequestType,
 } from '@/lib/vipRequestApi'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -418,7 +418,7 @@ function RejectModal({ requestId, isOpen, onClose, onRejected }: {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
           <button className="vip-btn vip-btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="vip-btn vip-btn--primary-danger" onClick={handleReject} disabled={saving}>
-            {saving ? <Loader2 size={14} className="vip-spin" /> : <XCircle size={14} />}
+            {saving ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
             {saving ? 'Rejecting…' : 'Confirm Rejection'}
           </button>
         </div>
@@ -566,7 +566,7 @@ function VipRequestDrawer({ request, onClose, onRefresh }: {
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <button className="vip-btn vip-btn--ghost" style={{ flex: 1, padding: '8px 12px', fontSize: 12 }} onClick={() => setNoteEdit(false)} disabled={acting}>Cancel</button>
                   <button className="vip-btn vip-btn--purple" style={{ flex: 1, padding: '8px 12px', fontSize: 12 }} onClick={saveNote} disabled={acting || !noteText.trim()}>
-                    {acting ? <Loader2 size={12} className="vip-spin" /> : <StickyNote size={12} />}
+                    {acting ? <BrandLoader variant="inline" size={12} /> : <StickyNote size={12} />}
                     Save Note
                   </button>
                 </div>
@@ -630,7 +630,7 @@ function VipRequestDrawer({ request, onClose, onRefresh }: {
                 </button>
                 <button className="vip-btn vip-btn--gold" style={{ flex: 1 }} disabled={acting}
                   onClick={() => act(() => adminVipRequestApi.approve(request.id), '✅ Marked as in progress')}>
-                  {acting ? <Loader2 size={15} className="vip-spin" /> : <ArrowRight size={15} />}
+                  {acting ? <BrandLoader variant="inline" size={15} /> : <ArrowRight size={15} />}
                   {acting ? 'Working…' : 'Start Processing'}
                 </button>
               </>
@@ -642,7 +642,7 @@ function VipRequestDrawer({ request, onClose, onRefresh }: {
                 </button>
                 <button className="vip-btn vip-btn--success" style={{ flex: 1 }} disabled={acting}
                   onClick={() => act(() => adminVipRequestApi.complete(request.id, noteText || undefined), '🎉 Request completed!')}>
-                  {acting ? <Loader2 size={15} className="vip-spin" /> : <CheckCircle size={15} />}
+                  {acting ? <BrandLoader variant="inline" size={15} /> : <CheckCircle size={15} />}
                   {acting ? 'Completing…' : 'Mark Completed'}
                 </button>
               </>

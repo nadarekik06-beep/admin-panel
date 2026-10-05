@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, XCircle, MessageSquareWarning, Check } from 'lucide-react'
+import { XCircle, MessageSquareWarning, Check } from 'lucide-react'
 import clsx from 'clsx'
 import Modal from '@/components/ui/Modal'
 import { productsApi } from '@/lib/api/products'
 import { DEFAULT_MODERATION_REASONS, apiErrorMessage } from './reviewUtils'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type Mode = 'reject' | 'request_changes'
 
 interface Props {
@@ -162,7 +163,7 @@ export default function ModerationActionModal({ open, mode, product, reasons, on
               )}
             >
               {loading ? (
-                <><Loader2 size={13} className="animate-spin" /> {copy.busy}</>
+                <><BrandLoader variant="inline" size={13} /> {copy.busy}</>
               ) : mode === 'reject' ? (
                 <><XCircle size={13} /> {copy.submit}</>
               ) : (

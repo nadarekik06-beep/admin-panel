@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Search, CheckCircle, XCircle, Eye, X,
   ExternalLink, MapPin, Phone, Store, Tag,
-  Trash2, UserCog, Loader2, Sparkles,
+  Trash2, UserCog, Sparkles,
 } from 'lucide-react'
 import {
   sellerApplicationsApi,
@@ -16,6 +16,7 @@ import {
 import { sellersApi } from '@/lib/api/sellers'
 import { format } from 'date-fns'
 
+import BrandLoader from '@/components/brand/BrandLoader'
 type Tab = 'pending' | 'approved' | 'rejected'
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function ConfirmModal({ title, message, confirmLabel, confirmColor, loading, onC
           <button onClick={onConfirm} disabled={loading}
             className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             style={{ background: confirmColor }}>
-            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading && <BrandLoader variant="inline" size={14} />}
             {loading ? 'Processing…' : confirmLabel}
           </button>
         </div>
@@ -381,7 +382,7 @@ function DetailModal({
               <button onClick={handleApprove} disabled={loading}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60"
                 style={{ background: '#198f41' }}>
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={15} />}
+                {loading ? <BrandLoader variant="inline" size={14} /> : <CheckCircle size={15} />}
                 {loading ? 'Approving…' : 'Approve Seller'}
               </button>
             </>
@@ -517,9 +518,7 @@ export default function SellerApplicationsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#db142e', borderTopColor: 'transparent' }} />
-          </div>
+          <BrandLoader variant="section" minHeight={200} />
         ) : applications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-muted">
             <p className="text-sm">No {tab} applications found.</p>
