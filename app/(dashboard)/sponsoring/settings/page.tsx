@@ -11,7 +11,7 @@ const GROUPS: { title: string; keys: string[] }[] = [
   { title: 'Budget & bidding (DT)', keys: ['min_daily_budget', 'min_top_up', 'min_cpc', 'category_min_cpc', 'suggested_cpc_window_days', 'suggested_cpc_multiplier', 'gsp_increment'] },
   { title: 'Plan tiers', keys: ['tier_click_discount', 'monthly_credit'] },
   { title: 'Ranking & relevance', keys: ['readiness_threshold', 'min_relevance', 'relevance_personal_weight', 'pctr_prior', 'pctr_prior_strength', 'quality_min', 'quality_max'] },
-  { title: 'Density caps', keys: ['max_ads', 'reserved_slots', 'frequency_cap_per_day'] },
+  { title: 'Density caps', keys: ['max_ads', 'reserved_slots', 'grid_ad_every', 'grid_flyer_every', 'frequency_cap_per_day'] },
   { title: 'Clicks & attribution', keys: ['click_dedupe_hours', 'impression_dedupe_minutes', 'attribution_days', 'bot_max_clicks_per_minute'] },
   { title: 'Entry popup', keys: ['popup_enabled', 'popup_min_relevance', 'popup_delay_seconds', 'popup_dismiss_hours', 'popup_dismiss_days_after_3'] },
   { title: 'E-mails', keys: ['digest_enabled', 'digest_day', 'digest_time', 'digest_products', 'interest_emails_enabled', 'marketing_email_gap_days'] },
