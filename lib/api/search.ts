@@ -18,11 +18,11 @@ export interface MissedQueriesResponse {
 }
 
 export interface SearchHealth {
-  meilisearch: boolean
-  products_indexed: number | null
-  photos_indexed: number | null
-  embedder: { image_model: string | null; text_model: string | null } | null
-  semantic_search: boolean
+  ai_service: boolean          // choosetounsi-ai-service answers /health
+  photos_indexed: number       // searchable photo fingerprints (live products, active sellers)
+  categories: number           // categories with a centroid (category detection)
+  image_model: string | null   // model the AI service runs now
+  index_model: string | null   // model the fingerprints were made with
 }
 
 export const adminSearchApi = {

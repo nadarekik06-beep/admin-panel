@@ -4,9 +4,9 @@
  * app/(dashboard)/search/page.tsx — Admin Panel
  *
  * Missed searches: what customers typed that found nothing (or almost nothing),
- * most frequent first. Use it to grow choosetounsi-backend/resources/search/synonyms.txt,
- * then run `php artisan search:sync-settings`.
- * Also shows whether each piece of search is up (Meilisearch, embedding service).
+ * most frequent first. Use it to grow choosetounsi-backend/resources/search/synonyms.txt
+ * (read again automatically when the file changes).
+ * Also shows whether photo search is up (AI service, fingerprints).
  */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -95,16 +95,19 @@ export default function MissedSearchesPage() {
       <p style={{ margin: '0 0 22px', color: 'var(--t2)', fontSize: 13, maxWidth: 760, lineHeight: 1.6 }}>
         Searches that found nothing, or fewer than {lowResults} products. When a word means a product you sell
         (derja, French, Arabic, a misspelling), add it to a line of <code style={{ color: AMBER }}>{synonymsFile || 'resources/search/synonyms.txt'}</code> with
-        the words already used in product names, then run <code style={{ color: AMBER }}>php artisan search:sync-settings</code>.
+        the words already used in product names. The search bar picks the file up on its own.
       </p>
 
       <div className="sq-grid" style={{ marginBottom: 18 }}>
-        <Status ok={!!health?.meilisearch} label="Search engine" icon={<Database size={18} />}
-          detail={health?.meilisearch ? `${health.products_indexed ?? '?'} products indexed` : 'Meilisearch unreachable: MySQL fallback in use'} />
-        <Status ok={!!health?.embedder} label="Search by image" icon={<ImageIcon size={18} />}
-          detail={health?.embedder ? `${health.photos_indexed ?? '?'} photos indexed` : 'Embedding service unreachable'} />
-        <Status ok={!!health?.embedder?.text_model && !!health?.semantic_search} label="Multilingual matching" icon={<Cpu size={18} />}
-          detail={!health?.semantic_search ? 'Turned off (SEARCH_SEMANTIC=false)' : health?.embedder?.text_model ? 'On' : 'Embedding service unreachable: keywords only'} />
+        <Status ok={!!health} label="Search bar" icon={<Database size={18} />}
+          detail="MySQL keyword search, synonyms and spelling correction" />
+        <Status ok={!!health?.ai_service && (health?.photos_indexed ?? 0) > 0} label="Search by photo" icon={<ImageIcon size={18} />}
+          detail={!health?.ai_service ? 'AI service unreachable: the camera button shows "unavailable"'
+            : `${health.photos_indexed} photos, ${health.categories} categories indexed`} />
+        <Status ok={!!health?.image_model && health?.image_model === health?.index_model} label="Photo model" icon={<Cpu size={18} />}
+          detail={!health?.image_model ? 'Unknown (AI service unreachable)'
+            : health.image_model === health.index_model ? health.image_model
+            : `Model changed: run php artisan image-search:rebuild --fresh`} />
       </div>
 
       <div className="sq-card" style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
