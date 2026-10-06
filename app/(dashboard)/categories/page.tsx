@@ -25,6 +25,7 @@ import {
 } from '@/lib/api/categories'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function ActiveBadge({ active }: { active: boolean }) {
@@ -726,6 +727,8 @@ export default function CategoriesPage() {
   const [categories,    setCategories]    = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [loadingCats,   setLoadingCats]   = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loadingCats)
   const [loadingSubs,   setLoadingSubs]   = useState(false)
   const [selectedCat,   setSelectedCat]   = useState<Category | null>(null)
   const [managingSub,   setManagingSub]   = useState<Subcategory | null>(null)

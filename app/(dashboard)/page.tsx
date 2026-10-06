@@ -20,6 +20,7 @@ import OrderPieChart from '@/components/charts/OrderPieChart'
 import { dashboardApi } from '@/lib/api/dashboard'
 import { DashboardData, Order } from '@/types'
 import { format } from 'date-fns'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 
 // ✅ Tunisian Dinar — 3 decimal places
 function formatDT(value: number): string {
@@ -55,6 +56,8 @@ const fadeIn: Variants = {
 export default function DashboardPage() {
   const [data, setData]       = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError]     = useState('')
 
   useEffect(() => {

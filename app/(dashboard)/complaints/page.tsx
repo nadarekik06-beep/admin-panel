@@ -21,6 +21,8 @@ import type { Complaint } from '@/types/complaint'
 import { STATUS_CONFIG, COMPLAINT_TYPE_LABELS } from '@/types/complaint'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -82,14 +84,12 @@ const GLOBAL_CSS = `
   @keyframes ct-fade-up   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
   @keyframes ct-slide-in  { from{transform:translateX(100%)} to{transform:translateX(0)} }
   @keyframes ct-slide-up  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-  @keyframes ct-spin      { to{transform:rotate(360deg)} }
   @keyframes ct-pulse-ring{ 0%{box-shadow:0 0 0 0 rgba(249,115,22,.45)} 70%{box-shadow:0 0 0 8px rgba(249,115,22,0)} 100%{box-shadow:0 0 0 0 rgba(249,115,22,0)} }
   @keyframes ct-shimmer   { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
 
   .ct-animate-fade-up { animation: ct-fade-up 0.45s cubic-bezier(.22,1,.36,1) both; }
   .ct-animate-slide-in{ animation: ct-slide-in 0.3s cubic-bezier(.22,1,.36,1) both; }
   .ct-animate-slide-up{ animation: ct-slide-up 0.25s cubic-bezier(.22,1,.36,1) both; }
-  .ct-spin            { animation: ct-spin 0.9s linear infinite; }
 
   /* ── stagger utility ── */
   .ct-stagger > *:nth-child(1) { animation-delay: 0ms }
@@ -871,6 +871,8 @@ export default function AdminComplaintsPage() {
   const [complaints,     setComplaints]     = useState<Complaint[]>([])
   const [stats,          setStats]          = useState<any>(null)
   const [loading,        setLoading]        = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [selected,       setSelected]       = useState<Complaint | null>(null)
   const [filterStatus,   setFilterStatus]   = useState('')
   const [filterFromDate, setFilterFromDate] = useState('')
@@ -1019,47 +1021,50 @@ export default function AdminComplaintsPage() {
 
         {/* ── Table ── */}
         <div className="ct-table-wrap">
-          {loading ? (
-            <table className="ct-table">
-              <thead>
-                <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--bd)' }}>
-                  {['ID', 'Customer', 'Type', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
-            </table>
-          ) : complaints.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '64px 0' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg3)', border: '1px solid var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <FileText size={24} color="var(--t3)" />
-              </div>
-              <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>
-                {hasFilters ? 'No results found' : 'No complaints yet'}
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--t2)' }}>
-                {hasFilters ? 'Try adjusting your filters.' : 'All clear — no complaints to review.'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
+          <div style={{ position: 'relative' }}>
+            <RefreshCover active={loading} />
+            {firstLoad ? (
               <table className="ct-table">
                 <thead>
-                  <tr>
+                  <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--bd)' }}>
                     {['ID', 'Customer', 'Type', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {complaints.map(c => (
-                    <ComplaintTableRow key={c.id} complaint={c} onSelect={handleSelectFresh} />
-                  ))}
-                </tbody>
+                <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
               </table>
-            </div>
-          )}
+            ) : complaints.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '64px 0' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg3)', border: '1px solid var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <FileText size={24} color="var(--t3)" />
+                </div>
+                <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>
+                  {hasFilters ? 'No results found' : 'No complaints yet'}
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--t2)' }}>
+                  {hasFilters ? 'Try adjusting your filters.' : 'All clear — no complaints to review.'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="ct-table">
+                  <thead>
+                    <tr>
+                      {['ID', 'Customer', 'Type', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {complaints.map(c => (
+                      <ComplaintTableRow key={c.id} complaint={c} onSelect={handleSelectFresh} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
         {!loading && complaints.length > 0 && (

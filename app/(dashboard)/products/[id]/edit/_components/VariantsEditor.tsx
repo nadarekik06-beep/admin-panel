@@ -10,6 +10,7 @@ import {
   type EditorState, type Errors, type ImgItem, type VariantRow,
   activeColorGroups, colorIdsOf, groupKey, isColorAxis, uid, variantLabel,
 } from './editorModel'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface Props {
   state: EditorState
@@ -61,7 +62,7 @@ export default function VariantsEditor({ state, setState, axes, axesLoading, has
   if (!hasSubcategory) {
     return <EmptyNote>Choose a subcategory in <b>General</b> to manage variants — variant attributes (color, size…) come from the subcategory.</EmptyNote>
   }
-  if (axesLoading) return <EmptyNote>Loading variant attributes…</EmptyNote>
+  if (axesLoading) return <BrandLoader variant="section" size="sm" label="Loading variant attributes…" />
   if (axes.length === 0 && rows.length === 0) {
     return <EmptyNote>This subcategory has no variant attributes, so the product is sold as a single item. Stock and price are set in <b>Pricing &amp; Stock</b>.</EmptyNote>
   }

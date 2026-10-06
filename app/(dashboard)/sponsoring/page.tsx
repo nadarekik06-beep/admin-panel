@@ -8,11 +8,15 @@ import Link from 'next/link'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { adsAdminApi, money, PLACEMENT_LABELS, type AdsOverview } from '@/lib/adsAdminApi'
 import { card, Notice, SponsoringShell, Stat, GOLD, GREEN } from './_components/ui'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function SponsoringOverviewPage() {
   const [days, setDays] = useState(30)
   const [data, setData] = useState<AdsOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // holds the navigation loader until the first load is done
+  usePageLoading(!data && !error)
 
   useEffect(() => {
     setData(null)
@@ -29,7 +33,7 @@ export default function SponsoringOverviewPage() {
       </select>
     }>
       {error && <Notice tone="error">{error}</Notice>}
-      {!data ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : (
+      {!data ? <BrandLoader variant="section" minHeight={200} /> : (
         <>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
             <Stat label="Ad revenue (paid)" value={money(data.revenue.paid)} tone={GREEN} hint={`All time ${money(data.all_time.paid)}`} />

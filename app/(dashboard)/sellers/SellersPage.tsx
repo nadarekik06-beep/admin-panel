@@ -12,6 +12,7 @@ import { Seller, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 type ActionType = 'approve' | 'reject' | 'suspend'
 
 // ─── Extended type: merges User + SellerApplication fields ───────────────────
@@ -68,6 +69,8 @@ function InfoCard({ label, value }: { label: string; value?: string | number | n
 export default function SellersPage() {
   const [sellers, setSellers]             = useState<PaginatedResponse<Seller> | null>(null)
   const [loading, setLoading]             = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [search, setSearch]               = useState('')
   const [status, setStatus]               = useState('')
   const [page, setPage]                   = useState(1)

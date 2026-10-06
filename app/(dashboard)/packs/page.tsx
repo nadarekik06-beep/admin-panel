@@ -11,6 +11,8 @@ import api from '@/lib/axios'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Pack {
@@ -869,6 +871,8 @@ export default function AdminPacksPage() {
   const [packs,      setPacks]      = useState<PaginatedPacks | null>(null)
   const [stats,      setStats]      = useState<Stats | null>(null)
   const [loading,    setLoading]    = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [error,      setError]      = useState(false)
 
   // Filters
@@ -1092,57 +1096,60 @@ export default function AdminPacksPage() {
           )}
         </div>
 
-        {loading ? (
-          <BrandLoader variant="section" label="Loading packs…" minHeight={200} />
-        ) : error ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-            <AlertCircle size={28} color="#db142e" style={{ margin: '0 auto 10px', display: 'block' }} />
-            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>Failed to load packs.</p>
-            <button onClick={load} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', background: '#db142e', color: '#fff',
-              fontWeight: 700, fontSize: 12, borderRadius: 10, border: 'none', cursor: 'pointer',
-            }}>
-              <RefreshCw size={12} /> Retry
-            </button>
-          </div>
-        ) : !packs?.data.length ? (
-          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-            <Package2 size={40} style={{ color: '#1e2128', margin: '0 auto 14px', display: 'block' }} />
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>No packs found</p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-              {search || status ? 'Try adjusting your filters.' : 'No sellers have created packs yet.'}
-            </p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={th}>Pack</th>
-                  <th style={th}>Seller</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Price</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Created</th>
-                  <th style={th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {packs.data.map(pack => (
-                  <PackRow
-                    key={pack.id}
-                    pack={pack}
-                    onView={() => openDrawer(pack.id)}
-                    onApprove={() => handleQuickApprove(pack)}
-                    onDelete={() => handleQuickDelete(pack)}
-                    approving={approvingId === pack.id}
-                    deleting={deletingId === pack.id}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div style={{ position: 'relative' }}>
+          <RefreshCover active={loading} />
+          {firstLoad ? (
+            <BrandLoader variant="section" label="Loading packs…" minHeight={200} />
+          ) : error ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <AlertCircle size={28} color="#db142e" style={{ margin: '0 auto 10px', display: 'block' }} />
+              <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>Failed to load packs.</p>
+              <button onClick={load} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', background: '#db142e', color: '#fff',
+                fontWeight: 700, fontSize: 12, borderRadius: 10, border: 'none', cursor: 'pointer',
+              }}>
+                <RefreshCw size={12} /> Retry
+              </button>
+            </div>
+          ) : !packs?.data.length ? (
+            <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+              <Package2 size={40} style={{ color: '#1e2128', margin: '0 auto 14px', display: 'block' }} />
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>No packs found</p>
+              <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+                {search || status ? 'Try adjusting your filters.' : 'No sellers have created packs yet.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Pack</th>
+                    <th style={th}>Seller</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Price</th>
+                    <th style={th}>Status</th>
+                    <th style={th}>Created</th>
+                    <th style={th}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {packs.data.map(pack => (
+                    <PackRow
+                      key={pack.id}
+                      pack={pack}
+                      onView={() => openDrawer(pack.id)}
+                      onApprove={() => handleQuickApprove(pack)}
+                      onDelete={() => handleQuickDelete(pack)}
+                      approving={approvingId === pack.id}
+                      deleting={deletingId === pack.id}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* Pagination */}
         {packs && packs.last_page > 1 && (

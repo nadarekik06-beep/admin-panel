@@ -16,6 +16,9 @@ import { CalendarDays, Moon, Plus, Pencil, Trash2, RefreshCw, FlaskConical } fro
 import Modal from '@/components/ui/Modal'
 import { adminCalendarApi, type CalendarEvent, type CalendarEventPayload } from '@/lib/api/calendar'
 import { adminCategoriesApi, type Category } from '@/lib/api/categories'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { BusyLabel } from '@/components/brand/BrandLoader'
 
 const RED = '#db142e'
 const GREEN = '#198f41'
@@ -49,6 +52,8 @@ export default function CalendarPage() {
   const [minOrders, setMinOrders] = useState(30)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: number | null; form: CalendarEventPayload } | null>(null)
@@ -153,7 +158,7 @@ export default function CalendarPage() {
 
       <div className="cal-card" style={{ overflowX: 'auto' }}>
         {loading ? (
-          <p style={{ padding: 20, margin: 0, color: 'var(--t3)' }}>Loading…</p>
+          <BrandLoader variant="section" minHeight={200} />
         ) : error ? (
           <p style={{ padding: 20, margin: 0, color: RED }}>{error} <button className="cal-btn" onClick={load}><RefreshCw size={13} /> Retry</button></p>
         ) : events.length === 0 ? (
@@ -246,7 +251,7 @@ export default function CalendarPage() {
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button className="cal-btn" onClick={() => setEditing(null)}>Cancel</button>
-              <button className="cal-btn primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+              <button className="cal-btn primary" disabled={saving} aria-busy={saving || undefined} onClick={save} style={{ position: 'relative' }}><BusyLabel busy={saving} size={14}>Save</BusyLabel></button>
             </div>
           </div>
         )}

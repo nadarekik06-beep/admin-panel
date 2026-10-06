@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { CampaignStatus } from '@/lib/adsAdminApi'
+import { BusyLabel } from '@/components/brand/BrandLoader'
 
 export const RED = '#db142e'
 export const GREEN = '#198f41'
@@ -16,16 +17,19 @@ export const input: React.CSSProperties = {
   color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
 }
 
-export function Btn({ children, onClick, tone = 'ghost', disabled, type = 'button' }: {
-  children: React.ReactNode; onClick?: () => void; tone?: 'ghost' | 'red' | 'green' | 'gold'; disabled?: boolean; type?: 'button' | 'submit'
+export function Btn({ children, onClick, tone = 'ghost', disabled, loading = false, type = 'button' }: {
+  children: React.ReactNode; onClick?: () => void; tone?: 'ghost' | 'red' | 'green' | 'gold'; disabled?: boolean
+  /** Async action running: inline loader over the label, button disabled, width kept. */
+  loading?: boolean; type?: 'button' | 'submit'
 }) {
+  disabled = disabled || loading
   const c = { ghost: 'var(--text-secondary)', red: '#f87171', green: '#4ade80', gold: GOLD }[tone]
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: 800,
+    <button type={type} onClick={onClick} disabled={disabled} aria-busy={loading || undefined} style={{
+      position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: 800,
       cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, fontFamily: 'inherit',
       background: tone === 'ghost' ? 'rgba(255,255,255,.04)' : `${c}1a`, border: `1px solid ${tone === 'ghost' ? 'var(--border-subtle)' : `${c}55`}`, color: c,
-    }}>{children}</button>
+    }}><BusyLabel busy={loading} size={14}>{children}</BusyLabel></button>
   )
 }
 

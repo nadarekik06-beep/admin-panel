@@ -15,6 +15,9 @@ import {
 } from '@/lib/paymentRequestsApi'
 import { Btn, card, input, Notice, Stat } from '../sponsoring/_components/ui'
 import { PaymentsShell, RequestStatusChip } from './_components/shell'
+import { RefreshCover } from '@/components/brand/BrandLoader'
+import { RouteLoading, usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const td: React.CSSProperties = { padding: '9px 8px', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 13, verticalAlign: 'top' }
 const th: React.CSSProperties = { padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'left' }
@@ -35,10 +38,17 @@ function RequestsInner() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [selected, setSelected] = useState<number | null>(Number(params.get('id')) || null)
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
 
-  const load = useCallback(() => paymentRequestsApi.list({ ...filters, page })
-    .then(r => { setRows(r.data); setMeta(r.meta); setCounts(r.counts ?? {}) })
-    .catch(e => setMsg({ tone: 'error', text: e.message })), [filters, page])
+  const load = useCallback(() => {
+    setLoading(true)
+    return paymentRequestsApi.list({ ...filters, page })
+      .then(r => { setRows(r.data); setMeta(r.meta); setCounts(r.counts ?? {}) })
+      .catch(e => setMsg({ tone: 'error', text: e.message }))
+      .finally(() => setLoading(false))
+  }, [filters, page])
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
@@ -78,8 +88,9 @@ function RequestsInner() {
       </section>
 
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: selected ? 'repeat(auto-fit, minmax(min(100%, 520px), 1fr))' : '1fr', alignItems: 'start' }}>
-        <section style={{ ...card, overflowX: 'auto' }}>
-          {!rows.length ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Aucune demande.</p> : (
+        <section style={{ ...card, overflowX: 'auto', position: 'relative' }}>
+          <RefreshCover active={loading} />
+          {!rows.length ? loading ? <div style={{ minHeight: 120 }} /> : <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Aucune demande.</p> : (
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead><tr><th style={th}>Référence</th><th style={th}>Vendeur</th><th style={th}>Demande</th><th style={th}>Date</th><th style={th}>Statut</th></tr></thead>
               <tbody>
@@ -130,7 +141,7 @@ function RequestDetail({ id, onClose, onDecided, onError }: {
   const load = useCallback(() => paymentRequestsApi.get(id).then(x => { setR(x); setAmount(String(x.amount)) }).catch(e => onError(e.message)), [id, onError])
   useEffect(() => { load() }, [load])
 
-  if (!r) return <section style={card}><p style={{ color: 'var(--text-muted)', margin: 0 }}>Chargement…</p></section>
+  if (!r) return <section style={card}><BrandLoader variant="section" size="sm" minHeight={160} /></section>
 
   const decide = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -220,7 +231,7 @@ function RequestDetail({ id, onClose, onDecided, onError }: {
               : `Le vendeur passe au plan ${r.requested_plan?.name} dès aujourd'hui (${r.billing_period === 'yearly' ? '1 an' : '30 jours'}), avec ses avantages et son crédit publicitaire mensuel.`}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn type="submit" tone="green" disabled={busy || amount === ''}>{busy ? 'Validation…' : 'Confirmer l’approbation'}</Btn>
+            <Btn type="submit" tone="green" loading={busy} disabled={amount === ''}>Confirmer l’approbation</Btn>
             <Btn onClick={() => setMode(null)} disabled={busy}>Annuler</Btn>
           </div>
         </form>
@@ -232,7 +243,7 @@ function RequestDetail({ id, onClose, onDecided, onError }: {
             <textarea required minLength={3} maxLength={1000} rows={3} value={reason} onChange={e => setReason(e.target.value)} style={{ ...input, resize: 'vertical' }} />
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn type="submit" tone="red" disabled={busy || reason.trim().length < 3}>{busy ? 'Envoi…' : 'Confirmer le refus'}</Btn>
+            <Btn type="submit" tone="red" loading={busy} disabled={reason.trim().length < 3}>Confirmer le refus</Btn>
             <Btn onClick={() => setMode(null)} disabled={busy}>Annuler</Btn>
           </div>
         </form>
@@ -256,5 +267,5 @@ function RequestDetail({ id, onClose, onDecided, onError }: {
 }
 
 export default function PaymentRequestsPage() {
-  return <Suspense fallback={null}><RequestsInner /></Suspense>
+  return <Suspense fallback={<RouteLoading area minHeight="60vh" />}><RequestsInner /></Suspense>
 }

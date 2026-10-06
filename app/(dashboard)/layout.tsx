@@ -1,5 +1,6 @@
 import dynamic from 'next/dynamic'
 import Header from '@/components/layout/Header'
+import { NavigationLoaderHost } from '@/components/brand/NavigationLoader'
 
 const Sidebar = dynamic(
   () => import('@/components/layout/Sidebar'),
@@ -22,6 +23,10 @@ export default function DashboardLayout({
             {children}
           </div>
         </main>
+        {/* navigation loader over the content area: sidebar and header stay visible */}
+        <div style={{ '--ctl-area-start': '260px', '--ctl-area-top': '64px' } as React.CSSProperties}>
+          <NavigationLoaderHost area />
+        </div>
       </div>
     </div>
   )

@@ -6,6 +6,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { adsAdminApi, PLACEMENT_LABELS } from '@/lib/adsAdminApi'
 import { Btn, card, input, Notice, SponsoringShell } from '../_components/ui'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const GROUPS: { title: string; keys: string[] }[] = [
   { title: 'Budget & bidding (DT)', keys: ['min_daily_budget', 'min_top_up', 'min_cpc', 'category_min_cpc', 'suggested_cpc_window_days', 'suggested_cpc_multiplier', 'gsp_increment'] },
@@ -25,6 +27,8 @@ export default function AdsSettingsPage() {
   const [original, setOriginal] = useState<Record<string, any>>({})
   const [defaults, setDefaults] = useState<Record<string, any>>({})
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  // holds the navigation loader until the first load is done
+  usePageLoading(!values && msg?.tone !== 'error')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -84,9 +88,9 @@ export default function AdsSettingsPage() {
   }
 
   return (
-    <SponsoringShell title="Sponsoring settings" actions={<Btn tone="gold" disabled={busy || !Object.keys(changed).length} onClick={save}>Save {Object.keys(changed).length ? `(${Object.keys(changed).length})` : ''}</Btn>}>
+    <SponsoringShell title="Sponsoring settings" actions={<Btn tone="gold" loading={busy} disabled={!Object.keys(changed).length} onClick={save}>Save {Object.keys(changed).length ? `(${Object.keys(changed).length})` : ''}</Btn>}>
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
-      {!values ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : GROUPS.map(g => (
+      {!values ? <BrandLoader variant="section" minHeight={200} /> : GROUPS.map(g => (
         <section key={g.title} style={card}>
           <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 12px' }}>{g.title}</h2>
           <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>

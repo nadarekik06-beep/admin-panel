@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/Usenotifications';
 import type { AppNotification } from '@/lib/Notificationapi';
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // ─── sound (Web Audio API — no file needed) ───────────────────────
 function playSound() {
@@ -317,7 +318,7 @@ export default function NotificationBell({
                   }}
                   title="Refresh"
                 >
-                  <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                  {loading ? <BrandLoader variant="inline" size={12} /> : <RefreshCw size={12} />}
                 </button>
               </div>
             </div>
@@ -325,9 +326,7 @@ export default function NotificationBell({
             {/* list */}
             <div style={{ overflowY: 'auto', maxHeight: 420 }}>
               {loading && items.length === 0 ? (
-                <div style={{ padding: '40px 16px', textAlign: 'center', color: textMuted, fontSize: 13 }}>
-                  Loading…
-                </div>
+                <BrandLoader variant="section" size="sm" label="Loading…" />
               ) : items.length === 0 ? (
                 <div style={{ padding: '48px 16px', textAlign: 'center' }}>
                   <Bell size={32} style={{ color: textMuted, opacity: 0.2, margin: '0 auto 12px', display: 'block' }} />

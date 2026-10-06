@@ -40,13 +40,24 @@ export function useBrandLoading(loading: boolean, { delay = 150, min = 300 } = {
  * Drives a self-managed loader: nothing for the first `delay` ms, then 'visible' for at
  * least `min` ms, then 'leaving' for `exit` ms (fade-out), then null.
  * A load that finishes inside the delay never renders anything.
+ * `startVisible`: rendered from the first (server) render, behind the loader's own 150ms
+ * CSS delay — the global overlay on a hard page load. If it ends inside that delay it
+ * simply disappears, without a fade.
  */
 export function useLoaderStage(
   active: boolean,
-  { delay = 150, min = 300, exit = 220 } = {},
+  { delay = 150, min = 300, exit = 220, startVisible = false } = {},
 ): 'visible' | 'leaving' | null {
-  const [stage, setStage] = useState<'idle' | 'visible' | 'leaving'>('idle')
+  const [stage, setStage] = useState<'idle' | 'visible' | 'leaving'>(startVisible ? 'visible' : 'idle')
   const shownAt = useRef(0)
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    if (mounted.current) return
+    mounted.current = true
+    // visible on screen only once the CSS delay has run
+    if (startVisible) shownAt.current = Date.now() + delay
+  }, [startVisible, delay])
 
   useEffect(() => {
     let id: ReturnType<typeof setTimeout> | undefined
@@ -58,7 +69,10 @@ export function useLoaderStage(
         }, stage === 'leaving' ? 0 : delay)
       }
     } else if (stage === 'visible') {
-      id = setTimeout(() => setStage('leaving'), Math.max(0, min - (Date.now() - shownAt.current)))
+      const left = shownAt.current - Date.now()
+      id = left > 0
+        ? setTimeout(() => setStage('idle'), 0) // never actually seen: no fade
+        : setTimeout(() => setStage('leaving'), Math.max(0, min + left))
     } else if (stage === 'leaving') {
       id = setTimeout(() => setStage('idle'), exit)
     }

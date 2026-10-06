@@ -19,6 +19,8 @@ import { brandProductsApi, type BrandProduct } from '@/lib/api/brandProducts'
 import BrandProductModal from './BrandProductModal'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface PaginatedData {
@@ -61,6 +63,8 @@ function StatCard({ label, value, color }: { label: string; value: number | stri
 export default function BrandProductsPage() {
   const [data,       setData]       = useState<PaginatedData | null>(null)
   const [loading,    setLoading]    = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [search,     setSearch]     = useState('')
   const [isActive,   setIsActive]   = useState('')
   const [isFeatured, setIsFeatured] = useState('')
@@ -298,142 +302,145 @@ export default function BrandProductsPage() {
 
         {/* ── Table ── */}
         <div style={{ background: cardBg, borderRadius: 18, border: `1px solid ${border}`, overflow: 'hidden' }}>
-          {loading ? (
-            <BrandLoader variant="section" minHeight={220} />
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: theadBg }}>
-                    {['Product', 'Category', 'Price', 'Stock', 'Status', 'Badges', 'Actions'].map(h => (
-                      <th key={h} style={{
-                        padding: '10px 20px', fontSize: 9, fontWeight: 800,
-                        textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted,
-                        textAlign: ['Price', 'Stock'].includes(h) ? 'right' : ['Status', 'Badges', 'Actions'].includes(h) ? 'center' : 'left',
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.data.map(product => {
-                    const displayStock = product.has_variants ? product.variant_stock : product.stock
-                    const thumbUrl     = product.primary_image_url
-
-                    return (
-                      <tr key={product.id} className="bp-row" style={{ borderTop: `1px solid ${border}` }}>
-
-                        {/* Product */}
-                        <td style={{ padding: '12px 20px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{
-                              width: 40, height: 40, borderRadius: 10,
-                              background: 'rgba(255,255,255,0.06)', border: `1px solid ${border}`,
-                              flexShrink: 0, overflow: 'hidden',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {thumbUrl
-                                ? <img src={thumbUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                : <ImageIcon size={14} style={{ color: textMuted, opacity: 0.5 }} />
-                              }
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontWeight: 800, color: textMain, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                                {product.name}
-                              </p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <p style={{ fontSize: 10, color: textMuted, margin: 0 }}>
-                                  {product.sku ? `SKU: ${product.sku}` : `ID #${product.id}`}
+          <div style={{ position: 'relative' }}>
+            <RefreshCover active={loading} />
+            {firstLoad ? (
+              <BrandLoader variant="section" minHeight={220} />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: theadBg }}>
+                      {['Product', 'Category', 'Price', 'Stock', 'Status', 'Badges', 'Actions'].map(h => (
+                        <th key={h} style={{
+                          padding: '10px 20px', fontSize: 9, fontWeight: 800,
+                          textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted,
+                          textAlign: ['Price', 'Stock'].includes(h) ? 'right' : ['Status', 'Badges', 'Actions'].includes(h) ? 'center' : 'left',
+                        }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.data.map(product => {
+                      const displayStock = product.has_variants ? product.variant_stock : product.stock
+                      const thumbUrl     = product.primary_image_url
+  
+                      return (
+                        <tr key={product.id} className="bp-row" style={{ borderTop: `1px solid ${border}` }}>
+  
+                          {/* Product */}
+                          <td style={{ padding: '12px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{
+                                width: 40, height: 40, borderRadius: 10,
+                                background: 'rgba(255,255,255,0.06)', border: `1px solid ${border}`,
+                                flexShrink: 0, overflow: 'hidden',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                {thumbUrl
+                                  ? <img src={thumbUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  : <ImageIcon size={14} style={{ color: textMuted, opacity: 0.5 }} />
+                                }
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={{ fontWeight: 800, color: textMain, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                                  {product.name}
                                 </p>
-                                {product.has_variants && (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '1px 5px', borderRadius: 4 }}>
-                                    <Layers size={8} /> variants
-                                  </span>
-                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <p style={{ fontSize: 10, color: textMuted, margin: 0 }}>
+                                    {product.sku ? `SKU: ${product.sku}` : `ID #${product.id}`}
+                                  </p>
+                                  {product.has_variants && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '1px 5px', borderRadius: 4 }}>
+                                      <Layers size={8} /> variants
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-
-                        {/* Category */}
-                        <td style={{ padding: '12px 20px', fontSize: 12, fontWeight: 500, color: textMuted }}>
-                          {product.category?.name ?? '—'}
-                        </td>
-
-                        {/* Price */}
-                        <td style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 900, color: textMain }}>
-                          {Number(product.price).toFixed(3)} TND
-                        </td>
-
-                        {/* Stock */}
-                        <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                          <span style={{ fontWeight: 800, color: displayStock === 0 ? '#ef4444' : displayStock <= 10 ? '#f59e0b' : textMain }}>
-                            {displayStock}
-                            {displayStock === 0    && <span style={{ fontSize: 10, marginLeft: 4, color: '#ef4444' }}>(Out)</span>}
-                            {displayStock > 0 && displayStock <= 10 && <span style={{ fontSize: 10, marginLeft: 4, color: '#f59e0b' }}>(Low)</span>}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td style={{ padding: '12px 20px', textAlign: 'center' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: product.is_active ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: product.is_active ? '#10b981' : '#ef4444', border: `1px solid ${product.is_active ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
-                            {product.is_active ? <><CheckCircle size={9} />Active</> : <><XCircle size={9} />Inactive</>}
-                          </span>
-                        </td>
-
-                        {/* Badges */}
-                        <td style={{ padding: '12px 20px', textAlign: 'center' }}>
-                          {product.featured
-                            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 800, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', padding: '3px 8px', borderRadius: 999 }}>
-                                <Star size={8} fill="currentColor" /> Featured
-                              </span>
-                            : <span style={{ color: textMuted, fontSize: 11 }}>—</span>
-                          }
-                        </td>
-
-                        {/* Actions */}
-                        <td style={{ padding: '12px 20px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                            <button
-                              onClick={() => handleEdit(product)}
-                              className="bp-btn"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: '#94a3b8', opacity: 0.7 }}
-                              title="Edit"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              disabled={deleting === product.id}
-                              className="bp-btn"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: '#94a3b8', opacity: deleting === product.id ? 0.4 : 0.7 }}
-                              title="Delete"
-                            >
-                              {deleting === product.id
-                                ? <BrandLoader variant="inline" size={13} />
-                                : <Trash2 size={13} />
-                              }
-                            </button>
-                          </div>
+                          </td>
+  
+                          {/* Category */}
+                          <td style={{ padding: '12px 20px', fontSize: 12, fontWeight: 500, color: textMuted }}>
+                            {product.category?.name ?? '—'}
+                          </td>
+  
+                          {/* Price */}
+                          <td style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 900, color: textMain }}>
+                            {Number(product.price).toFixed(3)} TND
+                          </td>
+  
+                          {/* Stock */}
+                          <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                            <span style={{ fontWeight: 800, color: displayStock === 0 ? '#ef4444' : displayStock <= 10 ? '#f59e0b' : textMain }}>
+                              {displayStock}
+                              {displayStock === 0    && <span style={{ fontSize: 10, marginLeft: 4, color: '#ef4444' }}>(Out)</span>}
+                              {displayStock > 0 && displayStock <= 10 && <span style={{ fontSize: 10, marginLeft: 4, color: '#f59e0b' }}>(Low)</span>}
+                            </span>
+                          </td>
+  
+                          {/* Status */}
+                          <td style={{ padding: '12px 20px', textAlign: 'center' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: product.is_active ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: product.is_active ? '#10b981' : '#ef4444', border: `1px solid ${product.is_active ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                              {product.is_active ? <><CheckCircle size={9} />Active</> : <><XCircle size={9} />Inactive</>}
+                            </span>
+                          </td>
+  
+                          {/* Badges */}
+                          <td style={{ padding: '12px 20px', textAlign: 'center' }}>
+                            {product.featured
+                              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 800, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', padding: '3px 8px', borderRadius: 999 }}>
+                                  <Star size={8} fill="currentColor" /> Featured
+                                </span>
+                              : <span style={{ color: textMuted, fontSize: 11 }}>—</span>
+                            }
+                          </td>
+  
+                          {/* Actions */}
+                          <td style={{ padding: '12px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                              <button
+                                onClick={() => handleEdit(product)}
+                                className="bp-btn"
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: '#94a3b8', opacity: 0.7 }}
+                                title="Edit"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(product.id)}
+                                disabled={deleting === product.id}
+                                className="bp-btn"
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: '#94a3b8', opacity: deleting === product.id ? 0.4 : 0.7 }}
+                                title="Delete"
+                              >
+                                {deleting === product.id
+                                  ? <BrandLoader variant="inline" size={13} />
+                                  : <Trash2 size={13} />
+                                }
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+  
+                    {data?.data.length === 0 && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '56px 20px', textAlign: 'center' }}>
+                          <Package size={28} style={{ margin: '0 auto 10px', display: 'block', color: textMuted, opacity: 0.4 }} />
+                          <p style={{ fontSize: 13, fontWeight: 700, color: textMuted, margin: '0 0 4px' }}>No brand products yet</p>
+                          <p style={{ fontSize: 11, color: textMuted, opacity: 0.6, margin: 0 }}>Click "Add Brand Product" to create the first one</p>
                         </td>
                       </tr>
-                    )
-                  })}
-
-                  {data?.data.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ padding: '56px 20px', textAlign: 'center' }}>
-                        <Package size={28} style={{ margin: '0 auto 10px', display: 'block', color: textMuted, opacity: 0.4 }} />
-                        <p style={{ fontSize: 13, fontWeight: 700, color: textMuted, margin: '0 0 4px' }}>No brand products yet</p>
-                        <p style={{ fontSize: 11, color: textMuted, opacity: 0.6, margin: 0 }}>Click "Add Brand Product" to create the first one</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* Pagination */}
           {data && data.last_page > 1 && (

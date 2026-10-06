@@ -19,6 +19,7 @@ import SummaryPanel from './_components/SummaryPanel'
 import ReviewTabs from './_components/ReviewTabs'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 type Confirm = 'approve' | 'disable' | 'restore'
 const AUTO_ADVANCE_KEY = 'ct_admin_review_auto_advance'
 
@@ -29,6 +30,8 @@ export default function ProductReviewPage() {
 
   const [product, setProduct]   = useState<ProductReview | null>(null)
   const [loading, setLoading]   = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError]       = useState<{ status?: number; message: string } | null>(null)
   const [busy, setBusy]         = useState<string | null>(null)
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)

@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Search, RefreshCw, Database, Image as ImageIcon, Cpu, Copy, Check, SearchX } from 'lucide-react'
 import { adminSearchApi, type MissedQuery, type SearchHealth } from '@/lib/api/search'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const RED = '#db142e'
 const GREEN = '#198f41'
@@ -53,6 +55,8 @@ export default function MissedSearchesPage() {
   const [lowResults, setLowResults] = useState(3)
   const [synonymsFile, setSynonymsFile] = useState('')
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -122,7 +126,7 @@ export default function MissedSearchesPage() {
           Only searches with no result at all
         </label>
         <button className="sq-btn" onClick={load} style={{ marginLeft: 'auto' }}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          {loading ? <BrandLoader variant="inline" size={14} /> : <RefreshCw size={14} />} Refresh
         </button>
       </div>
 

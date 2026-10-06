@@ -15,12 +15,16 @@
  * never shows it (a Suspense fallback / loading.tsx). With `active`, it also
  * stays up at least ~300ms once visible and fades out when `active` turns false.
  *
+ * While the global navigation overlay is up (NavigationLoader), section/fullscreen
+ * loaders inside the page hide themselves (keeping their space), so loaders never stack.
+ *
  * Copy of choosetounsi-frontend/components/brand/BrandLoader.tsx (keep the two in
  * sync). The admin panel has no i18n and is always dark.
  */
 
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useLoaderStage } from '@/hooks/useBrandLoading'
+import { useNavigationActive } from './navigationContext'
 import './brand-loader.css'
 
 const TEXT = { loading: 'Loading…', tagline: "Choose'Tounsi admin" }
@@ -52,6 +56,10 @@ export interface BrandLoaderProps {
   minHeight?: number | string
   className?: string
   style?: React.CSSProperties
+  /** The global overlay itself: never hidden in favour of the overlay. */
+  ignoreOverlay?: boolean
+  /** With `active`: already up on the first (server) render, still behind the 150ms CSS delay. */
+  startVisible?: boolean
 }
 
 export default function BrandLoader({ active, ...props }: BrandLoaderProps) {
@@ -59,11 +67,19 @@ export default function BrandLoader({ active, ...props }: BrandLoaderProps) {
   return <ManagedLoader active={active} {...props} />
 }
 
-function ManagedLoader({ active, ...props }: BrandLoaderProps & { active: boolean }) {
-  const stage = useLoaderStage(active)
+function ManagedLoader({ active, startVisible, ...props }: BrandLoaderProps & { active: boolean }) {
+  // while the global overlay is up, in-page loaders wait: none of them flashes as it fades out
+  const blocked = useNavigationActive() && props.variant !== 'inline' && !props.ignoreOverlay
+  const stage = useLoaderStage(active && !blocked, { startVisible })
+  // the server-rendered first cycle keeps the CSS delay; later cycles already waited in JS
+  const [boot, setBoot] = useState(!!startVisible)
+  useEffect(() => {
+    if (!boot || stage) return
+    const id = setTimeout(() => setBoot(false), 0)
+    return () => clearTimeout(id)
+  }, [boot, stage])
   if (!stage) return null
-  // the hook already waited out the delay: enter right away
-  return <LoaderView {...props} className={['is-instant', props.className].filter(Boolean).join(' ')} leaving={stage === 'leaving'} />
+  return <LoaderView {...props} className={[boot ? '' : 'is-instant', props.className].filter(Boolean).join(' ')} leaving={stage === 'leaving'} />
 }
 
 function LoaderView({
@@ -76,8 +92,10 @@ function LoaderView({
   minHeight,
   className,
   style,
+  ignoreOverlay,
   leaving,
 }: Omit<BrandLoaderProps, 'active'> & { leaving?: boolean }) {
+  const covered = useNavigationActive() && variant !== 'inline' && !ignoreOverlay
   const px =
     typeof size === 'number'
       ? size
@@ -92,6 +110,7 @@ function LoaderView({
     theme === 'dark' && 'ctl--dark',
     calm && 'ctl--calm',
     leaving && 'is-leaving',
+    covered && 'is-covered',
     className,
   ].filter(Boolean).join(' ')
 
@@ -102,6 +121,7 @@ function LoaderView({
     <Root
       role="status"
       aria-live="polite"
+      aria-hidden={covered || undefined}
       className={classes}
       style={minHeight !== undefined ? { ...style, ['--ctl-min-h' as string]: typeof minHeight === 'number' ? `${minHeight}px` : minHeight } : style}
     >
@@ -111,6 +131,56 @@ function LoaderView({
       )}
       <span className="ctl-sr">{label ?? TEXT.loading}</span>
     </Root>
+  )
+}
+
+/**
+ * In-page refresh (filters, sorting, pagination, tab switch): keeps the old content,
+ * dims it, and lays a section loader over that block only — no full-page flash.
+ * Appears after the usual 150ms, stays at least 300ms, fades out.
+ */
+export function LoadingCover({
+  active,
+  children,
+  label,
+  theme,
+  className,
+  style,
+}: {
+  active: boolean
+  children: React.ReactNode
+  label?: string
+  theme?: BrandLoaderProps['theme']
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <div className={['ctl-cover-wrap', className].filter(Boolean).join(' ')} style={style}>
+      <div className={active ? 'ctl-dim is-dim' : 'ctl-dim'} aria-busy={active || undefined}>{children}</div>
+      <BrandLoader variant="section" size="sm" active={active} label={label} theme={theme} className="ctl-cover ctl-cover--soft" />
+    </div>
+  )
+}
+
+/**
+ * Same as LoadingCover, dropped inside an existing block instead of wrapping it:
+ * the block needs `position: relative`. Its content stays visible, dimmed by the veil.
+ */
+export function RefreshCover({ active, label, theme }: { active: boolean; label?: string; theme?: BrandLoaderProps['theme'] }) {
+  return <BrandLoader variant="section" size="sm" active={active} label={label} theme={theme} className="ctl-cover ctl-cover--soft" />
+}
+
+/**
+ * Button content for an async action: while `busy`, the label stays in place but hidden
+ * (so the button keeps its width) and the inline loader sits centred over it.
+ * Disable the button while busy.
+ */
+export function BusyLabel({ busy, children, size = 16 }: { busy: boolean; children: React.ReactNode; size?: number }) {
+  return (
+    <span className="ctl-busy-wrap">
+      <span className={busy ? 'ctl-busy-label is-busy' : 'ctl-busy-label'}>{children}</span>
+      {busy && <BrandLoader variant="inline" size={size} className="ctl-busy" />}
+    </span>
   )
 }
 

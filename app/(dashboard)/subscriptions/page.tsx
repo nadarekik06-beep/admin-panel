@@ -22,6 +22,7 @@ import SubscriptionDrawer from './_components/SubscriptionDrawer'
 import PlansManager from './_components/PlansManager'
 import DefaultCommission from './_components/DefaultCommission'
 import { Toast } from './_components/ui'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 
 type Tab = 'sellers' | 'plans' | 'commission'
 
@@ -32,6 +33,8 @@ export default function SubscriptionsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [rows, setRows]           = useState<PaginatedResponse<SellerSubscriptionRow> | null>(null)
   const [loading, setLoading]     = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [filters, setFilters]     = useState<TableFilters>({ search: '', plan: '', status: '', sort: '', dir: 'desc', page: 1 })
   const [openSeller, setOpenSeller] = useState<number | null>(null)
   const [toast, setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null)

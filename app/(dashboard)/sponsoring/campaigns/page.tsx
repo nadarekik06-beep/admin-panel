@@ -8,6 +8,9 @@ import { useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
 import { adsAdminApi, money, PLACEMENT_LABELS, type AdminCampaign, type AdminCampaignDetail } from '@/lib/adsAdminApi'
 import { Btn, card, input, Notice, SponsoringShell, StatusChip } from '../_components/ui'
+import { RefreshCover } from '@/components/brand/BrandLoader'
+import { RouteLoading, usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 function CampaignsInner() {
   const params = useSearchParams()
@@ -18,11 +21,16 @@ function CampaignsInner() {
   const [lastPage, setLastPage] = useState(1)
   const [openId, setOpenId] = useState<number | null>(Number(params.get('open')) || null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
 
   const load = useCallback(() => {
+    setLoading(true)
     adsAdminApi.campaigns({ status, search, page })
       .then(r => { setRows(r.data); setLastPage(r.meta.last_page) })
       .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
   }, [status, search, page])
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
@@ -41,7 +49,8 @@ function CampaignsInner() {
         </select>
       </div>
 
-      <section style={{ ...card, padding: 0, overflowX: 'auto' }}>
+      <section style={{ ...card, padding: 0, overflowX: 'auto', position: 'relative' }}>
+        <RefreshCover active={loading} />
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
           <thead><tr><th style={th}>#</th><th style={th}>Product</th><th style={th}>Seller</th><th style={th}>Status</th><th style={th}>Budget / CPC</th><th style={th}>Spent</th><th style={th}>Clicks</th><th style={th}>Orders</th></tr></thead>
           <tbody>
@@ -57,7 +66,7 @@ function CampaignsInner() {
                 <td style={td}>{c.stats.orders}</td>
               </tr>
             ))}
-            {!rows.length && <tr><td style={td} colSpan={8}>No campaigns.</td></tr>}
+            {!rows.length && !loading && <tr><td style={td} colSpan={8}>No campaigns.</td></tr>}
           </tbody>
         </table>
       </section>
@@ -103,7 +112,7 @@ function CampaignDrawer({ id, onClose, onChanged }: { id: number; onClose: () =>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
         {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
-        {!c ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : (
+        {!c ? <BrandLoader variant="section" size="sm" minHeight={160} /> : (
           <>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               {c.product?.image_url && <img src={c.product.image_url} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }} />}
@@ -130,13 +139,13 @@ function CampaignDrawer({ id, onClose, onChanged }: { id: number; onClose: () =>
             {open && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {c.status === 'active' && <Btn tone="gold" disabled={busy} onClick={() => act(() => adsAdminApi.pause(c.id), 'Paused — the seller cannot resume it.')}>Pause</Btn>}
-                  {c.status === 'paused' && <Btn tone="green" disabled={busy} onClick={() => act(() => adsAdminApi.resume(c.id), 'Resumed.')}>Resume</Btn>}
+                  {c.status === 'active' && <Btn tone="gold" loading={busy} onClick={() => act(() => adsAdminApi.pause(c.id), 'Paused — the seller cannot resume it.')}>Pause</Btn>}
+                  {c.status === 'paused' && <Btn tone="green" loading={busy} onClick={() => act(() => adsAdminApi.resume(c.id), 'Resumed.')}>Resume</Btn>}
                 </div>
                 <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)' }}>Reject (ends the campaign, refunds its charges, notifies the seller)
                   <textarea value={reason} onChange={e => setReason(e.target.value)} maxLength={255} rows={2} placeholder="Reason shown to the seller" style={{ ...input, marginTop: 6, resize: 'vertical' }} />
                 </label>
-                <div><Btn tone="red" disabled={busy || !reason.trim()} onClick={() => act(() => adsAdminApi.reject(c.id, reason.trim()), 'Rejected and refunded.')}>Reject campaign</Btn></div>
+                <div><Btn tone="red" loading={busy} disabled={!reason.trim()} onClick={() => act(() => adsAdminApi.reject(c.id, reason.trim()), 'Rejected and refunded.')}>Reject campaign</Btn></div>
               </div>
             )}
           </>
@@ -147,5 +156,5 @@ function CampaignDrawer({ id, onClose, onChanged }: { id: number; onClose: () =>
 }
 
 export default function CampaignsPage() {
-  return <Suspense fallback={null}><CampaignsInner /></Suspense>
+  return <Suspense fallback={<RouteLoading area minHeight="60vh" />}><CampaignsInner /></Suspense>
 }

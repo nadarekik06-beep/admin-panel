@@ -9,6 +9,9 @@ import { useSearchParams } from 'next/navigation'
 import { adsAdminApi, money, type TopUp, type WalletRow, type WalletTx } from '@/lib/adsAdminApi'
 import { Btn, card, input, Notice, SponsoringShell } from '../_components/ui'
 import DirectPaymentActions from '@/components/payments/DirectPaymentActions'
+import { RefreshCover } from '@/components/brand/BrandLoader'
+import { RouteLoading, usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 function WalletsInner() {
   const params = useSearchParams()
@@ -17,11 +20,18 @@ function WalletsInner() {
   const [rows, setRows] = useState<WalletRow[]>([])
   const [selected, setSelected] = useState<number | null>(Number(params.get('seller')) || null)
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  const [pendingLoading, setPendingLoading] = useState(true)
+  const [rowsLoading, setRowsLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(pendingLoading || rowsLoading)
 
-  const loadPending = useCallback(() => adsAdminApi.topUps('pending').then(r => setPending(r.data)).catch(e => setMsg({ tone: 'error', text: e.message })), [])
+  const loadPending = useCallback(() => adsAdminApi.topUps('pending').then(r => setPending(r.data)).catch(e => setMsg({ tone: 'error', text: e.message })).finally(() => setPendingLoading(false)), [])
   useEffect(() => { loadPending() }, [loadPending])
   useEffect(() => {
-    const t = setTimeout(() => adsAdminApi.wallets(search).then(r => setRows(r.data)).catch(e => setMsg({ tone: 'error', text: e.message })), 250)
+    const t = setTimeout(() => {
+      setRowsLoading(true)
+      adsAdminApi.wallets(search).then(r => setRows(r.data)).catch(e => setMsg({ tone: 'error', text: e.message })).finally(() => setRowsLoading(false))
+    }, 250)
     return () => clearTimeout(t)
   }, [search])
 
@@ -43,7 +53,7 @@ function WalletsInner() {
 
       <section style={card}>
         <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>Pending manual top-ups</h2>
-        {!pending.length ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Nothing to confirm.</p> : (
+        {!pending.length ? pendingLoading ? <div style={{ minHeight: 40 }} /> : <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Nothing to confirm.</p> : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -67,7 +77,8 @@ function WalletsInner() {
       </section>
 
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', alignItems: 'start' }}>
-        <section style={card}>
+        <section style={{ ...card, position: 'relative' }}>
+          <RefreshCover active={rowsLoading} />
           <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>Sellers</h2>
           <input placeholder="Search seller name or e-mail…" value={search} onChange={e => setSearch(e.target.value)} style={input} />
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
@@ -110,7 +121,7 @@ function WalletDetail({ sellerId, onMessage }: { sellerId: number; onMessage: (m
   }
 
   const td: React.CSSProperties = { padding: '7px 6px', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5 }
-  if (!data) return <section style={card}><p style={{ color: 'var(--text-muted)' }}>Loading…</p></section>
+  if (!data) return <section style={card}><BrandLoader variant="section" size="sm" minHeight={160} /></section>
 
   return (
     <section style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -127,7 +138,7 @@ function WalletDetail({ sellerId, onMessage }: { sellerId: number; onMessage: (m
         <input type="number" step="0.001" placeholder="Balance ± DT" value={balance} onChange={e => setBalance(e.target.value)} style={input} aria-label="Balance change" />
         <input type="number" step="0.001" placeholder="Credit ± DT" value={credit} onChange={e => setCredit(e.target.value)} style={input} aria-label="Credit change" />
         <input required placeholder="Note (required)" value={note} onChange={e => setNote(e.target.value)} style={{ ...input, gridColumn: '1 / -1' }} />
-        <div><Btn type="submit" tone="gold" disabled={busy || (!balance && !credit) || !note.trim()}>Apply adjustment</Btn></div>
+        <div><Btn type="submit" tone="gold" loading={busy} disabled={(!balance && !credit) || !note.trim()}>Apply adjustment</Btn></div>
       </form>
 
       <details>
@@ -156,5 +167,5 @@ function WalletDetail({ sellerId, onMessage }: { sellerId: number; onMessage: (m
 }
 
 export default function WalletsPage() {
-  return <Suspense fallback={null}><WalletsInner /></Suspense>
+  return <Suspense fallback={<RouteLoading area minHeight="60vh" />}><WalletsInner /></Suspense>
 }

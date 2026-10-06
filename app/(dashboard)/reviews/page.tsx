@@ -30,6 +30,8 @@ import { adminReviewsApi } from '@/lib/api/reviews'
 import type { AdminReview, AdminReviewDetail, ReviewStats, AdminReport } from '@/lib/api/reviews'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -68,13 +70,11 @@ const GLOBAL_CSS = `
   @keyframes ct-fade-up  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
   @keyframes ct-slide-in { from{transform:translateX(100%)} to{transform:translateX(0)} }
   @keyframes ct-slide-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-  @keyframes ct-spin     { to{transform:rotate(360deg)} }
   @keyframes ct-shimmer  { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
 
   .ct-animate-fade-up  { animation: ct-fade-up 0.45s cubic-bezier(.22,1,.36,1) both; }
   .ct-animate-slide-in { animation: ct-slide-in 0.3s cubic-bezier(.22,1,.36,1) both; }
   .ct-animate-slide-up { animation: ct-slide-up 0.25s cubic-bezier(.22,1,.36,1) both; }
-  .ct-spin             { animation: ct-spin 0.9s linear infinite; }
 
   .ct-stagger > *:nth-child(1) { animation-delay:0ms }
   .ct-stagger > *:nth-child(2) { animation-delay:60ms }
@@ -676,6 +676,8 @@ export default function AdminReviewsPage() {
   const [reports,      setReports]      = useState<AdminReport[]>([])
   const [stats,        setStats]        = useState<ReviewStats | null>(null)
   const [loading,      setLoading]      = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [selected,     setSelected]     = useState<AdminReview | null>(null)
   const [toast,        setToast]        = useState('')
   const [actingReport, setActingReport] = useState(false)
@@ -852,31 +854,34 @@ export default function AdminReviewsPage() {
 
             {/* Table */}
             <div className="ct-table-wrap">
-              {loading ? (
-                <table className="ct-table">
-                  <thead><tr>{['ID','Customer','Product / Rating','Verified','Status','Reports','Media','Date',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
-                  <tbody>{[...Array(6)].map((_, i) => <SkeletonRow key={i} cols={9} />)}</tbody>
-                </table>
-              ) : reviews.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '64px 0' }}>
-                  <Star size={28} color="var(--t3)" style={{ display: 'block', margin: '0 auto 14px', opacity: .4 }} />
-                  <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>
-                    {hasFilters ? 'No reviews match your filters' : 'No reviews yet'}
-                  </p>
-                  <p style={{ fontSize: 13, color: 'var(--t2)' }}>
-                    {hasFilters ? 'Try adjusting your filters.' : 'Reviews will appear here once customers submit them.'}
-                  </p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
+              <div style={{ position: 'relative' }}>
+                <RefreshCover active={loading} />
+                {firstLoad ? (
                   <table className="ct-table">
                     <thead><tr>{['ID','Customer','Product / Rating','Verified','Status','Reports','Media','Date',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {reviews.map(r => <ReviewTableRow key={r.id} review={r} onSelect={setSelected} />)}
-                    </tbody>
+                    <tbody>{[...Array(6)].map((_, i) => <SkeletonRow key={i} cols={9} />)}</tbody>
                   </table>
-                </div>
-              )}
+                ) : reviews.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '64px 0' }}>
+                    <Star size={28} color="var(--t3)" style={{ display: 'block', margin: '0 auto 14px', opacity: .4 }} />
+                    <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>
+                      {hasFilters ? 'No reviews match your filters' : 'No reviews yet'}
+                    </p>
+                    <p style={{ fontSize: 13, color: 'var(--t2)' }}>
+                      {hasFilters ? 'Try adjusting your filters.' : 'Reviews will appear here once customers submit them.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="ct-table">
+                      <thead><tr>{['ID','Customer','Product / Rating','Verified','Status','Reports','Media','Date',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {reviews.map(r => <ReviewTableRow key={r.id} review={r} onSelect={setSelected} />)}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Pagination */}
@@ -906,34 +911,37 @@ export default function AdminReviewsPage() {
         {tab === 'reports' && (
           <>
             <div className="ct-table-wrap">
-              {loading ? (
-                <table className="ct-table">
-                  <thead><tr>{['ID','Reporter','Review / Product','Reason','Status','Date','Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-                  <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} cols={7} />)}</tbody>
-                </table>
-              ) : reports.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '64px 0' }}>
-                  <ShieldAlert size={28} color="var(--t3)" style={{ display: 'block', margin: '0 auto 14px', opacity: .4 }} />
-                  <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>No pending reports</p>
-                  <p style={{ fontSize: 13, color: 'var(--t2)' }}>All reports have been resolved.</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
+              <div style={{ position: 'relative' }}>
+                <RefreshCover active={loading} />
+                {firstLoad ? (
                   <table className="ct-table">
                     <thead><tr>{['ID','Reporter','Review / Product','Reason','Status','Date','Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {reports.map(r => (
-                        <ReportTableRow
-                          key={r.id}
-                          report={r}
-                          onAct={handleReportAct}
-                          acting={actingReport}
-                        />
-                      ))}
-                    </tbody>
+                    <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} cols={7} />)}</tbody>
                   </table>
-                </div>
-              )}
+                ) : reports.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '64px 0' }}>
+                    <ShieldAlert size={28} color="var(--t3)" style={{ display: 'block', margin: '0 auto 14px', opacity: .4 }} />
+                    <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>No pending reports</p>
+                    <p style={{ fontSize: 13, color: 'var(--t2)' }}>All reports have been resolved.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="ct-table">
+                      <thead><tr>{['ID','Reporter','Review / Product','Reason','Status','Date','Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {reports.map(r => (
+                          <ReportTableRow
+                            key={r.id}
+                            report={r}
+                            onAct={handleReportAct}
+                            acting={actingReport}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
             {!loading && reports.length > 0 && (
               <p style={{ fontSize: 12, color: 'var(--t3)', fontWeight: 600, margin: '10px 0 0', textAlign: 'right' }}>

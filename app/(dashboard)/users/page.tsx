@@ -11,6 +11,7 @@ import { User, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 // ─── Toast notification ───────────────────────────────────────────────────────
 function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
   useEffect(() => {
@@ -29,6 +30,8 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 export default function UsersPage() {
   const [users, setUsers]             = useState<PaginatedResponse<User> | null>(null)
   const [loading, setLoading]         = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [search, setSearch]           = useState('')
   const [status, setStatus]           = useState('')
   const [page, setPage]               = useState(1)

@@ -25,6 +25,8 @@ import {
 } from '@/lib/vipRequestApi'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const RED    = '#db142e'
 const GREEN  = '#198f41'
@@ -313,11 +315,9 @@ const PAGE_CSS = `
   @keyframes vip-shimmer { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
   @keyframes vip-slide-in { from{transform:translateX(100%)} to{transform:translateX(0)} }
   @keyframes vip-slide-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-  @keyframes vip-spin     { to{transform:rotate(360deg)} }
 
   .vip-animate-slide-in { animation: vip-slide-in 0.3s cubic-bezier(.22,1,.36,1) both; }
   .vip-animate-slide-up { animation: vip-slide-up 0.25s cubic-bezier(.22,1,.36,1) both; }
-  .vip-spin             { animation: vip-spin 0.9s linear infinite; }
 `
 
 // ── Badges ────────────────────────────────────────────────────────────────────
@@ -710,6 +710,8 @@ export default function AdminVipRequestsPage() {
   const [requests,     setRequests]     = useState<VipRequest[]>([])
   const [stats,        setStats]        = useState<VipRequestStats | null>(null)
   const [loading,      setLoading]      = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [selected,     setSelected]     = useState<VipRequest | null>(null)
   const [filterStatus, setFilterStatus] = useState<VipRequestStatus | ''>('')
   const [filterType,   setFilterType]   = useState<VipRequestType | ''>('')
@@ -846,37 +848,40 @@ export default function AdminVipRequestsPage() {
 
       {/* ── Table ── */}
       <div className="vip-table-wrap">
-        {loading ? (
-          <table className="vip-table">
-            <thead><tr>{['ID','Seller','Type','Message','Status','Date',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
-            <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
-          </table>
-        ) : requests.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: '#1c2130', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Crown size={24} color="#4e5668" />
-            </div>
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#f0f2f7', margin: '0 0 6px' }}>
-              {hasFilters ? 'No results found' : 'No VIP requests yet'}
-            </p>
-            <p style={{ fontSize: 13, color: '#8891a4' }}>
-              {hasFilters ? 'Try adjusting your filters.' : 'Black Pepper sellers have not submitted any requests yet.'}
-            </p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
+        <div style={{ position: 'relative' }}>
+          <RefreshCover active={loading} />
+          {firstLoad ? (
             <table className="vip-table">
-              <thead>
-                <tr>{['ID','Seller','Type','Message','Status','Date',''].map(h => <th key={h}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {requests.map(r => (
-                  <VipRequestRow key={r.id} request={r} onSelect={handleSelectFresh} />
-                ))}
-              </tbody>
+              <thead><tr>{['ID','Seller','Type','Message','Status','Date',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+              <tbody>{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
             </table>
-          </div>
-        )}
+          ) : requests.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: '#1c2130', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Crown size={24} color="#4e5668" />
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#f0f2f7', margin: '0 0 6px' }}>
+                {hasFilters ? 'No results found' : 'No VIP requests yet'}
+              </p>
+              <p style={{ fontSize: 13, color: '#8891a4' }}>
+                {hasFilters ? 'Try adjusting your filters.' : 'Black Pepper sellers have not submitted any requests yet.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="vip-table">
+                <thead>
+                  <tr>{['ID','Seller','Type','Message','Status','Date',''].map(h => <th key={h}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {requests.map(r => (
+                    <VipRequestRow key={r.id} request={r} onSelect={handleSelectFresh} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {!loading && requests.length > 0 && (

@@ -17,6 +17,8 @@ import { sellersApi } from '@/lib/api/sellers'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { RefreshCover } from '@/components/brand/BrandLoader'
 type Tab = 'pending' | 'approved' | 'rejected'
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -418,6 +420,8 @@ export default function SellerApplicationsPage() {
   const [page,   setPage]   = useState(1)
   const [data,   setData]   = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  const firstLoad = usePageLoading(loading)
   const [selected, setSelected] = useState<SellerApplication | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -517,96 +521,99 @@ export default function SellerApplicationsPage() {
           </h2>
         </div>
 
-        {loading ? (
-          <BrandLoader variant="section" minHeight={200} />
-        ) : applications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-text-muted">
-            <p className="text-sm">No {tab} applications found.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  {['Applicant', 'Business', 'Category', 'Preferred Plan', 'Location', 'Applied', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {applications.map(app => {
-                  const pic = storageUrl(app.profile_picture)
-                  return (
-                    <tr key={app.id} className="hover:bg-bg-hover transition-colors">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ border: '1px solid #1e2128' }}>
-                            {pic
-                              ? <img src={pic} alt="" className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                                  style={{ background: 'linear-gradient(135deg, #db142e, #9b0d1f)' }}>
-                                  {app.full_name.charAt(0)}
-                                </div>}
+        <div style={{ position: 'relative' }}>
+          <RefreshCover active={loading} />
+          {firstLoad ? (
+            <BrandLoader variant="section" minHeight={200} />
+          ) : applications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-text-muted">
+              <p className="text-sm">No {tab} applications found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    {['Applicant', 'Business', 'Category', 'Preferred Plan', 'Location', 'Applied', 'Status', 'Actions'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {applications.map(app => {
+                    const pic = storageUrl(app.profile_picture)
+                    return (
+                      <tr key={app.id} className="hover:bg-bg-hover transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ border: '1px solid #1e2128' }}>
+                              {pic
+                                ? <img src={pic} alt="" className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
+                                    style={{ background: 'linear-gradient(135deg, #db142e, #9b0d1f)' }}>
+                                    {app.full_name.charAt(0)}
+                                  </div>}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-text-primary">{app.full_name}</p>
+                              <p className="text-xs text-text-muted">{app.user?.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-text-primary">{app.full_name}</p>
-                            <p className="text-xs text-text-muted">{app.user?.email}</p>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-text-secondary font-medium">{app.business_name}</td>
+                        <td className="px-5 py-4 text-sm text-text-muted">{app.business_category}</td>
+                        <td className="px-5 py-4"><PreferredPlanBadge plan={app.preferred_plan} /></td>
+                        <td className="px-5 py-4 text-sm text-text-muted">{app.city}, {app.wilaya}</td>
+                        <td className="px-5 py-4 text-xs text-text-muted">{format(new Date(app.created_at), 'MMM d, yyyy')}</td>
+                        <td className="px-5 py-4"><StatusBadge status={app.status} /></td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setSelected(app)}
+                              className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors" title="View details">
+                              <Eye size={14} />
+                            </button>
+                            {app.status === 'pending' && (
+                              <>
+                                <button onClick={() => handleApprove(app.id)}
+                                  className="p-1.5 rounded-md transition-colors" title="Approve" style={{ color: '#198f41' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                  <CheckCircle size={14} />
+                                </button>
+                                <button onClick={() => setSelected(app)}
+                                  className="p-1.5 rounded-md transition-colors" title="Reject" style={{ color: '#db142e' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                  <XCircle size={14} />
+                                </button>
+                              </>
+                            )}
+                            {app.status === 'approved' && app.user && (
+                              <>
+                                <button onClick={() => { setRoleTarget({ userId: app.user!.id, name: app.full_name }); setRoleValue('client') }}
+                                  className="p-1.5 rounded-md transition-colors" title="Change Role" style={{ color: '#22b356' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                  <UserCog size={14} />
+                                </button>
+                                <button onClick={() => setDeleteTarget({ userId: app.user!.id, name: app.full_name })}
+                                  className="p-1.5 rounded-md transition-colors" title="Delete Seller" style={{ color: '#db142e' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-text-secondary font-medium">{app.business_name}</td>
-                      <td className="px-5 py-4 text-sm text-text-muted">{app.business_category}</td>
-                      <td className="px-5 py-4"><PreferredPlanBadge plan={app.preferred_plan} /></td>
-                      <td className="px-5 py-4 text-sm text-text-muted">{app.city}, {app.wilaya}</td>
-                      <td className="px-5 py-4 text-xs text-text-muted">{format(new Date(app.created_at), 'MMM d, yyyy')}</td>
-                      <td className="px-5 py-4"><StatusBadge status={app.status} /></td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => setSelected(app)}
-                            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors" title="View details">
-                            <Eye size={14} />
-                          </button>
-                          {app.status === 'pending' && (
-                            <>
-                              <button onClick={() => handleApprove(app.id)}
-                                className="p-1.5 rounded-md transition-colors" title="Approve" style={{ color: '#198f41' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                <CheckCircle size={14} />
-                              </button>
-                              <button onClick={() => setSelected(app)}
-                                className="p-1.5 rounded-md transition-colors" title="Reject" style={{ color: '#db142e' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                <XCircle size={14} />
-                              </button>
-                            </>
-                          )}
-                          {app.status === 'approved' && app.user && (
-                            <>
-                              <button onClick={() => { setRoleTarget({ userId: app.user!.id, name: app.full_name }); setRoleValue('client') }}
-                                className="p-1.5 rounded-md transition-colors" title="Change Role" style={{ color: '#22b356' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(25,143,65,0.1)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                <UserCog size={14} />
-                              </button>
-                              <button onClick={() => setDeleteTarget({ userId: app.user!.id, name: app.full_name })}
-                                className="p-1.5 rounded-md transition-colors" title="Delete Seller" style={{ color: '#db142e' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(219,20,46,0.1)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                <Trash2 size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* Pagination */}
         {data && data.last_page > 1 && (

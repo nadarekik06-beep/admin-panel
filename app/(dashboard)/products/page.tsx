@@ -17,6 +17,7 @@ import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 type ActionType = 'approve' | 'disable' | 'delete' | 'force_delete'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/api$/, '')
@@ -104,6 +105,8 @@ function Toast({ message, type, onClose }: {
 export default function ProductsPage() {
   const [products, setProducts]           = useState<PaginatedResponse<AdminProduct> | null>(null)
   const [loading, setLoading]             = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [search, setSearch]               = useState('')
   const [status, setStatus]               = useState('pending')
   const [page, setPage]                   = useState(1)

@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import { paymentRequestsApi, type ManualPaymentSettings } from '@/lib/paymentRequestsApi'
 import { Btn, card, input, Notice } from '../../sponsoring/_components/ui'
 import { PaymentsShell } from '../_components/shell'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 5 }
 const PLACEHOLDERS = '{reference} {type} {amount} {store} {seller_name} {seller_id} {email} {phone} {balance} {date} {current_plan} {requested_plan} {price} {period}'
@@ -16,6 +18,8 @@ export default function PaymentSettingsPage() {
   const [defaults, setDefaults] = useState<Partial<ManualPaymentSettings>>({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  // holds the navigation loader until the first load is done
+  usePageLoading(!values && msg?.tone !== 'error')
 
   useEffect(() => {
     paymentRequestsApi.settings().then(d => { setValues(d.values); setDefaults(d.defaults) }).catch(e => setMsg({ tone: 'error', text: e.message }))
@@ -37,7 +41,7 @@ export default function PaymentSettingsPage() {
   return (
     <PaymentsShell title="Demandes de paiement — paramètres">
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
-      {!values ? <section style={card}><p style={{ color: 'var(--text-muted)', margin: 0 }}>Chargement…</p></section> : (
+      {!values ? <section style={card}><BrandLoader variant="section" minHeight={200} /></section> : (
         <form onSubmit={save} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 860 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', cursor: 'pointer' }}>
             <input type="checkbox" checked={values.whatsapp_enabled} onChange={e => set('whatsapp_enabled', e.target.checked)} style={{ width: 18, height: 18 }} />
@@ -70,7 +74,7 @@ export default function PaymentSettingsPage() {
           </p>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn type="submit" tone="gold" disabled={busy}>{busy ? 'Enregistrement…' : 'Enregistrer'}</Btn>
+            <Btn type="submit" tone="gold" loading={busy}>Enregistrer</Btn>
             <Btn onClick={() => defaults.template_wallet_topup && setValues(v => v && ({ ...v, template_wallet_topup: defaults.template_wallet_topup!, template_plan_upgrade: defaults.template_plan_upgrade! }))}>
               Rétablir les messages par défaut
             </Btn>

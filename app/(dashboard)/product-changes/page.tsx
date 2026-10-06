@@ -18,6 +18,7 @@ import { Toasts, type ToastMsg } from '../products/[id]/edit/_components/ui'
 import { apiErrorMessage } from '../products/reviewUtils'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 const GROUP_LABEL: Record<ChangeGroup, string> = {
   text: 'Text', price: 'Price', stock: 'Stock', category: 'Category', images: 'Images',
   variants: 'Variants', attributes: 'Details', settings: 'Settings',
@@ -43,6 +44,8 @@ export default function ProductChangesPage() {
   const [pinned, setPinned]   = useState<ChangeSet | null>(null)     // opened from a notification (?set=)
   const [stats, setStats]     = useState<ChangeStats | null>(null)
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError]     = useState<string | null>(null)
   const [open, setOpen]       = useState<Set<number>>(new Set())
   const [busy, setBusy]       = useState<string | null>(null)

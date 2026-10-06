@@ -8,6 +8,7 @@ import ProductBarChart from '@/components/charts/ProductBarChart'
 import CategoryPieChart from '@/components/charts/CategoryPieChart'
 import { statisticsApi } from '@/lib/api/statistics'
 import { RevenuePoint, OrderTrendPoint, CategoryPoint } from '@/types'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 
 interface StatsData {
   revenue: RevenuePoint[]
@@ -19,6 +20,8 @@ interface StatsData {
 export default function StatisticsPage() {
   const [data, setData]       = useState<StatsData | null>(null)
   const [loading, setLoading] = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [error, setError]     = useState('')
 
   useEffect(() => {

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { plansApi } from '@/lib/api/subscriptions'
 import type { Plan } from '@/types/subscriptions'
 import { METHOD_LABELS, notifyPendingChanged, paymentRequestsApi, type PaymentMethod } from '@/lib/paymentRequestsApi'
+import { BusyLabel } from '@/components/brand/BrandLoader'
 
 const box: React.CSSProperties = { border: '1px solid var(--border-subtle, #2a2f38)', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }
 const field: React.CSSProperties = {
@@ -20,12 +21,13 @@ const field: React.CSSProperties = {
 const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #9ca3af)', display: 'flex', flexDirection: 'column', gap: 4 }
 const title: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: 'var(--text-primary, #fcfdfd)', margin: 0 }
 
-function SubmitBtn({ children, disabled, tone }: { children: React.ReactNode; disabled?: boolean; tone: string }) {
+function SubmitBtn({ children, disabled, loading = false, tone }: { children: React.ReactNode; disabled?: boolean; loading?: boolean; tone: string }) {
+  disabled = disabled || loading
   return (
-    <button type="submit" disabled={disabled} style={{
-      padding: '8px 12px', borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: 'inherit', cursor: disabled ? 'not-allowed' : 'pointer',
+    <button type="submit" disabled={disabled} aria-busy={loading || undefined} style={{
+      position: 'relative', padding: '8px 12px', borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: 'inherit', cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1, background: `${tone}1a`, border: `1px solid ${tone}55`, color: tone,
-    }}>{children}</button>
+    }}><BusyLabel busy={loading} size={14}>{children}</BusyLabel></button>
   )
 }
 
@@ -108,7 +110,7 @@ export default function DirectPaymentActions({ sellerId, onDone }: { sellerId: n
           <label style={label}>Moyen de paiement<MethodSelect value={method} onChange={setMethod} /></label>
           <label style={label}>Référence de transaction<input maxLength={100} value={ref} onChange={e => setRef(e.target.value)} style={field} /></label>
           <label style={label}>Note<input maxLength={1000} value={note} onChange={e => setNote(e.target.value)} style={field} /></label>
-          <div><SubmitBtn tone="#4ade80" disabled={busyTop || !(Number(amount) > 0)}>{busyTop ? 'Enregistrement…' : 'Recharger'}</SubmitBtn></div>
+          <div><SubmitBtn tone="#4ade80" loading={busyTop} disabled={!(Number(amount) > 0)}>Recharger</SubmitBtn></div>
         </form>
 
         <form onSubmit={changePlan} style={box}>
@@ -129,7 +131,7 @@ export default function DirectPaymentActions({ sellerId, onDone }: { sellerId: n
           <label style={label}>Moyen de paiement<MethodSelect value={pMethod} onChange={setPMethod} /></label>
           <label style={label}>Référence de transaction<input maxLength={100} value={pRef} onChange={e => setPRef(e.target.value)} style={field} /></label>
           <label style={label}>Note<input maxLength={1000} value={pNote} onChange={e => setPNote(e.target.value)} style={field} /></label>
-          <div><SubmitBtn tone="#f59e0b" disabled={busyPlan || !selected || price === ''}>{busyPlan ? 'Enregistrement…' : 'Changer de plan'}</SubmitBtn></div>
+          <div><SubmitBtn tone="#f59e0b" loading={busyPlan} disabled={!selected || price === ''}>Changer de plan</SubmitBtn></div>
         </form>
       </div>
     </div>

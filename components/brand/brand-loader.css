@@ -20,6 +20,7 @@
   --ctl-ink: var(--ct-ink, #111);
   --ctl-muted: var(--ct-muted, #5f6368);
   --ctl-veil: rgba(255, 255, 255, .74);
+  --ctl-veil-soft: rgba(255, 255, 255, .35);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -34,8 +35,11 @@
   --ctl-ink: #f5f5f4;
   --ctl-muted: #a1a1aa;
   --ctl-veil: rgba(9, 9, 11, .72);
+  --ctl-veil-soft: rgba(9, 9, 11, .3);
 }
 .ctl.is-instant { animation-delay: 0s; }
+/* the global navigation overlay is up: keep the space, draw nothing */
+.ctl.is-covered { visibility: hidden; }
 .ctl.is-leaving { animation: ctl-leave .22s cubic-bezier(.4, 0, .2, 1) both; }
 
 @keyframes ctl-leave {
@@ -82,6 +86,44 @@
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   backdrop-filter: blur(12px) saturate(140%);
 }
+
+/* Over a block: in-page refresh (LoadingCover) or the seller/admin content area. */
+.ctl.ctl-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  justify-content: flex-start;
+  padding: clamp(32px, 12vh, 120px) 16px 24px;
+  background: var(--ctl-veil);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.ctl.ctl-cover--soft {
+  z-index: 5;
+  padding-top: clamp(24px, 8vh, 80px);
+  background: var(--ctl-veil-soft);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* the mark stays in view over tall blocks */
+.ctl.ctl-cover > .ctl-mark { position: sticky; top: 30vh; }
+.ctl.ctl-cover--area {
+  position: fixed;
+  top: var(--ctl-area-top, 0px);
+  inset-inline-start: var(--ctl-area-start, 0px);
+  inset-inline-end: 0;
+  bottom: 0;
+  z-index: 25;
+}
+.ctl-cover-wrap { position: relative; }
+.ctl-dim { transition: opacity .2s cubic-bezier(.4, 0, .2, 1); }
+.ctl-dim.is-dim { opacity: .45; pointer-events: none; transition-delay: .15s; }
+
+/* BusyLabel: the label keeps the button's width, the glyph sits over it */
+.ctl-busy-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: inherit; }
+.ctl-busy-label { display: inline-flex; align-items: center; justify-content: center; gap: inherit; }
+.ctl-busy-label.is-busy { visibility: hidden; }
+.ctl.ctl--inline.ctl-busy { position: absolute; inset: 0; justify-content: center; align-items: center; }
 
 .ctl-label {
   margin: 0;

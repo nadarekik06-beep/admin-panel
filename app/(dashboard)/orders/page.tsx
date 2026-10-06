@@ -20,6 +20,7 @@ import {
 } from './_components/delivery'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
@@ -1265,6 +1266,8 @@ const SELLER_TYPE_TABS: { value: SellerTypeFilter; label: string; icon: React.El
 export default function OrdersPage() {
   const [orders,     setOrders]     = useState<PaginatedResponse<Order> | null>(null)
   const [loading,    setLoading]    = useState(true)
+  // holds the navigation loader until the first load is done
+  usePageLoading(loading)
   const [search,     setSearch]     = useState('')
   const [status,     setStatus]     = useState('')
   const [payMethod,  setPayMethod]  = useState('')

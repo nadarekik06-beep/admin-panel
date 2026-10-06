@@ -11,6 +11,7 @@ import {
 import { format } from 'date-fns'
 import api from '@/lib/axios'
 import { fmt, SHIPPING_PAYER, PayoutBadge } from './financeShared'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const RED   = '#db142e'
 const GREEN = '#198f41'
@@ -230,27 +231,7 @@ function Line({ label, value, color = '#94a3b8', sub, strong }: {
 }
 
 function Skeleton() {
-  const bar = (w: string | number, h = 12, mb = 8) => (
-    <div className="fin-skel" style={{ width: w, height: h, borderRadius: 6, marginBottom: mb }} />
-  )
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-busy="true" aria-label="Loading order details">
-      <div style={card}>{bar('40%', 16)}{bar('70%')}{bar('55%', 12, 0)}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-        <div style={card}>{bar('50%')}{bar('80%')}{bar('60%', 12, 0)}</div>
-        <div style={card}>{bar('50%')}{bar('80%')}{bar('60%', 12, 0)}</div>
-      </div>
-      <div style={card}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0' }}>
-            <div className="fin-skel" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>{bar('75%')}{bar('40%')}{bar('30%', 12, 0)}</div>
-          </div>
-        ))}
-      </div>
-      <div style={card}>{bar('100%')}{bar('100%')}{bar('100%')}{bar('100%', 12, 0)}</div>
-    </div>
-  )
+  return <BrandLoader variant="section" label="Loading order details…" minHeight={320} />
 }
 
 // ─── Drawer ──────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import {
 } from './_components/editorModel'
 
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePageLoading } from '@/components/brand/NavigationLoader'
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api\/?$/, '')
 const LEAVE_MSG = 'You have unsaved changes. Leave without saving?'
 
@@ -53,6 +54,8 @@ export default function ProductEditorPage() {
   const [state, setStateRaw]    = useState<EditorState | null>(null)
   const [baseline, setBaseline] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
+  // holds the navigation loader until the first load is done
+  usePageLoading(!payload && !loadError)
   const [tab, setTab]           = useState<TabId>('general')
 
   const [categories, setCategories]       = useState<Category[]>([])
