@@ -635,13 +635,32 @@ function ComplaintDrawer({ complaint, onClose, onRefresh }: {
                   #{complaint.order?.order_number ?? complaint.order_id}
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {complaint.order?.items?.map((item: any, i: number) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--drawer-t1)', fontWeight: 600 }}>{item.product_name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--drawer-t2)', background: 'rgba(255,255,255,.07)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--drawer-card-bd)' }}>×{item.quantity}</span>
-                  </div>
-                ))}
+              {/* The complained lines exactly as bought (order snapshot) — same as buyer & seller see */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {complaint.complained_items?.map(item => {
+                  const hex = item.variant_attributes?.find(a => a.color_hex)?.color_hex
+                  return (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- order snapshot image
+                        <img src={item.image_url} alt={item.product_name}
+                          style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--drawer-card-bd)' }} />
+                      ) : (
+                        <div aria-hidden style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0, border: '1px solid var(--drawer-card-bd)', background: 'rgba(255,255,255,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 12, color: 'var(--drawer-t1)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_name}</span>
+                        {item.variant_label && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--drawer-t2)', fontWeight: 600 }}>
+                            {hex && <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: hex, border: '1px solid rgba(255,255,255,.25)' }} />}
+                            {item.variant_label}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--drawer-t2)', background: 'rgba(255,255,255,.07)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--drawer-card-bd)' }}>×{item.quantity}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>

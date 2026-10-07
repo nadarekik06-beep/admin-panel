@@ -100,12 +100,22 @@ export interface EligibleOrder {
   items:        EligibleOrderItem[]
 }
 
+/**
+ * An order line exactly as bought (backend OrderItem::purchaseSnapshot):
+ * image, name, variant and price come from the order, never the live product.
+ * image_url null → placeholder.
+ */
 export interface ComplaintOrderItem {
-  id:           number
-  product_name: string
-  quantity:     number
-  unit_price:   number
-  total:        number
+  id:                  number             // order_item_id
+  product_id?:         number | null
+  variant_id?:         number | null
+  product_name:        string
+  variant_label:       string | null      // "Rouge / M"
+  variant_attributes?: { slug: string; label: string; value: string; color_hex: string | null }[]
+  quantity:            number
+  unit_price:          number
+  total:               number
+  image_url:           string | null
 }
 
 export interface ComplaintOrder {
