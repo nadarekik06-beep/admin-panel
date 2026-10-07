@@ -194,7 +194,7 @@ function VariantsTab({ product, onShowImages }: { product: ProductReview; onShow
 function SpecsTab({ product }: { product: ProductReview }) {
   const specs = product.specifications
   if (specs.length === 0) {
-    return <Empty icon={<ListChecks size={22} />} title="No specifications">The seller didn't fill any additional attributes.</Empty>
+    return <Empty icon={<ListChecks size={22} />} title="No specifications">The seller didn&apos;t fill any additional attributes.</Empty>
   }
   return (
     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
@@ -218,7 +218,7 @@ function SpecsTab({ product }: { product: ProductReview }) {
 function DescriptionTab({ product }: { product: ProductReview }) {
   const len = (product.description ?? '').trim().length
   if (!product.description && !product.short_description) {
-    return <Empty icon={<FileText size={22} />} title="No description">The seller didn't write a description.</Empty>
+    return <Empty icon={<FileText size={22} />} title="No description">The seller didn&apos;t write a description.</Empty>
   }
   return (
     <div className="space-y-4">
@@ -331,7 +331,7 @@ function ShippingTab({ product }: { product: ProductReview }) {
       </Section>
       <Section title="Package details">
         {s.fields.length === 0 ? (
-          <p className="text-sm text-text-muted">Weight and dimensions weren't provided for this product.</p>
+          <p className="text-sm text-text-muted">Weight and dimensions weren&apos;t provided for this product.</p>
         ) : (
           s.fields.map((f) => <KV key={f.label} label={f.label} value={f.value} />)
         )}
@@ -347,7 +347,7 @@ function SellerTab({ product }: { product: ProductReview }) {
   if (!s) {
     return (
       <Empty icon={<Store size={22} />} title={product.is_platform_product ? 'Platform product' : 'No seller'}>
-        This product isn't attached to a seller account.
+        This product isn&apos;t attached to a seller account.
       </Empty>
     )
   }

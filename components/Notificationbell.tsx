@@ -334,7 +334,7 @@ export default function NotificationBell({
                     No notifications yet
                   </p>
                   <p style={{ fontSize: 11, color: textMuted, opacity: 0.6, margin: '4px 0 0' }}>
-                    You'll see activity here when things happen.
+                    You&apos;ll see activity here when things happen.
                   </p>
                 </div>
               ) : (

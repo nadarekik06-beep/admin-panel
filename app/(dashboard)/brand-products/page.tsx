@@ -196,7 +196,7 @@ export default function BrandProductsPage() {
               </span>
             </div>
             <p style={{ fontSize: 11, color: textMuted, margin: 0, fontWeight: 500 }}>
-              CHOOSE'Tounsi original products — full variant &amp; image support
+              CHOOSE&apos;Tounsi original products — full variant &amp; image support
             </p>
           </div>
           <button
@@ -432,7 +432,7 @@ export default function BrandProductsPage() {
                         <td colSpan={7} style={{ padding: '56px 20px', textAlign: 'center' }}>
                           <Package size={28} style={{ margin: '0 auto 10px', display: 'block', color: textMuted, opacity: 0.4 }} />
                           <p style={{ fontSize: 13, fontWeight: 700, color: textMuted, margin: '0 0 4px' }}>No brand products yet</p>
-                          <p style={{ fontSize: 11, color: textMuted, opacity: 0.6, margin: 0 }}>Click "Add Brand Product" to create the first one</p>
+                          <p style={{ fontSize: 11, color: textMuted, opacity: 0.6, margin: 0 }}>Click &quot;Add Brand Product&quot; to create the first one</p>
                         </td>
                       </tr>
                     )}

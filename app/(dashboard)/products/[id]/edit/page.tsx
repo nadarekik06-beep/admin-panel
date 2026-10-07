@@ -550,7 +550,7 @@ export default function ProductEditorPage() {
               <button type="button" className="underline font-semibold" onClick={() => setTab('variants')}>Fix in Variants</button>
             </div>
           )}
-          <p className="text-[11px] text-text-muted">Images upload when you save. Accepted: JPG, PNG, WEBP, GIF — up to {Math.round(limits.max_file_kb / 1024)} MB each. There are no per-size photos: every size of a color shows that color's photos.</p>
+          <p className="text-[11px] text-text-muted">Images upload when you save. Accepted: JPG, PNG, WEBP, GIF — up to {Math.round(limits.max_file_kb / 1024)} MB each. There are no per-size photos: every size of a color shows that color&apos;s photos.</p>
         </div>
       )}
 

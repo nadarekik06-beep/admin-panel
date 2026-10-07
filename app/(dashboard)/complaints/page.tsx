@@ -705,7 +705,7 @@ function ComplaintDrawer({ complaint, onClose, onRefresh }: {
                 {complaint.rejection_reason && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(99,130,246,.15)' }}>
                     <p style={{ fontSize: 10, fontWeight: 800, color: ORANGE, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-                      Seller's rejection reason
+                      Seller&apos;s rejection reason
                     </p>
                     <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: 0, fontWeight: 500 }}>{complaint.rejection_reason}</p>
                   </div>

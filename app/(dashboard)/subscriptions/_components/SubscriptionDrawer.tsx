@@ -296,7 +296,7 @@ function TrialAction({ sub, plans, run }: { sub: SellerSubscriptionRow; plans: P
   if (sub.status === 'suspended') return <p className="text-sm text-text-muted">Reactivate the subscription before starting a trial.</p>
   return (
     <div className="space-y-3">
-      <p className="text-xs text-text-muted">The seller gets the plan's features for free. When the trial ends without payment they return to the default plan (reminders are sent 7 and 1 day before).</p>
+      <p className="text-xs text-text-muted">The seller gets the plan&apos;s features for free. When the trial ends without payment they return to the default plan (reminders are sent 7 and 1 day before).</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Plan" required>
           <select value={plan} onChange={(e) => { setPlan(e.target.value); setDays(paid.find((p) => p.slug === e.target.value)?.trial_days || 14) }} className={inputCls}>

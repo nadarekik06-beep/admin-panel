@@ -194,7 +194,7 @@ function CreateSettlementModal({
             borderRadius: 10, padding: '10px 14px',
           }}>
             <p style={{ fontSize: 12, color: '#93c5fd', margin: 0, fontWeight: 500 }}>
-              ℹ All orders with status <strong>"Ready"</strong> for the selected seller will be grouped into this batch automatically. Only orders with confirmed cash receipt are included.
+              ℹ All orders with status <strong>&quot;Ready&quot;</strong> for the selected seller will be grouped into this batch automatically. Only orders with confirmed cash receipt are included.
             </p>
           </div>
 
@@ -792,7 +792,7 @@ export default function FinancePage() {
                           <tr>
                             <td colSpan={9} style={{ padding: '48px 20px', textAlign: 'center', color: '#475569' }}>
                               <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', color: '#64748b' }}>No settlements yet</p>
-                              <p style={{ fontSize: 11, margin: 0 }}>Click "Create Settlement" above to pay a seller.</p>
+                              <p style={{ fontSize: 11, margin: 0 }}>Click &quot;Create Settlement&quot; above to pay a seller.</p>
                             </td>
                           </tr>
                         ) : (settlements?.data ?? []).map((row: any) => (

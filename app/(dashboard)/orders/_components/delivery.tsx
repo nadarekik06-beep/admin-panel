@@ -188,7 +188,7 @@ export function ShippingAddressCard({ address }: { address?: ShippingAddress | n
         <div>
           <p style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', margin: 0 }}>Address not recorded (legacy order)</p>
           <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>
-            This order was placed before addresses were saved. Call the customer to get the delivery address — delivery slips can't be printed until then.
+            This order was placed before addresses were saved. Call the customer to get the delivery address — delivery slips can&apos;t be printed until then.
           </p>
         </div>
       </div>
