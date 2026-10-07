@@ -1,7 +1,7 @@
 import api from '../axios'
 import type { PaginatedResponse } from '@/types'
 import type {
-  CommissionTable, CommissionTier, HistoryEvent, Plan, PlansPayload,
+  CommissionTable, CommissionTier, DisplayFeature, HistoryEvent, Plan, PlansPayload,
   SellerSubscriptionRow, SubscriptionStats,
 } from '@/types/subscriptions'
 
@@ -15,7 +15,11 @@ export interface SubscriptionListParams {
   per_page?: number
 }
 
-export type PlanInput = Partial<Omit<Plan, 'id' | 'tier_key' | 'active_sellers' | 'total_sellers' | 'commission_range' | 'commission_label' | 'archived_at' | 'is_default'>> & { reason?: string }
+export type PlanInput = Partial<Omit<Plan, 'id' | 'tier_key' | 'active_sellers' | 'total_sellers' | 'commission_range' | 'commission_label' | 'archived_at' | 'is_default' | 'display_features'>> & {
+  reason?: string
+  /** Full ordered list; rows keep their id, rows left out are deleted. */
+  display_features?: DisplayFeature[]
+}
 
 const base = (sellerId: number) => `/admin/subscriptions/${sellerId}`
 
@@ -88,6 +92,10 @@ export const plansApi = {
   async restore(id: number) {
     return (await api.post(`/admin/subscription-plans/${id}/restore`)).data as { message: string; data: Plan }
   },
+  /** Toggle the "Populaire" badge on the pricing page (one plan at a time). */
+  async recommend(id: number) {
+    return (await api.patch(`/admin/subscription-plans/${id}/recommended`)).data as { message: string; data: Plan }
+  },
   async commission(): Promise<CommissionTable> {
     return (await api.get('/admin/commission-settings')).data.data
   },
@@ -101,4 +109,24 @@ export function apiError(err: unknown, fallback = 'Action failed. Please try aga
   const data = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data
   const first = data?.errors ? Object.values(data.errors)[0]?.[0] : undefined
   return first ?? data?.message ?? fallback
+}
+
+/** Pricing-page features one at a time (the plan editor saves the whole list with the plan). */
+export const displayFeaturesApi = {
+  base: (planId: number) => `/admin/subscription-plans/${planId}/display-features`,
+  async list(planId: number): Promise<DisplayFeature[]> {
+    return (await api.get(displayFeaturesApi.base(planId))).data.data
+  },
+  async create(planId: number, body: Omit<DisplayFeature, 'id' | 'sort_order'> & { reason?: string }) {
+    return (await api.post(displayFeaturesApi.base(planId), body)).data as { message: string; data: DisplayFeature }
+  },
+  async update(planId: number, id: number, body: Partial<DisplayFeature> & { reason?: string }) {
+    return (await api.put(`${displayFeaturesApi.base(planId)}/${id}`, body)).data as { message: string; data: DisplayFeature }
+  },
+  async remove(planId: number, id: number, reason?: string) {
+    return (await api.delete(`${displayFeaturesApi.base(planId)}/${id}`, { data: { reason } })).data as { message: string; data: DisplayFeature[] }
+  },
+  async reorder(planId: number, ids: number[], reason?: string) {
+    return (await api.put(`${displayFeaturesApi.base(planId)}/reorder`, { ids, reason })).data as { message: string; data: DisplayFeature[] }
+  },
 }

@@ -82,11 +82,39 @@ export interface SubscriptionStats {
 
 export type FeatureFlags = Record<string, boolean>
 
+/** A code-enforced capability from the backend registry (PlanCapability). */
+export interface Capability {
+  key: string
+  /** Admin name, with how it is enforced. */
+  label: string
+  /** Default public wording (French). */
+  public_label: string
+  public_description: string
+  icon: string
+}
+
+/** Per-plan wording / visibility of a capability on the pricing page. */
+export interface CapabilityDisplay { label?: string | null; description?: string | null; visible?: boolean }
+
+export type PublicLimitKey = 'max_products' | 'max_images_per_product' | 'max_sponsored_products'
+
+/** A marketing bullet on the public pricing card. */
+export interface DisplayFeature {
+  id?: number
+  label: string
+  description: string | null
+  icon: string | null
+  included: boolean
+  highlight: boolean
+  sort_order?: number
+}
+
 export interface Plan {
   id: number
   slug: string
   name: string
   description: string | null
+  tagline: string | null
   badge_color: string
   display_order: number
   tier: 0 | 1 | 2
@@ -100,8 +128,12 @@ export interface Plan {
   max_images_per_product: number | null
   max_sponsored_products: number | null
   features: FeatureFlags
+  capability_display: Record<string, CapabilityDisplay> | null
+  hidden_limits: PublicLimitKey[] | null
+  display_features: DisplayFeature[]
   is_active: boolean
   is_default: boolean
+  is_recommended: boolean
   archived_at: string | null
   active_sellers: number
   total_sellers: number
@@ -119,6 +151,7 @@ export interface CommissionTable {
 
 export interface PlansPayload {
   plans: Plan[]
-  features: { key: string; label: string }[]
+  features: Capability[]
+  pricing_page: { icons: string[]; limits: PublicLimitKey[]; max_display_features: number }
   commission_default: CommissionTable
 }
