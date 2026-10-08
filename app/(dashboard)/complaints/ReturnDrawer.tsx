@@ -41,7 +41,7 @@ export function ReturnStatusBadge({ status }: { status: string }) {
   )
 }
 
-type StepKind = 'approve' | 'reject' | 'pickup' | 'receive' | 'refund' | 'cancel'
+type StepKind = 'approve' | 'reject' | 'pickup' | 'pickedup' | 'receive' | 'refund' | 'cancel'
 
 export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
   complaint: Complaint | null; onClose: () => void; onRefresh: () => void
@@ -57,6 +57,7 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
   const items = c.complained_items ?? []
   const photos = c.image_urls?.length ? c.image_urls : (c.image_url ? [c.image_url] : [])
   const fee = Number(c.return_shipping_fee ?? 0)
+  const cash = !!c.cash_refund   // COD: the courier pays the client back in cash at pick-up
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
   const run = async (fn: () => Promise<any>, ok: string) => {
@@ -89,13 +90,15 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
       case 'escalated': return { title: 'Escalated by the client — final decision', text: c.escalation_note ? `Client: “${c.escalation_note}”` : 'The client contests the shop’s refusal.', color: '#a78bfa', actions: [
         btn('Confirm refusal', <XCircle size={14} />, 'ct-btn--danger', () => setStep('reject')),
         btn('Override → approve', <CheckCircle size={14} />, 'ct-btn--success', () => setStep('approve'))] }
-      case 'admin_approved': return { title: 'Approved — schedule the pick-up', text: 'Download the return slip, send it to the delivery company, then mark the pick-up as scheduled (or assign a courier in the delivery app).', color: '#38bdf8', actions: [
+      case 'admin_approved': return { title: 'Approved — schedule the pick-up', text: `Download the return slip, send it to the delivery company, then mark the pick-up as scheduled (or assign a courier in the delivery app).${cash ? ` Cash on delivery: the courier pays the client back ${dt(c.refund_amount)} in cash at pick-up.` : ''}`, color: '#38bdf8', actions: [
         btn('Cancel', <Ban size={14} />, 'ct-btn--ghost', () => setStep('cancel')),
         btn('Pick-up scheduled', <Truck size={14} />, 'ct-btn--success', () => setStep('pickup'))] }
-      case 'pickup_scheduled': return { title: 'Pick-up scheduled', text: 'Mark it picked up once the courier collected the parcel at the client.', color: '#818cf8', actions: [
+      case 'pickup_scheduled': return { title: 'Pick-up scheduled', text: cash
+          ? `When the courier collected the parcel, he paid the client back ${dt(c.refund_amount)} in cash (out of the cash he holds for us). Confirm it here.`
+          : 'Mark it picked up once the courier collected the parcel at the client.', color: '#818cf8', actions: [
         btn('Cancel', <Ban size={14} />, 'ct-btn--ghost', () => setStep('cancel')),
-        btn('Mark picked up', <Truck size={14} />, 'ct-btn--success', () => run(() => adminComplaintApi.pickedUp(c.id), 'Picked up'))] }
-      case 'picked_up': return { title: 'On its way back to the seller', text: 'When the seller (or you) received it, confirm the condition of each item. Only resaleable items are restocked.', color: '#818cf8', actions: [
+        btn(cash ? 'Picked up & client paid' : 'Mark picked up', <Truck size={14} />, 'ct-btn--success', () => setStep('pickedup'))] }
+      case 'picked_up': return { title: 'On its way back to the seller', text: `${cash && c.refund_method === 'cash' ? `The client was paid back ${dt(c.refund_amount)} in cash by the courier. ` : ''}When the seller (or you) received it, confirm the condition of each item. Only resaleable items are restocked.`, color: '#818cf8', actions: [
         btn('Confirm reception', <PackageCheck size={14} />, 'ct-btn--success', () => setStep('receive'))] }
       case 'returned_to_seller': return { title: 'Received & inspected — refund due', text: `Refund ${dt(c.refund_amount)} to the client. The sale is reversed in finance at the same time.`, color: '#2dd4bf', actions: [
         btn('Issue refund', <Wallet size={14} />, 'ct-btn--success', () => setStep('refund'))] }
@@ -358,6 +361,7 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
 
   const TITLES: Record<StepKind, string> = {
     approve: 'Approve the return', reject: 'Reject the return', pickup: 'Pick-up scheduled',
+    pickedup: c.cash_refund ? 'Picked up — courier paid the client in cash' : 'Picked up',
     receive: 'Confirm reception & condition', refund: 'Issue the refund', cancel: 'Cancel the return',
   }
 
@@ -371,11 +375,13 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
         case 'reject':
           if (text.trim().length < 10) throw new Error('Give the client a reason (at least 10 characters).')
           res = await adminComplaintApi.reject(c.id, text.trim()); break
+        case 'pickedup': res = await adminComplaintApi.pickedUp(c.id, carrier || undefined, text || undefined); break
         case 'pickup': res = await adminComplaintApi.schedulePickup(c.id, { carrier: carrier || undefined, date: date || undefined, tracking: tracking || undefined, note: text || undefined }); break
         case 'receive':
           if ((c.complained_items ?? []).some(i => !conditions[i.id])) throw new Error('Choose the condition of every item.')
           res = await adminComplaintApi.receive(c.id, conditions, text || undefined); break
         case 'refund':
+          if (method === 'cash') throw new Error('Cash on delivery returns are paid back by the courier at pick-up.')
           if (['bank_transfer', 'd17'].includes(method) && !reference.trim()) throw new Error('Enter the transfer / D17 reference.')
           res = await adminComplaintApi.refund(c.id, method, reference.trim() || undefined, text || undefined); break
         case 'cancel':
@@ -419,6 +425,19 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
             <div><label className="ct-label">Pick-up date</label><input className="ct-input" type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
             <div style={{ gridColumn: '1 / -1' }}><label className="ct-label">Tracking / reference</label><input className="ct-input" value={tracking} onChange={e => setTracking(e.target.value)} /></div>
           </div>
+        )}
+
+        {kind === 'pickedup' && (
+          <>
+            {c.cash_refund && (
+              <p style={{ fontSize: 13, color: 'var(--t1)', margin: '0 0 12px', lineHeight: 1.6 }}>
+                Confirm the courier checked the item against the photos and handed the client <b style={{ color: GREEN }}>{dt(c.refund_amount)}</b> in cash.
+                The sale is reversed in finance now; the shop still inspects the item at reception.
+              </p>
+            )}
+            <label className="ct-label">Courier</label>
+            <input className="ct-input" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="Courier name / company" style={{ marginBottom: 12 }} />
+          </>
         )}
 
         {kind === 'receive' && (

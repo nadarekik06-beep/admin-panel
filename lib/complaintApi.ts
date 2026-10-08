@@ -52,9 +52,10 @@ export const adminComplaintApi = {
   /** Reject (also overrides a seller acceptance). */
   reject: (id: number, rejection_reason: string) => patch(id, 'reject', { rejection_reason }),
   schedulePickup: (id: number, body: { carrier?: string; date?: string; tracking?: string; note?: string }) => patch(id, 'schedule-pickup', body),
-  pickedUp: (id: number, note?: string) => patch(id, 'picked-up', { note }),
+  /** COD: also records that the courier paid the client back in cash. */
+  pickedUp: (id: number, courier?: string, note?: string) => patch(id, 'picked-up', { courier, note }),
   receive: (id: number, conditions: Record<number, ItemCondition>, note?: string) => patch(id, 'receive', { conditions, note }),
-  refund: (id: number, method: RefundMethod, reference?: string, note?: string) => patch(id, 'refund', { method, reference, note }),
+  refund: (id: number, method: Exclude<RefundMethod, 'cash'>, reference?: string, note?: string) => patch(id, 'refund', { method, reference, note }),
   cancel: (id: number, reason: string) => patch(id, 'cancel', { reason }),
   close: (id: number, note?: string) => patch(id, 'close', { note }),
 

@@ -24,7 +24,7 @@ export type ComplaintStatus =
 
 export type ComplaintType = 'wrong_product' | 'wrong_size' | 'wrong_color' | 'damaged_product' | 'other'
 export type ResolutionType = 'return_refund' | 'exchange'
-export type RefundMethod = 'wallet' | 'bank_transfer' | 'd17' | 'original'
+export type RefundMethod = 'cash' | 'wallet' | 'bank_transfer' | 'd17' | 'original'
 export type ItemCondition = 'resaleable' | 'damaged'
 
 export const COMPLAINT_TYPE_LABELS: Record<ComplaintType, string> = {
@@ -36,6 +36,7 @@ export const COMPLAINT_TYPE_LABELS: Record<ComplaintType, string> = {
 }
 
 export const REFUND_METHOD_LABELS: Record<RefundMethod, string> = {
+  cash:          'Cash, paid by the courier at pick-up',
   wallet:        'ChooseTounsi wallet',
   bank_transfer: 'Bank transfer',
   d17:           'D17',
@@ -170,6 +171,7 @@ export interface Complaint {
   client_address?:     Address
   seller_pickup?:      SellerPickup
   refund_methods?:     RefundMethod[]
+  cash_refund?:        boolean   // COD: the courier pays the client back in cash at pick-up
   adjustments?:        SellerAdjustment[]
   allowed_transitions?: ComplaintStatus[]
   refund_task?:        { id: number; status: string; delivery_guy?: { id: number; name: string } | null } | null
