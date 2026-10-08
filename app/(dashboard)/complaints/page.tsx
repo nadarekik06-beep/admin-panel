@@ -1,15 +1,14 @@
 'use client'
 
 /**
- * FILE: app/admin/complaints/page.tsx  (Admin Panel — port 3001)
- *
- * REDESIGNED: Lucide React icons, Framer Motion animations, refined spacing,
- * glassmorphism stat cards, polished table, smooth drawer with micro-interactions.
- * Brand: ChooseTounsi (#db142e red, #198f41 green, dark theme)
- * Zero logic changes — only presentation layer was touched.
+ * Returns & refunds moderation (admin panel). The detail drawer
+ * (ReturnDrawer) carries every step: decision, pick-up, reception, refund,
+ * and the Return Slip PDF for the delivery company. ?id= opens one
+ * (notification bell / e-mails).
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   AlertTriangle, CheckCircle, XCircle, Clock, Search,
   Eye, RefreshCw, ChevronRight, FileText, RotateCcw,
@@ -18,7 +17,8 @@ import {
 } from 'lucide-react'
 import { adminComplaintApi } from '@/lib/complaintApi'
 import type { Complaint } from '@/types/complaint'
-import { STATUS_CONFIG, COMPLAINT_TYPE_LABELS } from '@/types/complaint'
+import { COMPLAINT_TYPE_LABELS, STATUS_CONFIG } from '@/types/complaint'
+import ReturnDrawer, { ReturnStatusBadge } from './ReturnDrawer'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -438,31 +438,6 @@ const GLOBAL_CSS = `
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.4); }
 `
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-  pending:                       <Clock size={10} strokeWidth={2.5} />,
-  reviewing:                     <Search size={10} strokeWidth={2.5} />,
-  approved:                      <CheckCircle size={10} strokeWidth={2.5} />,
-  seller_rejected_pending_admin: <AlertTriangle size={10} strokeWidth={2.5} />,
-  rejected:                      <XCircle size={10} strokeWidth={2.5} />,
-}
-
-function StatusBadge({ status }: { status: Complaint['status'] }) {
-  const cfg = STATUS_CONFIG[status]
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 100,
-      background: cfg.bg, color: cfg.color,
-      border: `1px solid ${cfg.color}28`,
-      textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-    }}>
-      {STATUS_ICONS[status]}
-      {cfg.label}
-    </span>
-  )
-}
-
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, icon, alert }: {
   label: string; value: number; color: string
@@ -492,342 +467,24 @@ function StatCard({ label, value, color, icon, alert }: {
   )
 }
 
-// ── Reject Modal ──────────────────────────────────────────────────────────────
-function RejectModal({ complaintId, isOpen, onClose, onRejected }: {
-  complaintId: number; isOpen: boolean; onClose: () => void; onRejected: () => void
-}) {
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error,  setError]  = useState('')
-
-  useEffect(() => { if (isOpen) { setReason(''); setError('') } }, [isOpen])
-  if (!isOpen) return null
-
-  const handleReject = async () => {
-    if (reason.trim().length < 10) { setError('Please provide a reason (at least 10 characters).'); return }
-    setSaving(true)
-    try {
-      await adminComplaintApi.reject(complaintId, reason.trim())
-      onRejected(); onClose()
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to reject complaint.')
-    } finally { setSaving(false) }
-  }
-
-  return (
-    <>
-      <div className="ct-backdrop" style={{ zIndex: 10000 }} onClick={onClose} />
-      <div className="ct-modal">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <XCircle size={18} color="#ef4444" />
-          </div>
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 900, color: 'var(--t1)', margin: 0 }}>Reject Complaint</h3>
-            <p style={{ fontSize: 12, color: 'var(--t2)', margin: 0 }}>Client will be notified with your reason</p>
-          </div>
-        </div>
-
-        <textarea value={reason} onChange={e => { setReason(e.target.value); setError('') }}
-          rows={4} placeholder="Clearly explain why this complaint cannot be approved…"
-          className="ct-input" style={{ resize: 'vertical', lineHeight: 1.6, borderColor: error ? '#ef4444' : undefined }} />
-
-        {error && (
-          <p style={{ fontSize: 12, color: '#f87171', fontWeight: 600, margin: '6px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <AlertCircle size={12} /> {error}
-          </p>
-        )}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-          <button className="ct-btn ct-btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="ct-btn ct-btn--primary-danger" onClick={handleReject} disabled={saving}>
-            {saving ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
-            {saving ? 'Rejecting…' : 'Confirm Rejection'}
-          </button>
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ── Detail Drawer ─────────────────────────────────────────────────────────────
-function ComplaintDrawer({ complaint, onClose, onRefresh }: {
-  complaint: Complaint | null; onClose: () => void; onRefresh: () => void
-}) {
-  const [rejectModal, setRejectModal] = useState(false)
-  const [acting,      setActing]      = useState(false)
-  const [toast,       setToast]       = useState('')
-
-  if (!complaint) return null
-
-  const isResolved       = ['approved', 'rejected'].includes(complaint.status)
-  const isSellerRejected = complaint.status === 'seller_rejected_pending_admin'
-  const cfg              = STATUS_CONFIG[complaint.status]
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
-
-  const act = async (action: () => Promise<any>, successMsg: string) => {
-    setActing(true)
-    try {
-      await action()
-      showToast(successMsg)
-      onRefresh(); onClose()
-    } catch (err: any) {
-      showToast('Failed: ' + (err?.response?.data?.message ?? 'Action failed.'))
-    } finally { setActing(false) }
-  }
-
-  return (
-    <>
-      <div className="ct-backdrop" onClick={onClose} />
-      <aside className="ct-drawer ct-animate-slide-in">
-
-        {/* Header */}
-        <div className="ct-drawer-header">
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--drawer-t2)', background: 'rgba(255,255,255,.06)', padding: '3px 10px', borderRadius: 6, border: '1px solid var(--drawer-card-bd)' }}>
-                #{complaint.id}
-              </span>
-              <StatusBadge status={complaint.status} />
-              {isSellerRejected && (
-                <span style={{ fontSize: 10, fontWeight: 800, color: ORANGE, background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.4)', padding: '3px 10px', borderRadius: 100 }}>
-                  Admin Required
-                </span>
-              )}
-            </div>
-            <h2 style={{ fontSize: 18, fontWeight: 900, color: 'var(--drawer-t1)', margin: 0, lineHeight: 1.3 }}>
-              {COMPLAINT_TYPE_LABELS[complaint.complaint_type]}
-            </h2>
-            <p style={{ fontSize: 12, color: 'var(--drawer-t2)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <CalendarDays size={11} /> {timeAgo(complaint.created_at)}
-            </p>
-          </div>
-          <button className="ct-close-btn" onClick={onClose}><X size={14} /></button>
-        </div>
-
-        {/* Body */}
-        <div className="ct-drawer-body">
-
-          {/* Parties */}
-          <div>
-            <p className="ct-section-title"><User size={12} /> Parties Involved</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {[
-                { label: 'Client',  icon: <User size={13} />,  ...complaint.user },
-                { label: 'Seller',  icon: <Store size={13} />, ...complaint.seller },
-              ].map(p => (
-                <div key={p.label} className="ct-info-card">
-                  <p className="ct-info-card-label">{p.icon} {p.label}</p>
-                  <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--drawer-t1)', margin: '0 0 2px' }}>{(p as any).name ?? '—'}</p>
-                  <p style={{ fontSize: 11, color: 'var(--drawer-t2)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(p as any).email ?? '—'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Order */}
-          <div>
-            <p className="ct-section-title"><Package size={12} /> Order Details</p>
-            <div className="ct-info-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: 'var(--drawer-t1)', background: 'rgba(255,255,255,.07)', padding: '3px 10px', borderRadius: 6, border: '1px solid var(--drawer-card-bd)' }}>
-                  #{complaint.order?.order_number ?? complaint.order_id}
-                </span>
-              </div>
-              {/* The complained lines exactly as bought (order snapshot) — same as buyer & seller see */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {complaint.complained_items?.map(item => {
-                  const hex = item.variant_attributes?.find(a => a.color_hex)?.color_hex
-                  return (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {item.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- order snapshot image
-                        <img src={item.image_url} alt={item.product_name}
-                          style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--drawer-card-bd)' }} />
-                      ) : (
-                        <div aria-hidden style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0, border: '1px solid var(--drawer-card-bd)', background: 'rgba(255,255,255,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 12, color: 'var(--drawer-t1)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_name}</span>
-                        {item.variant_label && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--drawer-t2)', fontWeight: 600 }}>
-                            {hex && <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: hex, border: '1px solid rgba(255,255,255,.25)' }} />}
-                            {item.variant_label}
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--drawer-t2)', background: 'rgba(255,255,255,.07)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--drawer-card-bd)' }}>×{item.quantity}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Complaint details */}
-          <div>
-            <p className="ct-section-title"><MessageSquare size={12} /> Complaint Description</p>
-            <div style={{
-              background: `${cfg.color}12`, border: `1px solid ${cfg.color}30`,
-              borderRadius: 12, padding: '14px 16px',
-              borderLeft: `3px solid ${cfg.color}`,
-            }}>
-              <p style={{ fontSize: 13, color: cfg.color, fontWeight: 700, margin: '0 0 8px' }}>
-                {COMPLAINT_TYPE_LABELS[complaint.complaint_type]}
-                {complaint.complaint_type === 'other' && complaint.other_reason ? ` — ${complaint.other_reason}` : ''}
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
-                {complaint.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Proof image */}
-          {complaint.image_url && (
-            <div>
-              <p className="ct-section-title"><ImageIcon size={12} /> Proof Photo</p>
-              <a href={complaint.image_url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
-                <div style={{
-                  borderRadius: 12, overflow: 'hidden',
-                  border: '1px solid var(--drawer-card-bd)',
-                  position: 'relative',
-                }}>
-                  <img src={complaint.image_url} alt="Proof"
-                    style={{ width: '100%', maxHeight: 280, objectFit: 'cover', display: 'block' }} />
-                  <div style={{
-                    position: 'absolute', top: 10, right: 10,
-                    background: 'rgba(0,0,0,.6)', borderRadius: 8,
-                    padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4,
-                    fontSize: 11, color: '#fff', fontWeight: 600,
-                  }}>
-                    <ArrowUpRight size={11} /> View full
-                  </div>
-                </div>
-              </a>
-            </div>
-          )}
-
-          {/* Seller response */}
-          {complaint.seller_note && (
-            <div>
-              <p className="ct-section-title">
-                <Store size={12} /> Seller Response
-                <span style={{ marginLeft: 6, fontWeight: 800, color: complaint.seller_decision === 'approved' ? GREEN : ORANGE }}>
-                  {complaint.seller_decision === 'approved' ? '· Approved' : '· Rejected'}
-                </span>
-              </p>
-              <div style={{ background: 'rgba(99,130,246,.1)', border: '1px solid rgba(99,130,246,.2)', borderRadius: 12, padding: '14px 16px' }}>
-                <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: 0, lineHeight: 1.75, fontWeight: 500 }}>
-                  {complaint.seller_note}
-                </p>
-                {complaint.rejection_reason && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(99,130,246,.15)' }}>
-                    <p style={{ fontSize: 10, fontWeight: 800, color: ORANGE, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-                      Seller&apos;s rejection reason
-                    </p>
-                    <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: 0, fontWeight: 500 }}>{complaint.rejection_reason}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Seller rejected — admin action required */}
-          {isSellerRejected && (
-            <div style={{
-              background: 'rgba(249,115,22,.06)', border: `1.5px solid rgba(249,115,22,.3)`,
-              borderRadius: 14, padding: '18px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <ShieldAlert size={16} color={ORANGE} />
-                <p style={{ fontSize: 13, fontWeight: 900, color: ORANGE, margin: 0 }}>
-                  Seller Rejected — Your Final Decision
-                </p>
-              </div>
-              <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: '0 0 16px', lineHeight: 1.65, fontWeight: 500 }}>
-                The seller has rejected this complaint. Override to approve it for the client, or confirm the rejection.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button className="ct-btn ct-btn--success" disabled={acting}
-                  onClick={() => act(() => adminComplaintApi.overrideToApproved(complaint.id), '✅ Override approved')}>
-                  {acting ? <BrandLoader variant="inline" size={14} /> : <CheckCircle size={14} />}
-                  Override → Approve
-                </button>
-                <button className="ct-btn ct-btn--primary-danger" disabled={acting}
-                  onClick={() => act(() => adminComplaintApi.confirmRejection(complaint.id), '❌ Rejection confirmed')}>
-                  {acting ? <BrandLoader variant="inline" size={14} /> : <XCircle size={14} />}
-                  Confirm Rejection
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Already resolved */}
-          {isResolved && (
-            <div style={{
-              background: complaint.status === 'approved' ? 'rgba(25,143,65,.07)' : 'rgba(239,68,68,.07)',
-              border: `1px solid ${complaint.status === 'approved' ? 'rgba(25,143,65,.25)' : 'rgba(239,68,68,.25)'}`,
-              borderRadius: 12, padding: '14px 16px',
-              display: 'flex', alignItems: 'flex-start', gap: 12,
-            }}>
-              {complaint.status === 'approved'
-                ? <CheckCircle size={18} color={GREEN} style={{ flexShrink: 0, marginTop: 2 }} />
-                : <XCircle    size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
-              }
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 800, color: complaint.status === 'approved' ? GREEN : '#ef4444', margin: '0 0 4px' }}>
-                  {complaint.status === 'approved' ? 'Approved (Final)' : 'Rejected (Final)'}
-                </p>
-                {complaint.rejection_reason && (
-                  <p style={{ fontSize: 13, color: 'var(--drawer-t1)', margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
-                    {complaint.rejection_reason}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {!isResolved && !isSellerRejected && (
-          <div className="ct-drawer-footer">
-            <button className="ct-btn ct-btn--danger" style={{ flex: 1 }} disabled={acting}
-              onClick={() => setRejectModal(true)}>
-              <XCircle size={15} /> Reject
-            </button>
-            <button className="ct-btn ct-btn--success" style={{ flex: 1 }} disabled={acting}
-              onClick={() => act(() => adminComplaintApi.approve(complaint.id), '✅ Complaint approved')}>
-              {acting ? <BrandLoader variant="inline" size={15} /> : <CheckCircle size={15} />}
-              {acting ? 'Working…' : 'Approve'}
-            </button>
-          </div>
-        )}
-      </aside>
-
-      <RejectModal
-        complaintId={complaint.id}
-        isOpen={rejectModal}
-        onClose={() => setRejectModal(false)}
-        onRejected={() => { onRefresh(); onClose() }}
-      />
-
-      {toast && <div className="ct-toast">{toast}</div>}
-    </>
-  )
+/** Reads ?id=<id> and opens that return. */
+function OpenFromQuery({ onOpen }: { onOpen: (id: number) => void }) {
+  const id = Number(useSearchParams().get('id'))
+  useEffect(() => { if (id > 0) onOpen(id) }, [id, onOpen])
+  return null
 }
 
 // ── Table Row ─────────────────────────────────────────────────────────────────
 function ComplaintTableRow({ complaint, onSelect }: {
   complaint: Complaint; onSelect: (c: Complaint) => void
 }) {
-  const needsAction = complaint.status === 'seller_rejected_pending_admin'
+  const needsAction = ['seller_accepted', 'escalated', 'returned_to_seller'].includes(complaint.status)
   return (
     <tr className={needsAction ? 'ct-row--alert' : ''} onClick={() => onSelect(complaint)}>
       <td>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--t1)' }}>
-            #{complaint.id}
+            {complaint.reference ?? `#${complaint.id}`}
           </span>
           {needsAction && (
             <span style={{ display: 'flex', alignItems: 'center' }}>
@@ -856,7 +513,7 @@ function ComplaintTableRow({ complaint, onSelect }: {
         <span style={{ fontSize: 12, color: 'var(--t2)' }}>{complaint.seller?.name ?? '—'}</span>
       </td>
       <td>
-        <StatusBadge status={complaint.status} />
+        <ReturnStatusBadge status={complaint.status} />
       </td>
       <td>
         <span style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600 }}>
@@ -925,15 +582,28 @@ export default function AdminComplaintsPage() {
     catch { setSelected(c) }
   }
 
+  const openById = useCallback(async (id: number) => {
+    try { const res = await adminComplaintApi.getOne(id); setSelected(res.data) } catch { /* gone */ }
+  }, [])
+
+  /** After a step: the list and the open return both reload. */
+  const selectedId = selected?.id
+  const refreshAll = useCallback(() => {
+    fetchAll()
+    if (selectedId) adminComplaintApi.getOne(selectedId).then(r => setSelected(r.data)).catch(() => {})
+  }, [fetchAll, selectedId])
+
   const hasFilters = filterStatus || filterSearch || filterFromDate || filterToDate
 
   const statItems = stats ? [
-    { label: 'Total',       value: stats.total,           color: '#8891a4', icon: <FileText size={18} />,     alert: false },
-    { label: 'Pending',     value: stats.pending,         color: '#f59e0b', icon: <Clock size={18} />,        alert: false },
-    { label: 'Reviewing',   value: stats.reviewing,       color: '#3b82f6', icon: <Search size={18} />,       alert: false },
-    { label: 'Needs Admin', value: stats.seller_rejected, color: ORANGE,    icon: <ShieldAlert size={18} />,  alert: true  },
-    { label: 'Approved',    value: stats.approved,        color: GREEN,     icon: <CheckCircle size={18} />,  alert: false },
-    { label: 'Rejected',    value: stats.rejected,        color: '#ef4444', icon: <XCircle size={18} />,      alert: false },
+    { label: 'Total',          value: stats.total,       color: '#8891a4', icon: <FileText size={18} />,    alert: false },
+    { label: 'Your decision',  value: stats.needs_admin, color: ORANGE,    icon: <ShieldAlert size={18} />, alert: true  },
+    { label: 'With seller',    value: stats.with_seller, color: '#f59e0b', icon: <Clock size={18} />,       alert: false },
+    { label: 'To schedule',    value: stats.to_schedule, color: '#38bdf8', icon: <Search size={18} />,      alert: true  },
+    { label: 'In transit',     value: stats.in_transit,  color: '#818cf8', icon: <Package size={18} />,     alert: false },
+    { label: 'To refund',      value: stats.to_refund,   color: '#2dd4bf', icon: <AlertCircle size={18} />, alert: true  },
+    { label: 'Refunded',       value: stats.refunded,    color: GREEN,     icon: <CheckCircle size={18} />, alert: false },
+    { label: 'Closed',         value: stats.closed,      color: '#ef4444', icon: <XCircle size={18} />,     alert: false },
   ] : []
 
   return (
@@ -957,13 +627,13 @@ export default function AdminComplaintsPage() {
             </div>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--t1)', margin: 0, lineHeight: 1.2 }}>
-                Complaint Management
+                Returns &amp; Refunds
               </h1>
               <p style={{ fontSize: 13, color: 'var(--t2)', margin: '4px 0 0', fontWeight: 500 }}>
-                Review and resolve customer complaints
-                {stats?.seller_rejected > 0 && (
+                Decide, schedule pick-ups, confirm receptions and refund
+                {stats?.needs_admin > 0 && (
                   <span style={{ marginLeft: 10, color: ORANGE, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <AlertTriangle size={12} /> {stats.seller_rejected} awaiting your decision
+                    <AlertTriangle size={12} /> {stats.needs_admin} awaiting your decision
                   </span>
                 )}
               </p>
@@ -1002,7 +672,7 @@ export default function AdminComplaintsPage() {
             <label className="ct-label"><Search size={9} style={{ verticalAlign: 'middle', marginRight: 4 }} />Search</label>
             <div style={{ position: 'relative' }}>
               <Search size={13} color="var(--t3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              <input className="ct-input" type="text" placeholder="Customer, email, order #…"
+              <input className="ct-input" type="text" placeholder="Return ref, customer, email, order #…"
                 value={filterSearch} onChange={e => setFilterSearch(e.target.value)}
                 style={{ paddingLeft: 34 }} />
             </div>
@@ -1012,11 +682,8 @@ export default function AdminComplaintsPage() {
             <label className="ct-label"><Filter size={9} style={{ verticalAlign: 'middle', marginRight: 4 }} />Status</label>
             <select className="ct-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="reviewing">Reviewing</option>
-              <option value="seller_rejected_pending_admin">Awaiting Admin</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+              <option value="seller_accepted,escalated">Needs your decision</option>
+              {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           {/* Date range */}
@@ -1046,7 +713,7 @@ export default function AdminComplaintsPage() {
               <table className="ct-table">
                 <thead>
                   <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--bd)' }}>
-                    {['ID', 'Customer', 'Type', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
+                    {['Return', 'Customer', 'Reason', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
@@ -1059,10 +726,10 @@ export default function AdminComplaintsPage() {
                   <FileText size={24} color="var(--t3)" />
                 </div>
                 <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--t1)', margin: '0 0 6px' }}>
-                  {hasFilters ? 'No results found' : 'No complaints yet'}
+                  {hasFilters ? 'No results found' : 'No returns yet'}
                 </p>
                 <p style={{ fontSize: 13, color: 'var(--t2)' }}>
-                  {hasFilters ? 'Try adjusting your filters.' : 'All clear — no complaints to review.'}
+                  {hasFilters ? 'Try adjusting your filters.' : 'All clear — no returns to review.'}
                 </p>
               </div>
             ) : (
@@ -1070,7 +737,7 @@ export default function AdminComplaintsPage() {
                 <table className="ct-table">
                   <thead>
                     <tr>
-                      {['ID', 'Customer', 'Type', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
+                      {['Return', 'Customer', 'Reason', 'Order', 'Seller', 'Status', 'Date', ''].map(h => (
                         <th key={h}>{h}</th>
                       ))}
                     </tr>
@@ -1088,12 +755,16 @@ export default function AdminComplaintsPage() {
 
         {!loading && complaints.length > 0 && (
           <p style={{ fontSize: 12, color: 'var(--t3)', fontWeight: 600, margin: '10px 0 0', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
-            <TrendingUp size={12} /> {complaints.length} complaint{complaints.length !== 1 ? 's' : ''}
+            <TrendingUp size={12} /> {complaints.length} return{complaints.length !== 1 ? 's' : ''}
           </p>
         )}
       </div>
 
-      <ComplaintDrawer complaint={selected} onClose={() => setSelected(null)} onRefresh={fetchAll} />
+      <Suspense fallback={null}><OpenFromQuery onOpen={openById} /></Suspense>
+      {/* inside .ct-root: the drawer and its modals use the page's CSS variables */}
+      <div className="ct-root">
+        <ReturnDrawer key={selected?.id ?? 'closed'} complaint={selected} onClose={() => setSelected(null)} onRefresh={refreshAll} />
+      </div>
     </>
   )
 }

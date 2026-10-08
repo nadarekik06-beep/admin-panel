@@ -33,7 +33,7 @@ function filenameFrom(disposition: string | undefined, fallback: string): string
   return match ? decodeURIComponent(match[1]) : fallback
 }
 
-async function downloadPdf(request: () => Promise<any>, fallbackName: string): Promise<string> {
+export async function downloadPdf(request: () => Promise<any>, fallbackName: string): Promise<string> {
   try {
     const res  = await request()
     const name = filenameFrom(res.headers?.['content-disposition'], fallbackName)

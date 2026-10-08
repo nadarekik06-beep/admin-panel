@@ -36,9 +36,12 @@ interface OrderDetail extends Order {
     plan_used?:             string | null
     discount_amount?:       number | null   // share of the seller coupon
     net_total?:             number | null   // total − discount (commission base)
-    item_status?: 'returned' | 'exchanged' | null
+    item_status?: 'returned' | 'partially_returned' | null   // refunded returns
     is_returned?: boolean
+    ordered_quantity?:  number   // as bought (quantity = kept)
+    returned_quantity?: number
   })[]
+  display_status?:  string        // refunded = "Returned (Refunded)", partially_returned
   subtotal?:        number        // items before coupon
   discount_amount?: number        // seller coupons, 0 when none
   coupon_codes?:    string[]
@@ -101,6 +104,12 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:        '#ef4444',
   refunded:         '#a855f7',
   out_for_delivery: '#8b5cf6',
+  partially_returned: '#d946ef',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  refunded:           'Returned (refunded)',
+  partially_returned: 'Partially returned',
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -119,7 +128,7 @@ function StatusChip({ status }: { status: string }) {
       textTransform: 'capitalize',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
-      {status.replace(/_/g, ' ')}
+      {STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}
     </span>
   )
 }
@@ -311,7 +320,7 @@ function ContactModal({
 
             {/* Current status */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <StatusChip status={order.status} />
+              <StatusChip status={(order as OrderDetail).display_status ?? order.status} />
               <PaymentMethodBadge method={(order as any).payment_method} />
               <Badge variant={order.payment_status as OrderStatus}>{order.payment_status}</Badge>
             </div>
@@ -594,8 +603,8 @@ function OrderItemRow({ item }: { item: any }) {
           <p style={{
             fontWeight: 700, fontSize: 13, margin: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160,
-            color: item.item_status ? '#475569' : '#f1f5f9',
-            textDecoration: item.item_status ? 'line-through' : 'none',
+            color: item.item_status === 'returned' ? '#475569' : '#f1f5f9',
+            textDecoration: item.item_status === 'returned' ? 'line-through' : 'none',
           }}>
             {item.product_name}
           </p>
@@ -608,13 +617,13 @@ function OrderItemRow({ item }: { item: any }) {
               border: '1px solid rgba(219,20,46,0.35)',
             }}>↩ Returned</span>
           )}
-          {item.item_status === 'exchanged' && (
+          {item.item_status === 'partially_returned' && (
             <span style={{
               flexShrink: 0, fontSize: 9, fontWeight: 800,
               padding: '2px 7px', borderRadius: 999,
-              background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
-              border: '1px solid rgba(245,158,11,0.35)',
-            }}>↔ Exchanged</span>
+              background: 'rgba(217,70,239,0.15)', color: '#d946ef',
+              border: '1px solid rgba(217,70,239,0.35)',
+            }}>↩ {item.returned_quantity} returned</span>
           )}
         </div>
         {options.length > 0 && (
@@ -676,7 +685,7 @@ function OrderItemRow({ item }: { item: any }) {
           </div>
         )}
       </td>
-      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#94a3b8', fontSize: 12 }}>{item.quantity}</td>
+      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#94a3b8', fontSize: 12 }}>{item.ordered_quantity ?? item.quantity}</td>
       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#94a3b8', fontSize: 12 }}>{formatCurrency(item.unit_price)}</td>
       <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#a78bfa', fontSize: 13 }}>{formatCurrency(item.total)}</td>
     </tr>
@@ -994,7 +1003,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                 flexWrap: 'wrap', gap: 10,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <StatusChip status={detail.status} />
+                  <StatusChip status={detail.display_status ?? detail.status} />
                   <Badge variant={detail.payment_status as OrderStatus}>{detail.payment_status}</Badge>
                   <PaymentMethodBadge method={(detail as any).payment_method} />
                 </div>
@@ -1046,7 +1055,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                                 {so.seller?.name ?? `Seller #${so.seller_id}`}
                               </span>
                             )}
-                            <StatusChip status={so.status} />
+                            <StatusChip status={(so as SellerSubOrder & { display_status?: string }).display_status ?? so.status} />
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {Number(so.discount_amount ?? 0) > 0 && (
@@ -1386,7 +1395,7 @@ export default function OrdersPage() {
       ),
     },
     { key: 'wilaya',  header: 'Wilaya',  render: row => <span className="text-text-muted text-sm">{(row as any).wilaya ?? '—'}</span> },
-    { key: 'status',  header: 'Status',  render: row => <StatusChip status={row.status} /> },
+    { key: 'status',  header: 'Status',  render: row => <StatusChip status={(row as OrderDetail).display_status ?? row.status} /> },
     { key: 'payment_status', header: 'Payment', render: row => <Badge variant={row.payment_status as OrderStatus}>{row.payment_status}</Badge> },
     { key: 'payment_method' as any, header: 'Method', render: row => <PaymentMethodBadge method={(row as any).payment_method} /> },
     { key: 'total_amount', header: 'Total', render: row => <span className="font-bold text-text-primary">{formatCurrency(row.total_amount)}</span> },
@@ -1459,8 +1468,8 @@ export default function OrdersPage() {
           <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
             <option value="">All Status</option>
-            {['pending', 'confirmed', 'out_for_delivery', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+            {['pending', 'confirmed', 'out_for_delivery', 'completed', 'delivered', 'partially_returned', 'refunded', 'cancelled'].map(s => (
+              <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
             ))}
           </select>
           <select value={payMethod} onChange={e => { setPayMethod(e.target.value); setPage(1) }}

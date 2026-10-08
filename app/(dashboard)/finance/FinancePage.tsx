@@ -474,6 +474,11 @@ export default function FinancePage() {
                   <KpiCard label="Paid to Agency"  value={fmt(overview.kpis.total_shipping_cost ?? 0)} color="#ef4444" icon={TrendingDown}
                     sub={`Net shipping: ${fmt(Number(overview.kpis.total_delivery_fees ?? 0) + Number(overview.kpis.total_seller_shipping ?? 0) - Number(overview.kpis.total_shipping_cost ?? 0))}`} />
                   <KpiCard label="Seller Payouts"  value={fmt(overview.kpis.total_seller_payouts)}  color="#a78bfa" icon={DollarSign}  />
+                  {/* Returns refunded to clients; seller debits (refunds after payout, return shipping) not settled yet */}
+                  <KpiCard label="Returns Refunded" value={fmt(overview.kpis.returns_refunded ?? 0)} color="#d946ef" icon={TrendingDown}
+                    sub="Already removed from revenue & commission" />
+                  <KpiCard label="Pending Seller Debits" value={fmt(overview.kpis.pending_seller_debits ?? 0)} color="#ef4444" icon={AlertCircle}
+                    sub="Deducted on each seller's next settlement" />
                   <KpiCard label="Orders"          value={String(overview.kpis.orders_count)}       color="#f59e0b" icon={Package}      />
                   {/* Paid click charges only; free plan credit is not revenue */}
                   <KpiCard label="Ad Revenue"      value={fmt(overview.kpis.ad_revenue ?? 0)} color="#22c55e" icon={TrendingUp}
@@ -809,7 +814,12 @@ export default function FinancePage() {
                             </td>
                             <td style={{ ...td(true), color: '#94a3b8', fontFamily: 'monospace' }}>{row.batch_date}</td>
                             <td style={{ ...td(true), color: '#94a3b8' }}>{row.orders_count}</td>
-                            <td style={{ ...td(true), color: '#a78bfa', fontWeight: 800 }}>{fmt(row.total_seller_payout)}</td>
+                            <td style={{ ...td(true), color: '#a78bfa', fontWeight: 800 }}>
+                              {fmt(row.total_seller_payout)}
+                              {Number(row.total_adjustments ?? 0) !== 0 && (
+                                <p style={{ margin: 0, fontSize: 10, color: '#ef4444', fontWeight: 700 }}>incl. {fmt(row.total_adjustments)} return debits</p>
+                              )}
+                            </td>
                             <td style={{ ...td(true), color: '#10b981', fontWeight: 700 }}>{fmt(row.total_platform_profit)}</td>
                             <td style={{ ...td(true) }}><PayoutBadge status={row.status} /></td>
                             <td style={{ ...td(true), color: '#64748b', fontSize: 11 }}>
