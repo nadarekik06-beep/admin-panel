@@ -127,7 +127,9 @@ export interface Order {
   status: OrderStatus
   payment_status?: string
   payment_method?: string
-  total_amount: number
+  total_amount: number            // amount due: 0 when cancelled
+  is_cancelled?: boolean          // nothing to pay; original_amounts = checkout history
+  original_amounts?: { subtotal: number; discount_amount: number; shipping_fee: number; total: number }
   wilaya?: string | null
   address?: string | null
   phone?: string | null

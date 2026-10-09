@@ -25,6 +25,19 @@ function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
 
+/** Amount due; a cancelled order shows 0.000 DT next to its struck-through checkout total. */
+function OrderTotal({ order }: { order: Order }) {
+  if (!order.is_cancelled) return <>{formatCurrency(order.total_amount)}</>
+  return (
+    <span title="Cancelled — nothing to pay">
+      {!!order.original_amounts?.total && (
+        <s style={{ opacity: 0.5, fontWeight: 600, fontSize: '0.85em', marginRight: 6 }}>{formatCurrency(order.original_amounts.total)}</s>
+      )}
+      {formatCurrency(0)}
+    </span>
+  )
+}
+
 interface OrderDetail extends Order {
   items?: (OrderItem & {
     is_platform_item?:      boolean
@@ -413,7 +426,7 @@ function ContactModal({
               }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#94a3b8' }}>Total</span>
                 <span style={{ fontSize: 14, fontWeight: 900, color: '#a78bfa' }}>
-                  {formatCurrency(order.total_amount)}
+                  <OrderTotal order={order} />
                 </span>
               </div>
             </div>
@@ -1016,8 +1029,11 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
                   { icon: User,        label: 'Customer account', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
-                  { icon: ShoppingBag, label: 'Total paid', value: formatCurrency(detail.total_amount),
-                    sub: detail.shipping_fee !== undefined ? `incl. ${formatCurrency(detail.shipping_fee)} shipping` : undefined },
+                  detail.is_cancelled
+                    ? { icon: ShoppingBag, label: 'Amount due', value: formatCurrency(0),
+                        sub: `Cancelled — nothing to pay (was ${formatCurrency(detail.original_amounts?.total ?? 0)})` }
+                    : { icon: ShoppingBag, label: 'Total paid', value: formatCurrency(detail.total_amount),
+                        sub: detail.shipping_fee !== undefined ? `incl. ${formatCurrency(detail.shipping_fee)} shipping` : undefined },
                 ].map(({ icon: Icon, label, value, sub }) => (
                   <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569', marginBottom: 6 }}>
@@ -1063,7 +1079,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                                 −{formatCurrency(Number(so.discount_amount))}{so.coupon_code ? ` (${so.coupon_code})` : ''}
                               </span>
                             )}
-                            <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa' }}>{formatCurrency(Number(so.subtotal) - Number(so.discount_amount ?? 0))}</span>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', textDecoration: so.status === 'cancelled' ? 'line-through' : undefined, opacity: so.status === 'cancelled' ? 0.5 : 1 }}>{formatCurrency(Number(so.subtotal) - Number(so.discount_amount ?? 0))}</span>
                           </div>
                         </div>
                         {so.slip_money && (
@@ -1111,7 +1127,16 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                       {items.map((item: any) => <OrderItemRow key={item.id} item={item} />)}
                     </tbody>
                     <tfoot>
-                      {detail.subtotal !== undefined && (
+                      {detail.is_cancelled && detail.original_amounts ? (
+                        <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)' }}>
+                          <td colSpan={4} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#64748b', fontSize: 12 }}>
+                            Original (cancelled): items {formatCurrency(detail.original_amounts.subtotal)}
+                            {detail.original_amounts.discount_amount > 0 ? ` − ${formatCurrency(detail.original_amounts.discount_amount)}` : ''}
+                            {' + '}shipping {formatCurrency(detail.original_amounts.shipping_fee)}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: '#64748b', fontSize: 12, textDecoration: 'line-through' }}>{formatCurrency(detail.original_amounts.total)}</td>
+                        </tr>
+                      ) : detail.subtotal !== undefined && (
                         <>
                           <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)' }}>
                             <td colSpan={4} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#64748b', fontSize: 12 }}>Items Subtotal</td>
@@ -1139,7 +1164,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                         </>
                       )}
                       <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>Total Paid by Customer</td>
+                        <td colSpan={4} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#94a3b8', fontSize: 12 }}>{detail.is_cancelled ? 'Amount due (order cancelled — nothing to pay)' : 'Total Paid by Customer'}</td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, color: '#94a3b8', fontSize: 14 }}>{formatCurrency(detail.total_amount)}</td>
                       </tr>
                     </tfoot>
@@ -1398,7 +1423,7 @@ export default function OrdersPage() {
     { key: 'status',  header: 'Status',  render: row => <StatusChip status={(row as OrderDetail).display_status ?? row.status} /> },
     { key: 'payment_status', header: 'Payment', render: row => <Badge variant={row.payment_status as OrderStatus}>{row.payment_status}</Badge> },
     { key: 'payment_method' as any, header: 'Method', render: row => <PaymentMethodBadge method={(row as any).payment_method} /> },
-    { key: 'total_amount', header: 'Total', render: row => <span className="font-bold text-text-primary">{formatCurrency(row.total_amount)}</span> },
+    { key: 'total_amount', header: 'Total', render: row => <span className="font-bold text-text-primary"><OrderTotal order={row} /></span> },
     { key: 'created_at', header: 'Date', render: row => <span className="text-text-muted text-xs">{format(new Date(row.created_at), 'MMM d, yyyy')}</span> },
     {
       key: 'actions', header: '',

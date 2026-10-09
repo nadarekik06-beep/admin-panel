@@ -650,7 +650,12 @@ export default function FinancePage() {
                                 <p style={{ color: '#475569', margin: 0, fontSize: 10 }}>{row.seller_phone}</p>
                               )}
                             </td>
-                            <td style={{ ...td(true), color: '#94a3b8' }}>{fmt(row.subtotal)}</td>
+                            <td style={{ ...td(true), color: '#94a3b8' }}>
+                              {row.status === 'cancelled' && Number(row.original_subtotal ?? 0) > 0 && (
+                                <s style={{ opacity: 0.5, fontSize: '0.85em', marginRight: 6 }}>{fmt(row.original_subtotal)}</s>
+                              )}
+                              {fmt(row.subtotal)}
+                            </td>
                             <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.commission_amount)}</td>
                             <td style={{ ...td(true) }}>
                               {Number(row.shipping_cost ?? 0) > 0 ? (() => {

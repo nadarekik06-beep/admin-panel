@@ -250,6 +250,9 @@ export default function DashboardPage() {
                       </Badge>
                     </td>
                     <td className="px-5 py-3 font-medium text-text-primary">
+                      {order.is_cancelled && !!order.original_amounts?.total && (
+                        <s className="text-text-muted text-xs mr-1.5">{formatDT(Number(order.original_amounts.total))}</s>
+                      )}
                       {formatDT(Number(order.total_amount))}
                     </td>
                     <td className="px-5 py-3 text-text-muted text-xs">

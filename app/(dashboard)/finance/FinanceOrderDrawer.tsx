@@ -65,6 +65,8 @@ interface Detail {
   customer: { name: string | null; email: string | null; phone: string | null; address: string | null; wilaya: string | null }
   items: DetailItem[]
   financials: {
+    is_cancelled?: boolean      // cancelled: every figure is 0
+    original_gross?: number     // history only
     gross: number
     subtotal_before_coupon: number
     discount_amount: number
@@ -405,7 +407,9 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
                 <Line
                   label="Gross"
                   value={fmt(f.gross)}
-                  sub={f.discount_amount > 0
+                  sub={f.is_cancelled
+                    ? `Cancelled — no revenue, commission or payout (was ${fmt(f.original_gross ?? 0)})`
+                    : f.discount_amount > 0
                     ? `${fmt(f.subtotal_before_coupon)} before coupon${data.coupon_code ? ` ${data.coupon_code}` : ''} −${fmt(f.discount_amount)}`
                     : null}
                 />
