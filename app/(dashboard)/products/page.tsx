@@ -12,6 +12,8 @@ import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
 import ModerationActionModal from './ModerationActionModal'
 import { STATUS_META } from './reviewUtils'
+import { StockCell } from '@/components/products/VariantStock'
+import type { StockBreakdown } from '@/types/productReview'
 import { productsApi } from '@/lib/api/products'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
@@ -37,6 +39,8 @@ interface AdminProduct {
   short_description: string | null
   price: string | number
   stock: number
+  /** Total = active variants; per-variant rows for the Stock column tooltip */
+  stock_breakdown?: StockBreakdown
   sku: string | null
   is_approved: boolean
   is_active: boolean
@@ -225,15 +229,7 @@ export default function ProductsPage() {
     {
       key: 'stock',
       header: 'Stock',
-      render: (row) => (
-        <span className={`text-sm font-medium ${
-          row.stock === 0 ? 'text-accent-red' : row.stock < 10 ? 'text-accent-orange' : 'text-text-secondary'
-        }`}>
-          {row.stock}
-          {row.stock === 0 && <span className="text-xs ml-1">(Out)</span>}
-          {row.stock > 0 && row.stock <= 10 && <span className="text-xs ml-1">(Low)</span>}
-        </span>
-      ),
+      render: (row) => <StockCell stock={row.stock} breakdown={row.stock_breakdown} />,
     },
     {
       key: 'status',

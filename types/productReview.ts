@@ -160,6 +160,7 @@ export interface ProductReview {
     out_of_stock_variants: number
     low_stock_variants: number
     low_stock_threshold: number
+    stock_breakdown: StockBreakdown
     availability: Availability
   }
 
@@ -212,4 +213,32 @@ export interface ProductReview {
   checks: ReviewCheck[]
   queue: { next_pending_id: number | null; pending_count: number } | null
   moderation_reasons: { code: string; label: string }[]
+}
+
+/** out = 0 · low = at/below the threshold · inactive = variant switched off */
+export type StockState = 'ok' | 'low' | 'out' | 'inactive'
+
+export interface StockBreakdownVariant {
+  id: number
+  label: string
+  options: { attribute: string | null; value: string; color_hex: string | null }[]
+  stock: number
+  /** Only when it differs from the base price */
+  price: number | null
+  sku: string | null
+  is_active: boolean
+  state: StockState
+}
+
+/** Per-variant stock (App\Support\StockLevels::breakdown): total = active variants */
+export interface StockBreakdown {
+  has_variants: boolean
+  total: number
+  state: StockState
+  threshold: number
+  threshold_source: 'product' | 'shop'
+  low_count: number
+  out_count: number
+  inactive_count: number
+  variants: StockBreakdownVariant[]
 }

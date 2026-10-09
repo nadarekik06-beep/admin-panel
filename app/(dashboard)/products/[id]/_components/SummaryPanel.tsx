@@ -6,6 +6,7 @@ import clsx from 'clsx'
 import Badge from '@/components/ui/Badge'
 import type { ProductReview } from '@/types/productReview'
 import { AVAILABILITY_META, formatDT } from '../../reviewUtils'
+import { VariantStockList } from '@/components/products/VariantStock'
 
 function fmtDate(value: string | null) {
   return value ? format(new Date(value), 'MMM d, yyyy · HH:mm') : '—'
@@ -76,6 +77,12 @@ export default function SummaryPanel({ product }: { product: ProductReview }) {
               {inventory.low_stock_variants > 0 && <span className="text-accent-orange"> · {inventory.low_stock_variants} low (≤{inventory.low_stock_threshold})</span>}
             </span>
           </Row>
+        )}
+        {inventory.has_variants && inventory.stock_breakdown && (
+          <div className="px-4 py-3">
+            <p className="text-xs text-text-muted mb-2">Stock by variant</p>
+            <VariantStockList breakdown={inventory.stock_breakdown} />
+          </div>
         )}
         <Row label="Delivery">
           {pricing.delivery.is_free ? <span className="text-accent-green">Free delivery</span>
