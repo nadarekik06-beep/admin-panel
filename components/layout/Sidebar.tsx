@@ -26,10 +26,12 @@ import {
   SearchX,
   CalendarDays,
   Truck,
+  MessageCircle,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
 import { paymentRequestsApi, PENDING_EVENT } from '@/lib/paymentRequestsApi';
+import { whatsappRemindersApi, REMINDERS_EVENT } from '@/lib/whatsappRemindersApi';
 import { Admin } from '@/types';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,6 +55,7 @@ const navItems = [
   { href: '/packs',                   label: 'Packs',           icon: Package2        },
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
+  { href: '/whatsapp-reminders',  label: 'WhatsApp reminders', icon: MessageCircle },
   { href: '/finance', label: 'Finance', icon: Banknote },
   { href: '/delivery-fees', label: 'Delivery & Fees', icon: Truck },
   { href: '/payment-requests', label: 'Demandes de paiement', icon: Wallet },
@@ -115,6 +118,23 @@ export default function Sidebar() {
     return () => { clearInterval(timer); window.removeEventListener(PENDING_EVENT, refresh); };
   }, []);
 
+  // Badge: seller WhatsApp notices due now + overdue parcels — refreshed every minute and after a send.
+  const [reminders, setReminders] = useState({ total: 0, overdue: 0 });
+  useEffect(() => {
+    const refresh = () => whatsappRemindersApi.count().then(c => setReminders({ total: c.total, overdue: c.overdue })).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener(REMINDERS_EVENT, refresh);
+    return () => { clearInterval(timer); window.removeEventListener(REMINDERS_EVENT, refresh); };
+  }, []);
+
+  /** Count badge per menu entry: [count, colour, text colour] */
+  const badgeFor = (href: string): [number, string, string] | null => {
+    if (href === '/payment-requests' && pendingPayments > 0) return [pendingPayments, '#f59e0b', '#111318'];
+    if (href === '/whatsapp-reminders' && reminders.total > 0) return [reminders.total, reminders.overdue > 0 ? '#db142e' : '#198f41', '#fff'];
+    return null;
+  };
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try { await adminAuthApi.logout(); }
@@ -170,6 +190,7 @@ export default function Sidebar() {
           const Icon         = item.icon;
           const isActive     = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           const isComplaints = item.href === '/complaints';
+          const badge        = badgeFor(item.href);
           return (
             <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative"
@@ -181,15 +202,15 @@ export default function Sidebar() {
               onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = isComplaints ? '#f97316' : '#9ca3af'; } }}>
               <span className="relative flex-shrink-0">
                 <Icon size={18} style={{ color: isActive ? '#db142e' : 'inherit' }} />
-                {collapsed && item.href === '/payment-requests' && pendingPayments > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
+                {collapsed && badge && (
+                  <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full" style={{ background: badge[1] }} />
                 )}
               </span>
               {!collapsed && <span className="text-sm font-medium truncate">{item.label}</span>}
-              {!collapsed && item.href === '/payment-requests' && pendingPayments > 0 && (
-                <span aria-label={`${pendingPayments} en attente`} className="ml-auto text-[11px] font-black px-1.5 min-w-[20px] text-center rounded-full"
-                  style={{ background: '#f59e0b', color: '#111318' }}>
-                  {pendingPayments > 99 ? '99+' : pendingPayments}
+              {!collapsed && badge && (
+                <span aria-label={`${badge[0]} pending`} className="ml-auto text-[11px] font-black px-1.5 min-w-[20px] text-center rounded-full"
+                  style={{ background: badge[1], color: badge[2] }}>
+                  {badge[0] > 99 ? '99+' : badge[0]}
                 </span>
               )}
               {isActive && !collapsed && (

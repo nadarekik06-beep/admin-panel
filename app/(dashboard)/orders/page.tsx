@@ -21,6 +21,8 @@ import {
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
+import { ParcelWhatsAppBlock } from '@/components/whatsapp/SellerWhatsApp'
+import type { ParcelWhatsApp } from '@/lib/whatsappRemindersApi'
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
 }
@@ -94,6 +96,8 @@ interface SellerSubOrder {
   refused_fee_paid_by?: 'platform' | 'seller' | null
   /** Statuses the admin may set next (backend ParcelStatus); [] once the payout is settled */
   allowed_next?: string[]
+  /** WhatsApp notice to send the seller + history; null for CHOOSE'Tounsi's own parcels */
+  whatsapp?: ParcelWhatsApp | null
 }
 
 /**
@@ -1169,6 +1173,14 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                             </button>
                           </div>
                         )}
+                        {so.whatsapp && (
+                          <ParcelWhatsAppBlock
+                            sellerOrderId={so.id}
+                            whatsapp={so.whatsapp}
+                            onChanged={() => refreshDetail()}
+                            notify={notify}
+                          />
+                        )}
                         {so.pickup && so.is_shippable && (
                           <PickupBlock
                             sellerId={so.seller_id}
@@ -1419,6 +1431,11 @@ export default function OrdersPage() {
   }, [fetchOrders])
 
   const openDetail = (id: number) => { setSelectedId(id); setDetailOpen(true) }
+  // Deep link (WhatsApp reminders page): /orders?order=<id> opens that order
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('order'))
+    if (id) openDetail(id)
+  }, [])
 
   // ── Bulk selection & export ──────────────────────────────────────────────
   const pageRows   = (orders?.data ?? []) as ListOrder[]
