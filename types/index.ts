@@ -118,7 +118,7 @@ export interface OrderItem {
 }
 
 // ── Order ─────────────────────────────────────────────────────────
-export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delivered' | 'refunded' | 'out_for_delivery'
+export type OrderStatus = 'pending' | 'confirmed' | 'handed_to_courier' | 'out_for_delivery' | 'delivered' | 'completed' | 'refused' | 'returned_to_seller' | 'cancelled' | 'refunded'
 
 export interface Order {
   id: number

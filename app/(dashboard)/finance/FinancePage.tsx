@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import api from '@/lib/axios'
 import { format } from 'date-fns'
-import { fmt, SHIPPING_PAYER, PayoutBadge } from './financeShared'
+import { fmt, SHIPPING_PAYER, PayoutBadge, ParcelOutcomeBadge } from './financeShared'
 import FinanceOrderDrawer from './FinanceOrderDrawer'
 
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -230,6 +230,11 @@ function CreateSettlementModal({
 
 type Tab = 'overview' | 'orders' | 'sellers' | 'settlements'
 
+const filterInput: React.CSSProperties = {
+  padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
+  color: '#cbd5e1', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', colorScheme: 'dark',
+}
+
 export default function FinancePage() {
   const [tab,         setTab]         = useState<Tab>('overview')
   const [period,      setPeriod]      = useState('month')
@@ -248,26 +253,36 @@ export default function FinancePage() {
 
   const [search,           setSearch]           = useState('')
   const [payoutFilter,     setPayoutFilter]      = useState('')
+  // '' = every parcel except cancelled ones (never in any total); 'with_cancelled' adds them
+  const [statusFilter,     setStatusFilter]      = useState('')
   const [dateFrom,         setDateFrom]          = useState('')
   const [dateTo,           setDateTo]            = useState('')
   const [settlementSearch, setSettlementSearch]  = useState('')
+  // Overview filters: a date range overrides the period; seller narrows every figure
+  const [ovFrom,   setOvFrom]   = useState('')
+  const [ovTo,     setOvTo]     = useState('')
+  const [ovSeller, setOvSeller] = useState('')
 
   const fetchOverview = useCallback(async () => {
-    const res = await api.get('/admin/finance/overview', { params: { period } })
+    const res = await api.get('/admin/finance/overview', {
+      params: { period, date_from: ovFrom || undefined, date_to: ovTo || undefined, seller_id: ovSeller || undefined },
+    })
     setOverview(res.data.data)
-  }, [period])
+  }, [period, ovFrom, ovTo, ovSeller])
 
   const fetchOrders = useCallback(async () => {
     const res = await api.get('/admin/finance/orders', {
       params: {
         search:        search       || undefined,
         payout_status: payoutFilter || undefined,
+        status:            statusFilter && statusFilter !== 'with_cancelled' ? statusFilter : undefined,
+        include_cancelled: statusFilter === 'with_cancelled' ? 1 : undefined,
         date_from:     dateFrom     || undefined,
         date_to:       dateTo       || undefined,
       },
     })
     setOrders(res.data.data)
-  }, [search, payoutFilter, dateFrom, dateTo])
+  }, [search, payoutFilter, statusFilter, dateFrom, dateTo])
 
   const fetchSellers = useCallback(async () => {
     const res = await api.get('/admin/finance/sellers', {
@@ -298,7 +313,13 @@ export default function FinancePage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      if (tab === 'overview')    await fetchOverview()
+      if (tab === 'overview') {
+        await fetchOverview()
+        if (sellersList.length === 0) {
+          const res = await api.get('/admin/finance/sellers', { params: { per_page: 200 } })
+          setSellersList((res.data.data?.data ?? []).map((s: any) => ({ seller_id: s.seller_id, seller_name: s.seller_name, seller_email: s.seller_email })))
+        }
+      }
       if (tab === 'orders')      await fetchOrders()
       if (tab === 'sellers')     await fetchSellers()
       if (tab === 'settlements') {
@@ -448,9 +469,9 @@ export default function FinancePage() {
             {tab === 'overview' && overview && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
   
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   {['today', 'week', 'month', 'all'].map(p => (
-                    <button key={p} onClick={() => setPeriod(p)} style={{
+                    <button key={p} onClick={() => { setPeriod(p); setOvFrom(''); setOvTo('') }} style={{
                       padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
                       background: period === p ? 'rgba(219,20,46,0.15)' : 'transparent',
                       color: period === p ? '#db142e' : '#64748b',
@@ -460,17 +481,59 @@ export default function FinancePage() {
                       {p}
                     </button>
                   ))}
+                  <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+                  <input type="date" value={ovFrom} onChange={e => setOvFrom(e.target.value)} aria-label="From date" style={filterInput} />
+                  <input type="date" value={ovTo} onChange={e => setOvTo(e.target.value)} aria-label="To date" style={filterInput} />
+                  <select value={ovSeller} onChange={e => setOvSeller(e.target.value)} aria-label="Seller" style={filterInput}>
+                    <option value="" style={{ background: '#0f1623' }}>All sellers</option>
+                    {sellersList.map(s => <option key={s.seller_id} value={s.seller_id} style={{ background: '#0f1623' }}>{s.seller_name}</option>)}
+                  </select>
+                  {(ovFrom || ovTo || ovSeller) && (
+                    <button onClick={() => { setOvFrom(''); setOvTo(''); setOvSeller('') }} style={{ ...filterInput, cursor: 'pointer' }}>Clear</button>
+                  )}
                 </div>
-  
+
+                {/* Cash on delivery: courier collects → keeps its fee → remits → we pay sellers */}
+                {overview.delivery && (() => {
+                  const d = overview.delivery
+                  const off = Number(d.reconciliation?.difference ?? 0) !== 0
+                  return (
+                    <div style={{ background: '#161b27', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                        <p style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Cash on delivery · {d.delivered_parcels} delivered parcel(s)</p>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: off ? '#ef4444' : '#10b981' }}>
+                          {off ? `⚠ Reconciliation off by ${fmt(d.reconciliation.difference)}` : '✓ Reconciled: cash = payouts + commission + agency fees + delivery margin'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+                        <KpiCard label="Cash Collected" value={fmt(d.cash_collected)} color="#14b8a6" icon={DollarSign} sub="By the courier, delivered parcels" />
+                        <KpiCard label="Agency Fees" value={fmt(d.agency_fees)} color="#ef4444" icon={TrendingDown} sub="Kept by the delivery company" />
+                        <KpiCard label="Remitted to Us" value={fmt(d.remitted_to_platform)} color="#10b981" icon={TrendingUp} sub="Remittance confirmed" />
+                        <KpiCard label="Pending at Agency" value={fmt(d.pending_at_delivery_company)} color="#f59e0b" icon={Clock} sub="Collected, not remitted yet" />
+                        <KpiCard label="Seller Delivery Contributions" value={fmt(d.seller_free_delivery_contributions)} color="#f59e0b" icon={Package} sub="Free-delivery parcels" />
+                        <KpiCard label="Platform Delivery Margin" value={fmt(d.platform_delivery_margin)} color={Number(d.platform_delivery_margin) < 0 ? '#ef4444' : '#10b981'} icon={Package}
+                          sub={`Refused parcels: ${d.refused_parcels} · platform loss ${fmt(d.refused_platform_loss)}`} />
+                        <KpiCard label="Commission" value={fmt(d.commission)} color="#db142e" icon={TrendingUp} sub="On items − coupon, never on delivery" />
+                        <KpiCard label="Payouts Payable" value={fmt(d.seller_payouts_payable)} color="#a78bfa" icon={DollarSign} sub={`Not payable yet: ${fmt(d.seller_payouts_not_payable)}`} />
+                        <KpiCard label="Payouts Paid" value={fmt(d.seller_payouts_paid)} color="#8b5cf6" icon={CheckCircle} sub={`Own products (platform revenue): ${fmt(d.platform_products_net)}`} />
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                   <KpiCard label="Gross Revenue"   value={fmt(overview.kpis.gross_revenue)}         color="#94a3b8" icon={DollarSign}  />
                   <KpiCard label="Platform Profit" value={fmt(overview.kpis.total_platform_profit)} color="#10b981" icon={TrendingUp}
-                    sub="Commission + shipping collected − paid to agency" />
+                    sub="Commission + delivery margin − refused-parcel fees we paid" />
                   <KpiCard label="Commissions"     value={fmt(overview.kpis.total_commission)}      color="#db142e" icon={TrendingDown} />
                   <KpiCard label="Shipping · Customers" value={fmt(overview.kpis.total_delivery_fees)} color="#3b82f6" icon={Package}
                     sub="Delivery fees paid at checkout" />
                   <KpiCard label="Shipping · Sellers" value={fmt(overview.kpis.total_seller_shipping ?? 0)} color="#f59e0b" icon={Package}
-                    sub="Free-shipping orders, deducted from payouts" />
+                    sub="Free-delivery parcels, deducted from payouts" />
+                  {overview.kpis.refused_parcels && (
+                    <KpiCard label="Refused Parcels" value={String(overview.kpis.refused_parcels.count)} color="#ef4444" icon={TrendingDown}
+                      sub={`Agency fees lost ${fmt(overview.kpis.refused_parcels.agency_fees_lost)} · billed to sellers ${fmt(overview.kpis.refused_parcels.agency_fees_billed)}${overview.kpis.refused_parcels.awaiting_return ? ` · ${overview.kpis.refused_parcels.awaiting_return} awaiting return` : ''}`} />
+                  )}
                   <KpiCard label="Paid to Agency"  value={fmt(overview.kpis.total_shipping_cost ?? 0)} color="#ef4444" icon={TrendingDown}
                     sub={`Net shipping: ${fmt(Number(overview.kpis.total_delivery_fees ?? 0) + Number(overview.kpis.total_seller_shipping ?? 0) - Number(overview.kpis.total_shipping_cost ?? 0))}`} />
                   <KpiCard label="Seller Payouts"  value={fmt(overview.kpis.total_seller_payouts)}  color="#a78bfa" icon={DollarSign}  />
@@ -590,6 +653,19 @@ export default function FinancePage() {
                     <option value="ready">Ready</option>
                     <option value="paid">Paid</option>
                   </select>
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    aria-label="Parcel status"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '8px 12px', fontSize: 12, color: '#f1f5f9', outline: 'none' }}
+                  >
+                    <option value="">All parcels (cancelled hidden)</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="out_for_delivery">Shipped</option>
+                    <option value="refused">Refused</option>
+                    <option value="with_cancelled">Show cancelled too</option>
+                    <option value="cancelled">Cancelled only</option>
+                  </select>
                   <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '8px 12px', fontSize: 12, color: '#64748b', outline: 'none' }} />
                   <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
@@ -632,6 +708,7 @@ export default function FinancePage() {
                                   <Eye size={13} />
                                 </button>
                               </div>
+                              <ParcelOutcomeBadge row={row} />
                               {row.items_count != null && (
                                 <span style={{
                                   display: 'inline-block', marginTop: 4,

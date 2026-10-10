@@ -105,6 +105,22 @@ async saveNote(id: number, adminNote: string) {
     return res.data.data
   },
 
+  /**
+   * One parcel (seller order), admin only: delivered = cash collected by the
+   * courier (payable only after the remittance is confirmed in Finance);
+   * refused = the client refused it at the door (no payout, no commission);
+   * returned-to-seller = that refused parcel is back at the seller (stock released).
+   * Only a shipped (out for delivery) parcel can be delivered or refused.
+   */
+  async parcelOutcome(sellerOrderId: number, outcome: 'delivered' | 'refused' | 'returned-to-seller') {
+    try {
+      const res = await api.post(`/admin/seller-orders/${sellerOrderId}/${outcome}`)
+      return res.data
+    } catch (err: any) {
+      throw new Error(err?.response?.data?.message ?? `Failed to mark the parcel ${outcome}.`)
+    }
+  },
+
   async updateStatus(id: number, status: string, scope?: 'all' | 'platform' | 'sellers') {
     try {
       const res = await api.patch(`/admin/orders/${id}/status`, {

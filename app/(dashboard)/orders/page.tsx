@@ -86,7 +86,23 @@ interface SellerSubOrder {
   reference?:    string
   is_shippable?: boolean
   slip_money?:   SlipMoney | null
+  // Parcel delivery snapshot (null on legacy orders)
+  is_free_delivery?:  boolean | null
+  cash_collected_at?: string | null
+  refused_at?:        string | null
+  refused_agency_fee?:  number | string | null
+  refused_fee_paid_by?: 'platform' | 'seller' | null
+  /** Statuses the admin may set next (backend ParcelStatus); [] once the payout is settled */
+  allowed_next?: string[]
 }
+
+/**
+ * Parcel workflow (backend: ParcelStatus). Delivered or refused only once
+ * shipped; cancelled only before the courier has it; a refused parcel's stock
+ * comes back when it is returned to the seller. The buttons follow the
+ * parcel's allowed_next from the API, so they never offer a rejected move.
+ */
+const canMove = (so: { allowed_next?: string[] }, status: string) => (so.allowed_next ?? []).includes(status)
 
 interface CommissionSummaryData {
   gross_total: number
@@ -96,7 +112,7 @@ interface CommissionSummaryData {
   total_seller: number
   // Shipping: the agency bills every order; free shipping = the seller pays it
   shipping_cost?: number | null
-  shipping_paid_by?: 'customer' | 'seller' | 'platform' | null
+  shipping_paid_by?: 'customer' | 'seller' | 'mixed' | 'platform' | null
   seller_shipping?: number
   total_seller_net?: number
 }
@@ -104,6 +120,7 @@ interface CommissionSummaryData {
 const SHIPPING_PAYER_LABEL: Record<string, string> = {
   customer: 'Paid by customer',
   seller:   'Paid by seller (free shipping)',
+  mixed:    'Per parcel: customer and seller (free delivery)',
   platform: 'Absorbed by platform',
 }
 
@@ -115,7 +132,10 @@ const STATUS_COLORS: Record<string, string> = {
   completed:        '#10b981',
   delivered:        '#14b8a6',
   cancelled:        '#ef4444',
+  refused:          '#f97316',
+  returned_to_seller: '#ea580c',
   refunded:         '#a855f7',
+  handed_to_courier: '#6366f1',
   out_for_delivery: '#8b5cf6',
   partially_returned: '#d946ef',
 }
@@ -123,6 +143,11 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   refunded:           'Returned (refunded)',
   partially_returned: 'Partially returned',
+  refused:            'Refused at delivery',
+  returned_to_seller: 'Refused · returned to seller',
+  handed_to_courier:  'Handed to courier',
+  out_for_delivery:   'Shipped (out for delivery)',
+  completed:          'Completed (legacy)',
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -870,6 +895,25 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
     finally { setUpdating(false) }
   }
 
+  const [parcelBusy, setParcelBusy] = useState<number | null>(null)
+  const handleParcelOutcome = async (so: SellerSubOrder, outcome: 'delivered' | 'refused' | 'returned-to-seller') => {
+    const who = so.seller?.name ?? `seller #${so.seller_id}`
+    const question = {
+      'delivered':          `Mark ${who}'s parcel DELIVERED? This records that the courier collected the cash. It can't be undone.`,
+      'refused':            `Mark ${who}'s parcel REFUSED by the client? No payout, no commission; the agency fee follows the Delivery & Fees setting. Stock comes back once the parcel is returned to the seller. It can't be undone.`,
+      'returned-to-seller': `Confirm ${who}'s refused parcel is BACK AT THE SELLER? Its stock is released. It can't be undone.`,
+    }[outcome]
+    if (!window.confirm(question)) return
+    setParcelBusy(so.id); setError('')
+    try {
+      const res = await ordersApi.parcelOutcome(so.id, outcome)
+      setSuccess(res.message ?? `Parcel marked ${outcome}.`)
+      refreshDetail()
+      onUpdated()
+    } catch (e: any) { setError(e.message) }
+    finally { setParcelBusy(null) }
+  }
+
   const handlePaymentStatusUpdate = async () => {
     if (!newPayStatus || !detail) return
     setPayUpdating(true); setError('')
@@ -1088,9 +1132,41 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                             <span>·</span>
                             <span>
                               COD on slip: <strong style={{ color: so.slip_money.cod > 0 ? '#f1f5f9' : '#10b981' }}>{formatCurrency(so.slip_money.cod)}</strong>
-                              {so.slip_money.shipping > 0 && ` (incl. ${formatCurrency(so.slip_money.shipping)} shipping)`}
+                              {so.slip_money.shipping > 0 && ` (incl. ${formatCurrency(so.slip_money.shipping)} delivery)`}
+                              {so.slip_money.shipping === 0 && so.is_free_delivery && ' (free delivery, seller-funded)'}
                               {so.slip_money.cod === 0 && ' — prepaid'}
                             </span>
+                          </div>
+                        )}
+                        {so.cash_collected_at && (
+                          <p style={{ fontSize: 11, color: '#14b8a6', margin: '6px 0 0', fontWeight: 700 }}>
+                            Cash collected {new Date(so.cash_collected_at).toLocaleString()} · payable once the remittance is confirmed in Finance
+                          </p>
+                        )}
+                        {(so.status === 'refused' || so.status === 'returned_to_seller') && (
+                          <p style={{ fontSize: 11, color: '#f97316', margin: '6px 0 0', fontWeight: 700 }}>
+                            Refused at the door{so.refused_agency_fee != null ? ` · agency fee ${formatCurrency(Number(so.refused_agency_fee))} paid by ${so.refused_fee_paid_by}` : ''}
+                            {so.status === 'refused' ? ' · stock held until returned to the seller' : ' · returned to the seller, stock released'}
+                          </p>
+                        )}
+                        {canMove(so, 'returned_to_seller') && (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => handleParcelOutcome(so, 'returned-to-seller')} disabled={parcelBusy !== null}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(234,88,12,0.4)', background: 'rgba(234,88,12,0.1)', color: '#ea580c', fontSize: 11.5, fontWeight: 800, cursor: parcelBusy !== null ? 'not-allowed' : 'pointer', opacity: parcelBusy !== null ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {parcelBusy === so.id && <BrandLoader variant="inline" size={12} />} Returned to seller · release stock
+                            </button>
+                          </div>
+                        )}
+                        {(canMove(so, 'delivered') || canMove(so, 'refused')) && (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => handleParcelOutcome(so, 'delivered')} disabled={parcelBusy !== null}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(20,184,166,0.4)', background: 'rgba(20,184,166,0.12)', color: '#14b8a6', fontSize: 11.5, fontWeight: 800, cursor: parcelBusy !== null ? 'not-allowed' : 'pointer', opacity: parcelBusy !== null ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {parcelBusy === so.id && <BrandLoader variant="inline" size={12} />} Delivered · cash collected
+                            </button>
+                            <button type="button" onClick={() => handleParcelOutcome(so, 'refused')} disabled={parcelBusy !== null}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.1)', color: '#f97316', fontSize: 11.5, fontWeight: 800, cursor: parcelBusy !== null ? 'not-allowed' : 'pointer', opacity: parcelBusy !== null ? 0.5 : 1 }}>
+                              Refused by client
+                            </button>
                           </div>
                         )}
                         {so.pickup && so.is_shippable && (
@@ -1202,9 +1278,10 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                     <select value={newStatus} onChange={e => { setNewStatus(e.target.value); setSuccess('') }}
                       style={{ width: '100%', appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 36px 10px 14px', fontSize: 13, fontWeight: 600, color: newStatus ? '#f1f5f9' : '#64748b', cursor: 'pointer', outline: 'none' }}>
                       <option value="" style={{ background: '#0f1623', color: '#64748b' }}>— Select new status —</option>
-                      {['pending', 'confirmed', 'out_for_delivery', 'completed', 'delivered', 'cancelled', 'refunded'].map(s => (
+                      {/* 'completed' is retired; refused / returned to seller are set per parcel (buttons above) */}
+                      {['pending', 'confirmed', 'handed_to_courier', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'].map(s => (
                         <option key={s} value={s} style={{ background: '#0f1623', color: '#f1f5f9' }}>
-                          {s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          {STATUS_LABELS[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                         </option>
                       ))}
                     </select>
@@ -1493,7 +1570,7 @@ export default function OrdersPage() {
           <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
             <option value="">All Status</option>
-            {['pending', 'confirmed', 'out_for_delivery', 'completed', 'delivered', 'partially_returned', 'refunded', 'cancelled'].map(s => (
+            {['pending', 'confirmed', 'handed_to_courier', 'out_for_delivery', 'delivered', 'completed', 'partially_returned', 'refunded', 'refused', 'returned_to_seller', 'cancelled'].map(s => (
               <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
             ))}
           </select>

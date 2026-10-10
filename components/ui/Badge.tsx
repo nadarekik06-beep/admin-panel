@@ -9,7 +9,10 @@ type BadgeVariant =
   | 'delivered'
   | 'completed'
   | 'processing'
+  | 'handed_to_courier'
   | 'out_for_delivery'
+  | 'refused'
+  | 'returned_to_seller'
   | 'canceled'
   | 'cancelled'
   | 'active'
@@ -37,11 +40,14 @@ const variantClasses: Record<BadgeVariant, string> = {
 
   // ── Purple (out for delivery) ─────────────────────────
   out_for_delivery: 'bg-accent-purple/15 text-accent-purple border-accent-purple/30',
+  handed_to_courier: 'bg-accent-purple/15 text-accent-purple border-accent-purple/30',
 
   // ── Red (error / danger states) ───────────────────────
   rejected:         'bg-accent-red/15 text-accent-red border-accent-red/30',
   canceled:         'bg-accent-red/15 text-accent-red border-accent-red/30',
   cancelled:        'bg-accent-red/15 text-accent-red border-accent-red/30',
+  refused:          'bg-accent-red/15 text-accent-red border-accent-red/30',
+  returned_to_seller: 'bg-accent-red/15 text-accent-red border-accent-red/30',
   banned:           'bg-accent-red/15 text-accent-red border-accent-red/30',
   error:            'bg-accent-red/15 text-accent-red border-accent-red/30',
   unpaid:           'bg-accent-red/15 text-accent-red border-accent-red/30',

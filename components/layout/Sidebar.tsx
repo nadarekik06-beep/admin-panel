@@ -25,6 +25,7 @@ import {
   Wallet,
   SearchX,
   CalendarDays,
+  Truck,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -53,6 +54,7 @@ const navItems = [
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/finance', label: 'Finance', icon: Banknote },
+  { href: '/delivery-fees', label: 'Delivery & Fees', icon: Truck },
   { href: '/payment-requests', label: 'Demandes de paiement', icon: Wallet },
 
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },

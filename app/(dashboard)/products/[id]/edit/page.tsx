@@ -434,7 +434,7 @@ export default function ProductEditorPage() {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted">TND</span>
                 </div>
               </Field>
-              <Toggle checked={state.free_delivery} onChange={(v) => set('free_delivery', v)} label="Free delivery" description="The customer pays no delivery fee; the shipping cost comes off the seller's earnings." />
+              <Toggle checked={state.free_delivery} onChange={(v) => set('free_delivery', v)} label="Free delivery" description="The customer pays no delivery fee; the seller pays the free-delivery contribution per shipment (Delivery &amp; Fees)." />
             </div>
           </Card>
 

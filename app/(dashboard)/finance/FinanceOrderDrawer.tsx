@@ -78,6 +78,17 @@ interface Detail {
     shipping_paid_by: string | null
     platform_profit: number
     seller_net_amount: number
+    // Parcel cash flow (null on legacy orders)
+    is_free_delivery?: boolean | null
+    platform_delivery_margin?: number
+    cod_amount?: number
+    amount_to_remit?: number
+    cash_collected_at?: string | null
+    remittance_received_at?: string | null
+    refused_at?: string | null
+    refused_agency_fee?: number | null
+    refused_fee_paid_by?: string | null
+    is_platform_parcel?: boolean
   }
 }
 
@@ -282,7 +293,9 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
   }, [onClose])
 
   const f     = data?.financials
-  const payer = f ? (SHIPPING_PAYER[f.shipping_paid_by ?? 'customer'] ?? SHIPPING_PAYER.customer) : null
+  // Per parcel when known (free delivery = the seller pays), else the order-level value (legacy)
+  const payerKey = f ? (f.is_free_delivery != null ? (f.is_free_delivery ? 'seller' : 'customer') : (f.shipping_paid_by ?? 'customer')) : null
+  const payer = payerKey ? (SHIPPING_PAYER[payerKey] ?? SHIPPING_PAYER.customer) : null
   const pm    = data?.payment_method ? (PAYMENT_METHODS[data.payment_method] ?? { label: data.payment_method.toUpperCase(), color: '#94a3b8' }) : null
   const shippingCollected = f ? Number(f.delivery_fee) + Number(f.seller_shipping_charge) : 0
 
@@ -435,14 +448,29 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
                   <Line label="· Paid to delivery agency" value={`−${fmt(f.shipping_cost)}`} color="#ef4444" />
                 )}
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '6px 0' }} />
-                <Line label="Platform result" value={fmt(f.platform_profit)} color={GREEN} strong />
+                <Line label="Platform result" value={fmt(f.platform_profit)} color={GREEN} strong
+                  sub={f.platform_delivery_margin != null ? `Commission + delivery margin ${Number(f.platform_delivery_margin) >= 0 ? '+' : '−'}${fmt(Math.abs(Number(f.platform_delivery_margin)))}` : null} />
                 <Line
                   label="Seller net"
                   value={fmt(f.seller_net_amount)}
                   color="#a78bfa"
                   strong
-                  sub={Number(f.seller_shipping_charge) > 0 ? `after −${fmt(f.seller_shipping_charge)} shipping` : null}
+                  sub={f.is_platform_parcel ? "CHOOSE'Tounsi's own products: platform revenue, never settled"
+                    : Number(f.seller_shipping_charge) > 0 ? `after −${fmt(f.seller_shipping_charge)} free-delivery contribution` : null}
                 />
+                {f.cod_amount != null && (
+                  <>
+                    <div style={{ borderTop: '1px dashed rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                    <Line label="Cash to collect (COD)" value={fmt(f.cod_amount)} color="#14b8a6" strong
+                      sub={f.cash_collected_at ? `Collected ${new Date(f.cash_collected_at).toLocaleString()}` : 'Not collected yet'} />
+                    <Line label="· Remitted to us (COD − agency fee)" value={fmt(f.amount_to_remit ?? 0)} color={GREEN}
+                      sub={f.remittance_received_at ? `Received ${new Date(f.remittance_received_at).toLocaleString()}` : 'Remittance not confirmed yet'} />
+                  </>
+                )}
+                {f.refused_at && (
+                  <Line label="Refused at the door" value={f.refused_agency_fee != null ? `−${fmt(f.refused_agency_fee)}` : '—'} color="#f97316"
+                    sub={`Agency fee paid by ${f.refused_fee_paid_by ?? '—'} · no payout, no commission`} />
+                )}
               </div>
             </div>
           )}
