@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
+import SellerIntigoPickup from '@/components/intigo/SellerIntigoPickup'
 type ActionType = 'approve' | 'reject' | 'suspend'
 
 // ─── Extended type: merges User + SellerApplication fields ───────────────────
@@ -35,6 +36,8 @@ interface SellerDetail extends Seller {
   preferred_plan?:       'green' | 'red' | 'black' | null
   pricing_range?:        'budget' | 'mid' | 'premium' | null  // ← NEW
   sample_captions?:      string[] | null                      // ← NEW
+  intigo_pickup_index?:  number | null   // Intigo pickup address of this seller
+  intigo_pickup_label?:  string | null
 }
 
 function getSellerStatus(seller: Seller): 'pending' | 'approved' | 'suspended' {
@@ -315,6 +318,12 @@ export default function SellersPage() {
 
             {/* ── Info grid ── */}
             <div className="grid grid-cols-2 gap-3">
+              <SellerIntigoPickup
+                sellerId={viewSeller.id}
+                index={viewSeller.intigo_pickup_index}
+                label={viewSeller.intigo_pickup_label}
+                onSaved={(index, label) => setViewSeller(v => v && ({ ...v, intigo_pickup_index: index, intigo_pickup_label: label }))}
+              />
               <InfoCard label="Seller ID"            value={`#${viewSeller.id}`} />
               <InfoCard label="Products"             value={viewSeller.products_count ?? 0} />
               <InfoCard label="Phone"                value={viewSeller.phone_number} />

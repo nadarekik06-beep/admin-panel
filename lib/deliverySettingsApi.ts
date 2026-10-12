@@ -1,17 +1,33 @@
-// Admin "Delivery & Fees": delivery pricing + checkout payment-method switches.
+// Admin "Delivery & Fees": delivery pricing per parcel size + checkout payment-method switches.
 // GET / PUT /api/admin/delivery-settings
 
 import api from './axios'
 
 export type PaymentMethodKey = 'cod' | 'card' | 'd17' | 'wallet'
+export type ParcelSize = 'S' | 'L' | 'XL'
+export const PARCEL_SIZES: ParcelSize[] = ['S', 'L', 'XL']
+export type SizeField = 'client_fee' | 'agency_cost' | 'return_fee' | 'seller_contribution'
+export const SIZE_FIELDS: SizeField[] = ['client_fee', 'agency_cost', 'return_fee', 'seller_contribution']
 
 export interface DeliverySettingsValues {
+  // Flat values = size S (kept for older screens)
   client_delivery_fee: number
   agency_delivery_cost: number
   seller_free_delivery_contribution: number
   return_shipping_fee: number
   refused_parcel_agency_fee: number
   refused_parcel_fee_paid_by: 'platform' | 'seller'
+  intigo_can_open: boolean
+}
+
+export interface SizeRates {
+  client_fee: number
+  agency_cost: number
+  return_fee: number
+  seller_contribution: number
+  package_size: number
+  margin_normal: number
+  margin_free: number
 }
 
 export interface DeliverySettingChange {
@@ -26,16 +42,21 @@ export interface DeliverySettingChange {
 
 export interface DeliverySettingsPayload {
   settings: DeliverySettingsValues
+  sizes: Record<ParcelSize, SizeRates>
   margins: { normal: number; free_delivery: number }
   warnings: string[]
   payment_methods: Record<PaymentMethodKey, boolean>
+  intigo: { mode: 'fake' | 'live'; can_open: boolean }
   updated_at: string | null
   history: DeliverySettingChange[]
 }
 
 /** Amounts are sent as typed (strings): the server validates TND with 3 decimals max. */
-export type DeliverySettingsForm = Record<Exclude<keyof DeliverySettingsValues, 'refused_parcel_fee_paid_by'>, string> & {
+export interface DeliverySettingsForm {
+  sizes: Record<ParcelSize, Record<SizeField, string>>
+  return_shipping_fee: string
   refused_parcel_fee_paid_by: 'platform' | 'seller'
+  intigo_can_open: boolean
   payment_methods: Record<PaymentMethodKey, boolean>
 }
 

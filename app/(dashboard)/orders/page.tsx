@@ -22,6 +22,8 @@ import {
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
 import { ParcelWhatsAppBlock } from '@/components/whatsapp/SellerWhatsApp'
+import ParcelIntigoBlock from '@/components/intigo/ParcelIntigoBlock'
+import type { ParcelIntigo } from '@/lib/intigoApi'
 import type { ParcelWhatsApp } from '@/lib/whatsappRemindersApi'
 function formatCurrency(v: number | string) {
   return `${Number(v).toFixed(3)} DT`
@@ -98,6 +100,8 @@ interface SellerSubOrder {
   allowed_next?: string[]
   /** WhatsApp notice to send the seller + history; null for CHOOSE'Tounsi's own parcels */
   whatsapp?: ParcelWhatsApp | null
+  /** Intigo parcel: nid, send status, carrier status, size, retry / cancel */
+  intigo?: ParcelIntigo | null
 }
 
 /**
@@ -1149,7 +1153,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                         )}
                         {(so.status === 'refused' || so.status === 'returned_to_seller') && (
                           <p style={{ fontSize: 11, color: '#f97316', margin: '6px 0 0', fontWeight: 700 }}>
-                            Refused at the door{so.refused_agency_fee != null ? ` · agency fee ${formatCurrency(Number(so.refused_agency_fee))} paid by ${so.refused_fee_paid_by}` : ''}
+                            Refused at the door{so.refused_agency_fee != null ? ` · Intigo return fee ${formatCurrency(Number(so.refused_agency_fee))} paid by ${so.refused_fee_paid_by}` : ''}
                             {so.status === 'refused' ? ' · stock held until returned to the seller' : ' · returned to the seller, stock released'}
                           </p>
                         )}
@@ -1172,6 +1176,9 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                               Refused by client
                             </button>
                           </div>
+                        )}
+                        {so.intigo && (
+                          <ParcelIntigoBlock intigo={so.intigo} onChanged={() => { refreshDetail(); onUpdated() }} notify={notify} />
                         )}
                         {so.whatsapp && (
                           <ParcelWhatsAppBlock

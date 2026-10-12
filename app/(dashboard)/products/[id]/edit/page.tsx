@@ -435,6 +435,13 @@ export default function ProductEditorPage() {
                 </div>
               </Field>
               <Toggle checked={state.free_delivery} onChange={(v) => set('free_delivery', v)} label="Free delivery" description="The customer pays no delivery fee; the seller pays the free-delivery contribution per shipment (Delivery &amp; Fees)." />
+              <Field label="Parcel size" required hint="S fits in a shoebox · L a large box (shoes, bags, small appliances) · XL bulky or heavy (furniture, large appliances). Sets the delivery price (Delivery & Fees) and Intigo's package size.">
+                <select value={state.parcel_size} onChange={(e) => set('parcel_size', e.target.value as 'S' | 'L' | 'XL')} className={inputCls(false)}>
+                  <option value="S">S · small</option>
+                  <option value="L">L · large</option>
+                  <option value="XL">XL · extra large</option>
+                </select>
+              </Field>
             </div>
           </Card>
 

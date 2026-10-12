@@ -59,6 +59,7 @@ export interface EditorPayload {
     featured: boolean
     occasions: string[]
     free_delivery: boolean
+    parcel_size?: 'S' | 'L' | 'XL'
     admin_note: string | null
     admin_edited_at: string | null
     admin_edited_by: { id: number; name: string } | null
@@ -107,6 +108,7 @@ export interface EditorDocument {
   pack_quantity: number | null
   pack_contents: string | null
   free_delivery: boolean
+  parcel_size: 'S' | 'L' | 'XL'
   occasions: string[]
   admin_note: string | null
   attributes: Record<string, any>

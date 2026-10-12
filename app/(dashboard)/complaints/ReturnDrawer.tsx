@@ -197,6 +197,7 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
                 <KV k={c.status === 'refunded' ? 'Refunded' : 'Refund due'} v={<b style={{ color: GREEN }}>{dt(c.refund_amount)}</b>} />
                 {c.refund_method && <KV k="Method" v={REFUND_METHOD_LABELS[c.refund_method]} />}
                 {c.refund_reference && <KV k="Reference" v={<span style={{ fontFamily: 'monospace' }}>{c.refund_reference}</span>} />}
+                <IntigoReturnRef id={c.id} value={c.intigo_return_ref ?? null} onSaved={onRefresh} />
               </div>
             </div>
           </div>
@@ -319,6 +320,28 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
 const chip: React.CSSProperties = {
   fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--drawer-t2)', background: 'rgba(255,255,255,.06)',
   padding: '3px 10px', borderRadius: 6, border: '1px solid var(--drawer-card-bd)',
+}
+
+/** Returns stay manual in the Intigo dashboard: paste its return reference here. */
+function IntigoReturnRef({ id, value, onSaved }: { id: number; value: string | null; onSaved: () => void }) {
+  const [ref, setRef] = useState(value ?? '')
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const save = async () => {
+    setState('saving')
+    try { await adminComplaintApi.intigoReturnRef(id, ref.trim() || null); setState('saved'); onSaved() } catch { setState('error') }
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--drawer-t2, #94a3b8)', fontWeight: 700 }}>Intigo return ref.</span>
+      <input value={ref} onChange={e => { setRef(e.target.value); setState('idle') }} maxLength={64} placeholder="from the Intigo dashboard"
+        style={{ flex: '1 1 140px', minWidth: 0, fontSize: 12, padding: '4px 8px', borderRadius: 7, border: '1px solid rgba(148,163,184,0.35)', background: 'transparent', color: 'inherit', fontFamily: 'monospace' }} />
+      <button type="button" onClick={save} disabled={state === 'saving' || ref.trim() === (value ?? '')}
+        style={{ fontSize: 11.5, fontWeight: 800, padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(25,143,65,0.4)', background: 'rgba(25,143,65,0.12)', color: '#22b356', cursor: 'pointer' }}>
+        {state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : 'Save'}
+      </button>
+      {state === 'error' && <span style={{ fontSize: 11, color: '#ef4444' }}>Could not save.</span>}
+    </div>
+  )
 }
 
 function KV({ k, v }: { k: string; v: React.ReactNode }) {

@@ -58,6 +58,8 @@ export const adminComplaintApi = {
   refund: (id: number, method: Exclude<RefundMethod, 'cash'>, reference?: string, note?: string) => patch(id, 'refund', { method, reference, note }),
   cancel: (id: number, reason: string) => patch(id, 'cancel', { reason }),
   close: (id: number, note?: string) => patch(id, 'close', { note }),
+  /** Reference of the return booked by hand in the Intigo dashboard (after-sale returns aren't automated). */
+  intigoReturnRef: (id: number, ref: string | null) => patch(id, 'intigo-return-ref', { intigo_return_ref: ref }),
 
   /** Return slip PDF for the delivery company. Resolves with the file name. */
   returnSlip: (id: number) =>

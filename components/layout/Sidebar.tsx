@@ -27,6 +27,7 @@ import {
   CalendarDays,
   Truck,
   MessageCircle,
+  PackageSearch,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
 import { authStorage } from '@/lib/auth';
@@ -58,6 +59,7 @@ const navItems = [
   { href: '/whatsapp-reminders',  label: 'WhatsApp reminders', icon: MessageCircle },
   { href: '/finance', label: 'Finance', icon: Banknote },
   { href: '/delivery-fees', label: 'Delivery & Fees', icon: Truck },
+  { href: '/intigo', label: 'Intigo', icon: PackageSearch },
   { href: '/payment-requests', label: 'Demandes de paiement', icon: Wallet },
 
   { href: '/complaints',          label: 'Complaints',   icon: AlertTriangle   },

@@ -328,6 +328,7 @@ function ShippingTab({ product }: { product: ProductReview }) {
           strong
         />
         <KV label="Source" value={s.uses_platform_default ? 'Platform default' : 'Set by seller'} />
+        <KV label="Parcel size" value={s.parcel_size ? `${s.parcel_size} (${{ S: 'small', L: 'large', XL: 'extra large' }[s.parcel_size]})` : 'S'} strong />
       </Section>
       <Section title="Package details">
         {s.fields.length === 0 ? (

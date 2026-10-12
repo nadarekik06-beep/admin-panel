@@ -170,6 +170,8 @@ export interface ProductReview {
     delivery_fee: number
     is_free_delivery: boolean
     uses_platform_default: boolean
+    /** S | L | XL: the courier's package size (delivery price per size) */
+    parcel_size?: 'S' | 'L' | 'XL'
     fields: { label: string; value: string }[]
   }
 

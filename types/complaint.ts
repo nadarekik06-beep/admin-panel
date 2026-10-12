@@ -147,6 +147,8 @@ export interface Complaint {
   refund_amount:       number | string
   refund_method:       RefundMethod | null
   refund_reference:    string | null
+  /** After-sale return booked by hand in the Intigo dashboard: its reference */
+  intigo_return_ref?:  string | null
   other_reason:        string | null
   description:         string
   image_url:           string | null
