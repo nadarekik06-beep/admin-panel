@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, CheckCircle, XCircle, PauseCircle, Eye, Pencil, X, Save } from 'lucide-react'
+import Link from 'next/link'
+import { Search, CheckCircle, XCircle, PauseCircle, Eye, Pencil, X, Save, MapPinned } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
@@ -13,7 +14,8 @@ import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
-import SellerIntigoPickup from '@/components/intigo/SellerIntigoPickup'
+import { PickupStatusBadge } from '@/components/pickup/PickupAddressCard'
+import { PICKUP_STATUS, type PickupStatus } from '@/lib/sellerPickupApi'
 type ActionType = 'approve' | 'reject' | 'suspend'
 
 // ─── Extended type: merges User + SellerApplication fields ───────────────────
@@ -76,6 +78,7 @@ export default function SellersPage() {
   usePageLoading(loading)
   const [search, setSearch]               = useState('')
   const [status, setStatus]               = useState('')
+  const [pickupStatus, setPickupStatus]   = useState('')
   const [page, setPage]                   = useState(1)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [rejectReason, setRejectReason]   = useState('')
@@ -92,11 +95,11 @@ export default function SellersPage() {
   const fetchSellers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await sellersApi.list({ search: search || undefined, status: status || undefined, page })
+      const res = await sellersApi.list({ search: search || undefined, status: status || undefined, pickup_status: pickupStatus || undefined, page })
       setSellers(res)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [search, status, page])
+  }, [search, status, pickupStatus, page])
 
   useEffect(() => { const t = setTimeout(fetchSellers, 300); return () => clearTimeout(t) }, [fetchSellers])
 
@@ -180,6 +183,14 @@ export default function SellersPage() {
       render: (row) => { const s = getSellerStatus(row); return <Badge variant={s}>{s}</Badge> },
     },
     {
+      key: 'pickup_status' as keyof Seller, header: 'Pickup address',
+      render: (row) => (
+        <Link href={`/sellers/${row.id}`} title="Open the seller page" className="hover:opacity-80">
+          <PickupStatusBadge status={row.pickup_status ?? 'needs_review'} />
+        </Link>
+      ),
+    },
+    {
       key: 'products_count', header: 'Products',
       render: (row) => <span className="text-text-secondary">{row.products_count ?? 0}</span>,
     },
@@ -217,6 +228,9 @@ export default function SellersPage() {
             <button onClick={() => openView(row)} className="p-1.5 rounded-md text-text-muted hover:text-accent-purple-light hover:bg-accent-purple/10 transition-colors" title="View details">
               <Eye size={15} />
             </button>
+            <Link href={`/sellers/${row.id}`} className="p-1.5 rounded-md text-text-muted hover:text-accent-cyan hover:bg-accent-cyan/10 transition-colors" title="Seller page (pickup address)">
+              <MapPinned size={15} />
+            </Link>
             {(s === 'pending' || s === 'suspended') && (
               <button onClick={() => setConfirmModal({ type: 'approve', seller: row })} className="p-1.5 rounded-md text-accent-green hover:bg-accent-green/10 transition-colors" title="Approve">
                 <CheckCircle size={15} />
@@ -256,6 +270,12 @@ export default function SellersPage() {
             <option value="">All Sellers</option>
             <option value="approved">Approved</option>
             <option value="suspended">Suspended</option>
+          </select>
+          <select value={pickupStatus} onChange={(e) => { setPickupStatus(e.target.value); setPage(1) }} aria-label="Pickup address"
+            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
+            <option value="">All pickup addresses</option>
+            <option value="to_update">À traiter (modifiée / non vérifiée / à créer)</option>
+            {(Object.keys(PICKUP_STATUS) as PickupStatus[]).map(k => <option key={k} value={k}>{PICKUP_STATUS[k].label}</option>)}
           </select>
         </div>
       </div>
@@ -318,12 +338,15 @@ export default function SellersPage() {
 
             {/* ── Info grid ── */}
             <div className="grid grid-cols-2 gap-3">
-              <SellerIntigoPickup
-                sellerId={viewSeller.id}
-                index={viewSeller.intigo_pickup_index}
-                label={viewSeller.intigo_pickup_label}
-                onSaved={(index, label) => setViewSeller(v => v && ({ ...v, intigo_pickup_index: index, intigo_pickup_label: label }))}
-              />
+              <Link href={`/sellers/${viewSeller.id}`} className="col-span-2 flex items-center gap-3 p-3 rounded-lg border hover:border-accent-purple transition-colors" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
+                <MapPinned size={18} className="text-accent-purple-light shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#6b7280' }}>Adresse de pickup (Intigo)</p>
+                  <PickupStatusBadge status={viewSeller.pickup_status ?? 'needs_review'} />
+                  {viewSeller.intigo_pickup_index != null && <span className="ml-2 text-xs text-text-secondary">index #{viewSeller.intigo_pickup_index}</span>}
+                </div>
+                <span className="text-xs font-semibold text-accent-purple-light whitespace-nowrap">Open seller page →</span>
+              </Link>
               <InfoCard label="Seller ID"            value={`#${viewSeller.id}`} />
               <InfoCard label="Products"             value={viewSeller.products_count ?? 0} />
               <InfoCard label="Phone"                value={viewSeller.phone_number} />

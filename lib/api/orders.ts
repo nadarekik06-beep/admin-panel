@@ -3,16 +3,6 @@
 import api from '../axios'
 import type { Order, PaginatedResponse } from '@/types'
 
-export interface PickupAddressInput {
-  full_name:          string
-  phone_number:       string
-  pickup_address:     string
-  city:               string
-  pickup_postal_code: string
-  wilaya:             string
-  pickup_notes?:      string
-}
-
 // ── PDF downloads ──────────────────────────────────────────────────────────
 // The API answers a PDF on success, or JSON { message, issues } on error —
 // with responseType 'blob' the error body must be decoded by hand.
@@ -153,15 +143,6 @@ async saveNote(id: number, adminNote: string) {
   exportBulkSlips: (orderIds: number[]) =>
     downloadPdf(() => api.post('/admin/orders/export/slips', { order_ids: orderIds }, PDF), 'delivery-slips.pdf'),
 
-  async updateSellerPickup(sellerId: number, data: PickupAddressInput) {
-    try {
-      const res = await api.put(`/admin/sellers/${sellerId}/pickup-address`, data)
-      return res.data.data
-    } catch (err: any) {
-      const errors = err?.response?.data?.errors as Record<string, string[]> | undefined
-      throw new Error(errors ? Object.values(errors)[0][0] : (err?.response?.data?.message ?? 'Failed to save the pickup address.'))
-    }
-  },
 
   async stats() {
     const res = await api.get('/admin/orders/stats')

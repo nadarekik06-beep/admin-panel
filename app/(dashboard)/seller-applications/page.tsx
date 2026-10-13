@@ -14,6 +14,8 @@ import {
   PreferredPlan,
 } from '@/lib/api/sellerApplications'
 import { sellersApi } from '@/lib/api/sellers'
+import PickupAddressCard from '@/components/pickup/PickupAddressCard'
+import type { PickupCard } from '@/lib/sellerPickupApi'
 import { format } from 'date-fns'
 
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -129,6 +131,9 @@ function DetailModal({
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
+  // No approval without an Intigo zone and a map pin (the backend refuses it too)
+  const [pickup, setPickup] = useState<PickupCard | null>(null)
+  const pickupLocated = !!pickup && pickup.status !== 'needs_review'
 
   const pic      = storageUrl(app.profile_picture)
   const planMeta = preferredPlanMeta(app.preferred_plan)
@@ -265,9 +270,15 @@ function DetailModal({
             <div className="grid grid-cols-2 gap-3">
               <InfoCard icon={<Phone size={14} />}  label="Phone"    value={app.phone_number} />
               <InfoCard icon={<Store size={14} />}  label="Applied"  value={format(new Date(app.created_at), 'MMM d, yyyy')} />
-              <InfoCard icon={<MapPin size={14} />} label="Location" value={`${app.city}, ${app.wilaya}`} />
+              <InfoCard icon={<MapPin size={14} />} label="Gouvernorat · Délégation" value={`${app.wilaya} · ${app.city}`} />
               <InfoCard icon={<Tag size={14} />}    label="Category" value={app.business_category} />
             </div>
+          </div>
+
+          {/* ── SECTION C2: Pickup address (Intigo "Nouvelle adresse" order) ── */}
+          <div>
+            <SectionLabel>Adresse de pickup</SectionLabel>
+            <PickupAddressCard sellerId={app.user_id} onStatus={setPickup} />
           </div>
 
           {/* ── SECTION D: Business description ── */}
@@ -372,6 +383,11 @@ function DetailModal({
 
         {/* ── Footer actions ── */}
         <div className="px-6 py-4 flex gap-3 flex-wrap flex-shrink-0" style={{ borderTop: '1px solid #1e2128' }}>
+          {app.status === 'pending' && !showRejectForm && pickup && !pickupLocated && (
+            <p className="w-full text-xs font-semibold" style={{ color: '#f59e0b' }}>
+              Approval blocked: the pickup address has no Intigo zone and/or map pin ({pickup.missing.join(', ')}). Ask the seller to complete the application.
+            </p>
+          )}
           {app.status === 'pending' && !showRejectForm && (
             <>
               <button onClick={() => setShowRejectForm(true)}
@@ -381,7 +397,8 @@ function DetailModal({
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <XCircle size={15} /> Reject
               </button>
-              <button onClick={handleApprove} disabled={loading}
+              <button onClick={handleApprove} disabled={loading || !pickupLocated}
+                title={pickupLocated ? '' : 'The pickup address needs an Intigo zone and a map pin before approval.'}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60"
                 style={{ background: '#198f41' }}>
                 {loading ? <BrandLoader variant="inline" size={14} /> : <CheckCircle size={15} />}
@@ -445,7 +462,13 @@ export default function SellerApplicationsPage() {
   useEffect(() => { const t = setTimeout(fetchData, 300); return () => clearTimeout(t) }, [fetchData])
 
   const handleApprove = async (id: number) => {
-    await sellerApplicationsApi.approve(id)
+    try {
+      await sellerApplicationsApi.approve(id)
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Approval failed.', 'error')
+      return
+    }
     setSelected(null); showToast('Seller approved successfully.', 'success'); fetchData()
   }
 

@@ -3,6 +3,7 @@ import api from '../axios'
 
 interface SellersParams {
   status?: string
+  pickup_status?: string
   search?: string
   page?: number
   per_page?: number

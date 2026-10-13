@@ -7,9 +7,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   MapPin, Phone, Copy, Check, AlertTriangle, Store, FileDown, ChevronDown,
-  FileText, Files, Lock, Pencil, X, Save, CheckCircle, XCircle,
+  FileText, Files, Lock, X, CheckCircle, XCircle, MapPinned,
 } from 'lucide-react'
-import { ordersApi, type PickupAddressInput } from '@/lib/api/orders'
+import Link from 'next/link'
+import { ordersApi } from '@/lib/api/orders'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,6 +36,13 @@ export interface SellerPickup {
   city:        string | null
   postal_code: string | null
   wilaya:      string | null
+  zone?:       string | null
+  zone_type?:  'DELEGATION' | 'SECTEUR' | null
+  latitude?:   number | null
+  longitude?:  number | null
+  /** seller_pickup_addresses status; null for CHOOSE'Tounsi's own parcels */
+  status?:     'needs_review' | 'changed' | 'unverified' | 'verified' | 'created' | null
+  intigo_ready?: boolean
   notes:       string | null
   formatted:   string
   is_platform: boolean
@@ -240,122 +248,61 @@ export function ShippingAddressCard({ address }: { address?: ShippingAddress | n
 }
 
 // ─── Pickup block (inside a seller sub-order card) ────────────────────────────
+// Read-only here: the address (Intigo zone + map pin) is edited, verified and
+// created in Intigo on the seller page (/sellers/{id}).
 
-export function PickupBlock({ sellerId, pickup, onSaved }: {
+export function PickupBlock({ sellerId, pickup }: {
   sellerId: number | null
   pickup: SellerPickup
-  onSaved: () => void
+  onSaved?: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-
+  const notAtIntigo = !pickup.is_platform && pickup.status !== null && pickup.status !== 'created'
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <Store size={11} color="#64748b" />
           <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b' }}>Pickup</span>
           {!pickup.complete && (
             <WarningBadge title={`Missing: ${pickup.missing.join(', ')}`}>Pickup address incomplete</WarningBadge>
           )}
+          {notAtIntigo && (
+            <WarningBadge title="New Intigo parcels for this seller are held until the address is verified and created in Intigo">
+              {pickup.status === 'changed' ? 'Address changed: update Intigo' : 'Not validated in Intigo'}
+            </WarningBadge>
+          )}
         </div>
-        {!pickup.is_platform && sellerId && !editing && (
-          <button onClick={() => setEditing(true)} style={{
+        {!pickup.is_platform && sellerId && (
+          <Link href={`/sellers/${sellerId}`} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7,
-            background: pickup.complete ? 'transparent' : 'rgba(245,158,11,0.12)',
-            border: `1px solid ${pickup.complete ? 'rgba(255,255,255,0.1)' : 'rgba(245,158,11,0.35)'}`,
-            color: pickup.complete ? '#64748b' : '#f59e0b', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+            background: pickup.complete && !notAtIntigo ? 'transparent' : 'rgba(245,158,11,0.12)',
+            border: `1px solid ${pickup.complete && !notAtIntigo ? 'rgba(255,255,255,0.1)' : 'rgba(245,158,11,0.35)'}`,
+            color: pickup.complete && !notAtIntigo ? '#64748b' : '#f59e0b', fontSize: 10, fontWeight: 700, textDecoration: 'none',
           }}>
-            <Pencil size={10} /> {pickup.complete ? 'Edit' : 'Complete address'}
-          </button>
+            <MapPinned size={10} /> Seller pickup page
+          </Link>
         )}
       </div>
 
-      {editing && sellerId ? (
-        <PickupForm sellerId={sellerId} pickup={pickup} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onSaved() }} />
-      ) : (
-        <div style={{ marginTop: 6, fontSize: 12, color: '#94a3b8', lineHeight: 1.55 }}>
-          <div style={{ color: '#cbd5e1', fontWeight: 700 }}>
-            {pickup.contact ?? '—'}
-            {pickup.phone && <> · <a href={`tel:+216${pickup.phone}`} style={{ color: '#3b82f6', textDecoration: 'none' }} dir="ltr">+216 {prettyPhone(pickup.phone)}</a></>}
-          </div>
-          <div dir={isArabic(pickup.formatted) ? 'rtl' : 'ltr'} style={{ textAlign: 'start' }}>{pickup.formatted || '—'}</div>
-          {pickup.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{pickup.notes}</div>}
-          {!pickup.complete && (
-            <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>
-              Missing: {pickup.missing.join(', ')}
-              {pickup.is_platform && ' — set PLATFORM_PICKUP_* in the backend .env'}
-            </div>
-          )}
+      <div style={{ marginTop: 6, fontSize: 12, color: '#94a3b8', lineHeight: 1.55 }}>
+        <div style={{ color: '#cbd5e1', fontWeight: 700 }}>
+          {pickup.contact ?? '—'}
+          {pickup.phone && <> · <a href={`tel:+216${pickup.phone}`} style={{ color: '#3b82f6', textDecoration: 'none' }} dir="ltr">+216 {prettyPhone(pickup.phone)}</a></>}
         </div>
-      )}
-    </div>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 8, padding: '7px 10px', fontSize: 12, color: '#f1f5f9', outline: 'none', fontFamily: 'inherit',
-}
-
-function PickupForm({ sellerId, pickup, onCancel, onSaved }: {
-  sellerId: number
-  pickup: SellerPickup
-  onCancel: () => void
-  onSaved: () => void
-}) {
-  const [form, setForm] = useState<PickupAddressInput>({
-    full_name:          pickup.contact ?? '',
-    phone_number:       pickup.phone ?? '',
-    pickup_address:     pickup.address ?? '',
-    city:               pickup.city ?? '',
-    pickup_postal_code: pickup.postal_code ?? '',
-    wilaya:             pickup.wilaya ?? '',
-    pickup_notes:       pickup.notes ?? '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
-  const set = (k: keyof PickupAddressInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
-
-  const save = async () => {
-    setSaving(true); setError('')
-    try {
-      await ordersApi.updateSellerPickup(sellerId, form)
-      onSaved()
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const field = (label: string, el: React.ReactNode, span = 1) => (
-    <label style={{ gridColumn: `span ${span}`, display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b' }}>{label}</span>
-      {el}
-    </label>
-  )
-
-  return (
-    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {field('Contact person *', <input style={inputStyle} value={form.full_name} onChange={set('full_name')} />)}
-      {field('Phone *', <input style={inputStyle} value={form.phone_number} onChange={set('phone_number')} placeholder="22 123 456" inputMode="tel" dir="ltr" />)}
-      {field('Street address *', <input style={inputStyle} value={form.pickup_address} onChange={set('pickup_address')} placeholder="Rue, numéro, zone industrielle…" />, 2)}
-      {field('City / delegation *', <input style={inputStyle} value={form.city} onChange={set('city')} />)}
-      {field('Postal code *', <input style={inputStyle} value={form.pickup_postal_code} onChange={set('pickup_postal_code')} maxLength={4} inputMode="numeric" placeholder="1000" />)}
-      {field('Governorate *', (
-        <select style={{ ...inputStyle, appearance: 'auto' }} value={form.wilaya} onChange={set('wilaya')}>
-          <option value="" style={{ background: '#0f1623' }}>— Select —</option>
-          {WILAYAS.map(w => <option key={w} value={w} style={{ background: '#0f1623' }}>{w}</option>)}
-        </select>
-      ))}
-      {field('Notes for the courier', <input style={inputStyle} value={form.pickup_notes ?? ''} onChange={set('pickup_notes')} placeholder="Opening hours, landmark…" />)}
-      {error && <p style={{ gridColumn: 'span 2', fontSize: 11, color: '#ef4444', margin: 0 }}>{error}</p>}
-      <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-        <button onClick={onCancel} disabled={saving} style={{ padding: '6px 12px', borderRadius: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-        <button onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: 'linear-gradient(135deg,#6366f1,#4f46e5)', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-          {saving ? <BrandLoader variant="inline" size={11} /> : <Save size={11} />} Save pickup address
-        </button>
+        <div dir={isArabic(pickup.formatted) ? 'rtl' : 'ltr'} style={{ textAlign: 'start' }}>{pickup.formatted || '—'}</div>
+        {pickup.latitude != null && pickup.longitude != null && (
+          <a href={`https://www.google.com/maps/search/?api=1&query=${pickup.latitude},${pickup.longitude}`} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 11, color: '#06b6d4', textDecoration: 'none' }} dir="ltr">
+            GPS {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)} ↗
+          </a>
+        )}
+        {pickup.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{pickup.notes}</div>}
+        {!pickup.complete && (
+          <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>
+            Missing: {pickup.missing.join(', ')}
+            {pickup.is_platform && ' — set PLATFORM_PICKUP_* in the backend .env'}
+          </div>
+        )}
       </div>
     </div>
   )

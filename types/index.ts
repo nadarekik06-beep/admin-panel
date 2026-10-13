@@ -47,6 +47,8 @@ export interface Seller {
   products_count?: number
   created_at: string
   updated_at: string
+  /** seller_pickup_addresses status (Intigo pickup address) */
+  pickup_status?: 'needs_review' | 'changed' | 'unverified' | 'verified' | 'created'
 }
 
 // ── Product ───────────────────────────────────────────────────────
