@@ -86,7 +86,7 @@ type ToastState = { type: 'success' | 'error'; msg: string } | null
 
 export function useToast() {
   const [toast, setToast] = useState<ToastState>(null)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const show = useCallback((type: 'success' | 'error', msg: string) => {
     clearTimeout(timer.current)
     setToast({ type, msg })
