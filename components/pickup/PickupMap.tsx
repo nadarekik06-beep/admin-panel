@@ -83,11 +83,14 @@ export default function PickupMap({ latitude, longitude, onChange, focus, height
         let vector = false
         if (webglAvailable()) {
           try {
-            const [{ maplibreGL }, maplibre] = await Promise.all([import('@maplibre/maplibre-gl-leaflet'), import('maplibre-gl/dist/maplibre-gl.js')])
+            const [{ maplibreGL }, maplibre] = await Promise.all([import('@maplibre/maplibre-gl-leaflet'), import('maplibre-gl')])
             if (cancelled) return
+            // MapLibre 6 cannot find its worker once bundled: serve it from /public
+            // (copied there by scripts/copy-maplibre-worker.js before dev / build).
+            maplibre.setWorkerUrl('/maplibre-gl-worker.mjs')
             // Arabic street / place names need the RTL shaping plugin (loaded once, lazily)
-            if (maplibre.default.getRTLTextPluginStatus() === 'unavailable') {
-              maplibre.default.setRTLTextPlugin(RTL_TEXT_PLUGIN, true).catch(() => { /* Latin labels still render */ })
+            if (maplibre.getRTLTextPluginStatus() === 'unavailable') {
+              maplibre.setRTLTextPlugin(RTL_TEXT_PLUGIN, true).catch(() => { /* Latin labels still render */ })
             }
             // The OpenFreeMap style carries its own attribution (OpenFreeMap, OpenMapTiles, OSM)
             maplibreGL({ style: OPENFREEMAP_STYLE }).addTo(map)
