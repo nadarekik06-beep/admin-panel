@@ -28,7 +28,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // A 401 from the login request means wrong credentials: let the login page show the message
+    const isLoginRequest = error.config?.url?.endsWith('/auth/login')
+    if (error.response?.status === 401 && !isLoginRequest) {
       authStorage.clear()
       if (typeof window !== 'undefined') {
         window.location.href = '/login'

@@ -29,6 +29,7 @@ export default function LoginPage() {
       const msg =
         axiosError?.response?.data?.errors?.email?.[0] ||
         axiosError?.response?.data?.message ||
+        (!axiosError?.response && err instanceof Error ? err.message : '') ||
         'Invalid credentials. Please try again.'
       setError(msg)
     } finally {
