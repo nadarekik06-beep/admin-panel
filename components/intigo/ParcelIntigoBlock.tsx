@@ -19,6 +19,12 @@ const btn = (color: string, busy: boolean): React.CSSProperties => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
 })
 
+const card: React.CSSProperties = {
+  padding: '8px 10px', borderRadius: 8, background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.08)',
+  fontSize: 11.5, color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflowWrap: 'anywhere',
+}
+const cardTitle: React.CSSProperties = { fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 2 }
+
 export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
   intigo: ParcelIntigo
   onChanged: () => void
@@ -104,6 +110,43 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
         </span>
       </div>
 
+      {(i.pickup || i.payload) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginTop: 8 }}>
+          {i.pickup && (
+            <div style={card}>
+              <div style={cardTitle}>Pickup (seller) · index {i.pickup.index ?? '—'}</div>
+              <div style={{ color: '#f1f5f9' }}>{i.pickup.is_platform ? "CHOOSE'Tounsi (platform)" : (i.pickup.address ?? <span style={{ color: '#ef4444' }}>No pickup address</span>)}</div>
+              {i.pickup.phone && <div>Tél {i.pickup.phone}</div>}
+              {i.pickup.intigo_label && <div title="The address Intigo holds under this index">At Intigo: {i.pickup.intigo_label}</div>}
+              {!i.pickup.is_platform && (
+                <div style={{ color: i.pickup.intigo_ready ? '#14b8a6' : '#f59e0b', fontWeight: 700 }}>
+                  {i.pickup.intigo_ready ? 'Verified · created in Intigo' : `Not ready (${i.pickup.status ?? 'none'})`}
+                </div>
+              )}
+            </div>
+          )}
+          {i.payload && (
+            <div style={card}>
+              <div style={cardTitle}>Client address {i.payload_is_sent ? 'sent' : 'to send'} (checkout)</div>
+              <div style={{ color: '#f1f5f9' }}>{i.payload.recipient_name}</div>
+              <div>{i.payload.phone1 ?? '—'}{i.payload.phone2 ? ` / ${i.payload.phone2}` : ''}</div>
+              <div>{i.payload.destination_address}</div>
+              <div>{i.payload.district_name ?? '—'}, {i.payload.city_name ?? '—'}</div>
+              <div>COD <strong style={{ color: '#f1f5f9' }}>{Number(i.payload.price).toFixed(3)} TND</strong> · {i.payload.cid}</div>
+            </div>
+          )}
+        </div>
+      )}
+      {!i.nid && i.payload_problems && i.payload_problems.length > 0 && (
+        <p style={{ margin: '8px 0 0', fontSize: 11.5, color: '#ef4444', fontWeight: 700 }}>Won&apos;t be sent: {i.payload_problems.join('; ')}</p>
+      )}
+      {i.payload && (
+        <details style={{ marginTop: 6, fontSize: 11 }}>
+          <summary style={{ cursor: 'pointer', color: '#60a5fa', fontWeight: 800 }}>{i.payload_is_sent ? 'JSON sent to Intigo' : 'JSON that will be sent'}</summary>
+          <pre style={{ margin: '6px 0 0', padding: 8, borderRadius: 8, background: '#0f172a', color: '#cbd5e1', overflowX: 'auto', fontSize: 10.5 }}>{JSON.stringify(i.payload, null, 2)}</pre>
+        </details>
+      )}
+
       {i.error && i.sync_status !== 'sent' && (
         <p style={{ margin: '8px 0 0', fontSize: 11.5, color: i.sync_status === 'failed' ? '#ef4444' : '#f59e0b', fontWeight: 700 }}>{i.error}</p>
       )}
@@ -128,9 +171,6 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
       </button>
       {open && (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {detail?.payload_problems && detail.payload_problems.length > 0 && (
-            <p style={{ margin: 0, fontSize: 11, color: '#ef4444' }}>Can&apos;t be sent yet: {detail.payload_problems.join('; ')}</p>
-          )}
           <div style={{ fontSize: 11, color: '#cbd5e1' }}>
             {!detail?.history ? 'Loading…' : detail.history.length === 0 ? <span style={{ color: '#64748b' }}>No carrier status received yet.</span> : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>

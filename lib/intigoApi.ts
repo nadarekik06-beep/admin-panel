@@ -58,10 +58,39 @@ export interface ParcelIntigo {
   can_retry: boolean
   can_cancel: boolean
   mode: 'fake' | 'live'
+  /** The seller's pickup (our DB) and the index sent to Intigo */
+  pickup?: {
+    index: number | null
+    intigo_label: string | null
+    address: string | null
+    phone: string | null
+    status: string | null
+    intigo_ready: boolean
+    is_platform: boolean
+  }
+  /** The parcel body: as Intigo accepted it once sent, else as it would be sent now */
+  payload?: IntigoParcelBody
+  payload_is_sent?: boolean
   // Detail endpoint only
   history?: { id: number; nid: string; new_status: number; old_status: number | null; status_label: string | null; source: string; result: string | null; event_timestamp: string; created_at: string }[]
   logs?: IntigoLogRow[]
   payload_problems?: string[]
+}
+
+export interface IntigoParcelBody {
+  recipient_name: string
+  phone1: string | null
+  phone2?: string
+  destination_address: string
+  city_name: string | null
+  district_name: string | null
+  price: number
+  package_size: number
+  description: string
+  additional_info: string
+  can_open: boolean
+  pickup_index: number | null
+  cid: string
 }
 
 export interface IntigoLogRow {
