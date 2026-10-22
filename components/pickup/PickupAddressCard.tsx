@@ -292,7 +292,7 @@ export default function PickupAddressCard({ sellerId, onStatus, showHistory = tr
             <div>
               <Row n={1} label="Adresse complète" value={p.adresse_complete} />
               {p.intigo_street_address && p.intigo_street_address !== p.adresse_complete && (
-                <Row label="↳ with contact" value={p.intigo_street_address} copy={p.intigo_street_address} />
+                <Row label="↳ sent to Intigo" value={p.intigo_street_address} copy={p.intigo_street_address} />
               )}
               <Row n={2} label="Zone" copy={p.zone?.display_label}>
                 {p.zone ? (
@@ -403,7 +403,7 @@ export default function PickupAddressCard({ sellerId, onStatus, showHistory = tr
             <p className="text-[11px] text-text-muted">
               {p.verified_at ? `Verified ${format(new Date(p.verified_at), 'dd MMM yyyy, HH:mm')}${p.verified_by ? ` by ${p.verified_by}` : ''}. ` : 'Not verified. '}
               {p.intigo_pickup_created_at ? `Created in Intigo ${format(new Date(p.intigo_pickup_created_at), 'dd MMM yyyy, HH:mm')}.` : 'Not created in Intigo.'}
-              {' '}Intigo has no contact field on pickup addresses: the contact and phone are added to the address text.
+              {' '}Intigo has no contact field on pickup addresses: the seller&apos;s phone and a Google Maps link of the pin are added to the address text (never the seller&apos;s name: Intigo prints it on the bordereau).
             </p>
           </>
         )}
