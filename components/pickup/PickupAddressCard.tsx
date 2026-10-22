@@ -216,9 +216,14 @@ export default function PickupAddressCard({ sellerId, onStatus, showHistory = tr
       .finally(() => setLoading(false))
   }, [sellerId, apply])
 
-  const run = async (key: string, fn: () => Promise<{ message?: string; data: PickupResponse }>): Promise<boolean> => {
+  const run = async (key: string, fn: () => Promise<{ message?: string; readback?: string[] | null; data: PickupResponse }>): Promise<boolean> => {
     setBusy(key); setMessage(null)
-    try { apply(await fn()); return true } catch (e) { setMessage({ text: (e as Error).message, ok: false }); return false }
+    try {
+      const res = await fn()
+      // Read back from Intigo found a difference: show it in red (the admins were alerted too)
+      apply(res, !(res.readback && res.readback.length > 0))
+      return true
+    } catch (e) { setMessage({ text: (e as Error).message, ok: false }); return false }
     finally { setBusy(null) }
   }
 
@@ -327,6 +332,25 @@ export default function PickupAddressCard({ sellerId, onStatus, showHistory = tr
               <Row label="Gouvernorat" value={p.gouvernorat} />
             </div>
 
+            {/* Exactly what the Intigo button sends: the seller's pin, never a zone centre */}
+            {p.intigo_payload && (
+              <div className="p-3 rounded-lg border border-border bg-bg-primary text-xs space-y-1">
+                <p className="font-semibold text-text-primary">
+                  Envoyé à Intigo par « {viaApi ? 'Mettre à jour' : 'Créer'} dans Intigo » (le point de la carte ci-dessus) :
+                </p>
+                <p className="font-mono text-text-primary" dir="ltr">
+                  latitude <b>{p.intigo_payload.latitude}</b>, longitude <b>{p.intigo_payload.longitude}</b>
+                </p>
+                <p className="text-text-secondary">
+                  city_id {p.intigo_payload.city_id} · district_id {p.intigo_payload.district_id}
+                  {p.intigo_payload.neighborhood_id != null ? ` · neighborhood_id ${p.intigo_payload.neighborhood_id}` : ''}
+                  {' · '}« {p.intigo_payload.street_address} »
+                </p>
+                {p.in_tunisia === false && <p className="font-semibold text-accent-red">⚠ This point is outside Tunisia: fix the pin before sending.</p>}
+                <p className="text-text-muted">Intigo&apos;s API does not return coordinates: after sending, the panel checks the address, délégation and GPS flag at Intigo; check the exact point in the Intigo dashboard if in doubt.</p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button type="button" disabled={!located || busy !== null}
@@ -336,9 +360,17 @@ export default function PickupAddressCard({ sellerId, onStatus, showHistory = tr
                 {busy === 'verify' ? <BrandLoader variant="inline" size={13} /> : p.address_verified_by_admin ? <CheckCircle2 size={14} /> : <ShieldCheck size={14} />}
                 {p.address_verified_by_admin ? 'Adresse vérifiée ✓' : 'Adresse vérifiée'}
               </button>
-              <button type="button" disabled={!p.address_verified_by_admin || busy !== null}
+              <button type="button" disabled={!p.address_verified_by_admin || busy !== null || p.in_tunisia === false}
                 title={p.address_verified_by_admin ? '' : 'Verify the address first'}
-                onClick={() => run('create', () => sellerPickupApi.createInIntigo(sellerId))}
+                onClick={() => {
+                  const q = p.intigo_payload
+                  const far = p.pin_check?.far ? `\n\n⚠ The pin is ${p.pin_check.distance_km} km from the zone centre (limit ${p.pin_check.limit_km} km).` : ''
+                  const text = q
+                    ? `${viaApi ? 'Update' : 'Create'} this pickup at Intigo${data.intigo_mode === 'live' ? ' (REAL address at Intigo)' : ' (fake mode: simulated)'}?\n\n`
+                      + `Point: ${q.latitude}, ${q.longitude} (latitude, longitude)\n${q.street_address}\n${p.zone?.display_label ?? ''}${far}`
+                    : 'Send this pickup to Intigo?'
+                  if (window.confirm(text)) run('create', () => sellerPickupApi.createInIntigo(sellerId))
+                }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-white bg-accent-purple disabled:opacity-40">
                 {busy === 'create' ? <BrandLoader variant="inline" size={13} /> : <Truck size={14} />}
                 {viaApi ? 'Mettre à jour dans Intigo' : 'Créer dans Intigo'}

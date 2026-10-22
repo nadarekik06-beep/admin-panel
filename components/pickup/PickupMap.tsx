@@ -105,7 +105,15 @@ export default function PickupMap({ latitude, longitude, onChange, focus, height
         }
 
         if (editable) {
-          map.on('click', (e: Leaflet.LeafletMouseEvent) => changeRef.current?.(e.latlng.lat, e.latlng.lng))
+          map.on('click', (e: Leaflet.LeafletMouseEvent) => {
+            // From far away a click is hundreds of metres off: zoom in on it first, place on the next click
+            if (map.getZoom() < 15) {
+              map.setView(e.latlng, 17)
+              return
+            }
+            // Exactly the clicked point, [lat, lng] as Leaflet gives it
+            changeRef.current?.(e.latlng.lat, e.latlng.lng)
+          })
         }
         setState('ready')
         // The container may have been laid out after the map (tabs, steps)

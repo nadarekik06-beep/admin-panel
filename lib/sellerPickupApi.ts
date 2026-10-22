@@ -77,6 +77,12 @@ export interface PickupCard {
   complete: boolean
   pin_check?: { distance_km: number; limit_km: number; far: boolean } | null
   google_maps_url?: string | null
+  /** Exactly what "Créer / Mettre à jour dans Intigo" sends (spec field order), null when incomplete */
+  intigo_payload?: {
+    street_address: string; city_id: number; district_id: number; neighborhood_id: number | null
+    latitude: number; longitude: number
+  } | null
+  in_tunisia?: boolean
   legacy_snapshot?: Record<string, string> | null
   pending_pickups?: number
 }
@@ -111,7 +117,7 @@ export interface PickupInput {
   indications: string | null
 }
 
-type Envelope = { success: boolean; message?: string; data: PickupResponse }
+type Envelope = { success: boolean; message?: string; readback?: string[] | null; data: PickupResponse }
 
 export const sellerPickupApi = {
   get: (sellerId: number) => request<Envelope>('GET', `/admin/sellers/${sellerId}/pickup`),
