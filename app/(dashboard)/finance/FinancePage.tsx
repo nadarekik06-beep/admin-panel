@@ -443,7 +443,7 @@ export default function FinancePage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+      <div className="ct-wrap-mobile" style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4, width: 'fit-content', maxWidth: '100%' }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '8px 16px', borderRadius: 9, border: 'none',

@@ -35,7 +35,7 @@ export default function ReviewTabs({ product, onShowVariantImages }: Props) {
 
   return (
     <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-      <div role="tablist" className="flex overflow-x-auto border-b border-border">
+      <div role="tablist" className="flex overflow-x-auto max-md:flex-wrap border-b border-border">
         {tabs.map((t) => (
           <button
             key={t.key}

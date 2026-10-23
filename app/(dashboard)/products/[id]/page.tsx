@@ -178,7 +178,7 @@ export default function ProductReviewPage() {
   const btn = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 whitespace-nowrap'
 
   return (
-    <div className="space-y-4 -mt-6">
+    <div className="space-y-4 -mt-3 sm:-mt-4 lg:-mt-6">
       {toast && (
         <div className={clsx(
           'fixed bottom-5 right-5 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium',
@@ -190,7 +190,7 @@ export default function ProductReviewPage() {
       )}
 
       {/* ── Sticky header ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 pt-6 pb-3 bg-bg-primary/95 backdrop-blur border-b border-border">
+      <div className="sticky top-0 z-30 -mx-3 sm:-mx-4 lg:-mx-6 px-3 lg:px-6 pt-3 lg:pt-6 pb-3 bg-bg-primary/95 backdrop-blur border-b border-border">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex items-start gap-3">
             <Link href="/products" className="mt-0.5 p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover" title="Back to products">

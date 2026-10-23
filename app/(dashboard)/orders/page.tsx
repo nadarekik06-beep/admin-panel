@@ -382,7 +382,7 @@ function ContactModal({
               }}>
                 📞 Client Contact Info
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ct-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
                   { icon: User,   label: 'Name',    value: (order as OrderDetail).shipping_address?.recipient_name ?? order.user?.name ?? `User #${(order as any).user_id}` },
                   { icon: Phone,  label: 'Phone',   value: phone ?? '—' },
@@ -518,7 +518,7 @@ function ContactModal({
 
             {/* Confirm / Cancel buttons — only shown for pending orders */}
             {isPending && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ct-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <button
                   onClick={() => handleAction('cancelled')}
                   disabled={cancelling || confirming}
@@ -788,7 +788,7 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
           ADMIN EARNS {commissionPct}%
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${shippingCost > 0 ? 4 : 3}, 1fr)` }}>
+      <div className="ct-grid2-mobile" style={{ display: 'grid', gridTemplateColumns: `repeat(${shippingCost > 0 ? 4 : 3}, 1fr)` }}>
         <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Item Sales</p>
           <p style={{ fontSize: 15, fontWeight: 900, color: '#94a3b8', margin: 0 }}>{formatCurrency(effectiveGross)}</p>
@@ -957,7 +957,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
       }}>
 
         {/* Header */}
-        <div style={{
+        <div className="ct-wrap-mobile" style={{
           flexShrink: 0, padding: '18px 24px',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -980,7 +980,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
               {detail && <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: 'monospace', fontWeight: 700 }}>{detail.order_number ?? `#${detail.id}`}</p>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="ct-wrap-mobile" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {detail && (
               <ExportMenu
                 orderId={detail.id}
@@ -1026,7 +1026,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div className="ct-sheet-body" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
             <BrandLoader variant="section" label="Loading order…" minHeight={240} />
           ) : error && !detail ? (
@@ -1078,7 +1078,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
               </div>
 
               {/* Customer info grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ct-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
                   { icon: User,        label: 'Customer account', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
                   detail.is_cancelled
@@ -1657,7 +1657,7 @@ export default function OrdersPage() {
             )}
           </div>
         </div>
-        <DataTable columns={columns} data={orders?.data ?? []} loading={loading} emptyMessage="No orders found." keyField="id" />
+        <DataTable columns={columns} data={orders?.data ?? []} loading={loading} emptyMessage="No orders found." keyField="id" mobileShow="0,1,2,4,7" />
         {orders && orders.last_page > 1 && (
           <Pagination currentPage={orders.current_page} lastPage={orders.last_page} total={orders.total} from={orders.from} to={orders.to} onPageChange={setPage} />
         )}

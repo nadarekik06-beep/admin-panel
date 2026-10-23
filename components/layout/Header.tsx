@@ -15,6 +15,8 @@ import { authStorage } from '@/lib/auth';
 import { Admin } from '@/types';
 import NotificationBell from '@/components/Notificationbell';
 import { adminNotificationApi } from '@/lib/Notificationapi';
+import { Menu } from 'lucide-react';
+import { toggleAdminNav } from './navToggle';
 
 const pageTitles: Record<string, string> = {
   '/':                    'Dashboard',
@@ -51,7 +53,7 @@ export default function Header() {
 
   return (
     <header
-      className="h-16 flex items-center justify-between px-6 sticky top-0 z-30"
+      className="h-16 flex items-center justify-between gap-2 px-3 sm:px-6 sticky top-0 z-30"
       style={{
         background:   '#111318',
         borderBottom: '1px solid #1e2128',
@@ -59,7 +61,12 @@ export default function Header() {
       }}
     >
       {/* ── left: page title ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <button type="button" onClick={toggleAdminNav} aria-label="Open menu" aria-controls="admin-nav"
+          className="lg:hidden w-11 h-11 -ml-1 flex items-center justify-center rounded-xl flex-shrink-0"
+          style={{ color: '#fcfdfd', background: 'rgba(255,255,255,0.05)', border: '1px solid #1e2128' }}>
+          <Menu size={20} />
+        </button>
         <div
           className="w-1 h-7 rounded-full flex-shrink-0"
           style={{
@@ -67,8 +74,8 @@ export default function Header() {
             boxShadow:  '0 0 8px rgba(219,20,46,0.5)',
           }}
         />
-        <div>
-          <h1 className="text-base font-bold tracking-tight" style={{ color: '#fcfdfd' }}>
+        <div className="min-w-0">
+          <h1 className="text-base font-bold tracking-tight truncate" style={{ color: '#fcfdfd' }}>
             {title}
           </h1>
           {/* Only rendered after mount — never during SSR */}
@@ -81,7 +88,7 @@ export default function Header() {
       </div>
 
       {/* ── right: bell + admin info ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
 
         {/* NOTIFICATION BELL */}
         <NotificationBell

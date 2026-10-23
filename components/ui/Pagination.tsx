@@ -26,13 +26,13 @@ export default function Pagination({
   })
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-border">
       <p className="text-sm text-text-muted">
         Showing <span className="font-medium text-text-secondary">{from}–{to}</span> of{' '}
         <span className="font-medium text-text-secondary">{total}</span> results
       </p>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}

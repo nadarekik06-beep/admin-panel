@@ -819,7 +819,7 @@ export default function CategoriesPage() {
       )}
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total Categories',    value: categories.length,                                                color: 'text-accent-red'   },
           { label: 'Active Categories',   value: categories.filter(c => c.is_active).length,                     color: 'text-accent-green' },
@@ -833,7 +833,7 @@ export default function CategoriesPage() {
       </div>
 
       {/* ── Two-panel layout ── */}
-      <div className="grid grid-cols-[380px_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 items-start">
 
         {/* LEFT: Categories */}
         <div className="bg-bg-card border border-border rounded-xl overflow-hidden">

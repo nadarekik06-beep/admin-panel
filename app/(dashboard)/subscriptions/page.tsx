@@ -95,7 +95,7 @@ export default function SubscriptionsPage() {
 
       <SubscriptionKpis stats={stats} onFilter={(status) => { setTab('sellers'); setFilters((f) => ({ ...f, status, page: 1 })) }} />
 
-      <div className="flex overflow-x-auto border-b border-border">
+      <div className="flex overflow-x-auto max-md:flex-wrap border-b border-border">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={clsx('flex items-center gap-1.5 px-4 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors',

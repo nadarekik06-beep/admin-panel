@@ -146,3 +146,164 @@
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
+
+/* Content-area navigation loader: below the sidebar on desktop, full width when the menu is a drawer */
+.admin-loader-area { --ctl-area-start: 0px; }
+@media (min-width: 1024px) { .admin-loader-area { --ctl-area-start: 260px; } }
+
+@media (max-width: 768px) {
+  /* 16px inputs stop iOS Safari from zooming the page on focus */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  button { touch-action: manipulation; }
+}
+img, video, canvas { max-width: 100%; }
+
+/* The AI assistant button never covers an open modal / sheet (its own panel included) */
+body:has([data-ct-modal]) .ct-fab { display: none !important; }
+
+/* Phones: big modals become full-screen sheets (.ct-sheet on the panel inside a
+   [data-ct-modal] overlay); side-by-side fields (.ct-stack) go one per line;
+   the sticky action bar (.ct-sheet-bar) clears the iPhone home bar. */
+@media (max-width: 640px) {
+  [data-ct-modal]:has(> .ct-sheet) { padding: 0 !important; align-items: stretch !important; }
+  .ct-sheet {
+    max-width: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  .ct-sheet-head { border-radius: 0 !important; padding-top: max(14px, env(safe-area-inset-top)) !important; }
+  .ct-sheet-head button { min-width: 44px; min-height: 44px; justify-content: center; }
+  .ct-sheet-body { padding: 16px !important; }
+  .ct-sheet-bar {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    padding-top: 10px !important;
+    box-shadow: 0 -8px 18px rgba(0, 0, 0, .06);
+    z-index: 5;
+  }
+  .ct-stack { grid-template-columns: 1fr !important; }
+  .ct-stack > * { grid-column: auto !important; }
+}
+
+/* Phones: 3-4 column stat rows go to 2 columns */
+@media (max-width: 640px) { .ct-grid2-mobile { grid-template-columns: 1fr 1fr !important; } }
+
+/* Phones: chip / tab rows wrap onto several lines instead of scrolling sideways */
+@media (max-width: 767px) {
+  .ct-wrap-mobile { flex-wrap: wrap !important; overflow-x: visible !important; }
+  .ct-wrap-mobile > * { flex-shrink: 1; max-width: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Phones: wide tables → one card per row (lib/mobileTables.ts adds .ct-cards
+   and the column labels). Nothing is dropped: extra cells open with "Détails ▾".
+   screen only, so printed invoices keep their table.
+   ───────────────────────────────────────────────────────────── */
+@media screen and (max-width: 767px) {
+  table.ct-cards { --ct-card-ink: #0f172a; --ct-card-line: rgba(15, 23, 42, .12); }
+  table.ct-cards[data-ct-dark="1"] { --ct-card-ink: #f1f5f9; --ct-card-line: rgba(255, 255, 255, .12); }
+  table.ct-cards {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+  }
+  table.ct-cards > thead > tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 0 6px;
+    background: transparent !important;
+    border: 0 !important;
+  }
+  /* column titles move into each cell; keep only header cells with controls (select all, sort) */
+  table.ct-cards > thead > tr > th { display: none; }
+  table.ct-cards > thead > tr > th:has(input, button, select) {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px !important;
+    width: auto !important;
+  }
+  table.ct-cards > tbody { display: block; width: 100%; }
+  table.ct-cards > tbody > tr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 6px 0;
+    border: 1px solid var(--ct-card-line) !important;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  table.ct-cards > tbody > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 7px 14px !important;
+    border: 0 !important;
+    text-align: end !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    min-height: 36px;
+  }
+  table.ct-cards > tbody > tr > td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 45%;
+    text-align: start;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: none;
+    color: var(--ct-card-ink);
+    opacity: .55;
+  }
+  table.ct-cards > tbody > tr > td[data-label=""]::before,
+  table.ct-cards > tbody > tr > td:not([data-label])::before { display: none; }
+  table.ct-cards > tbody > tr > td[data-label=""] { justify-content: flex-end; }
+  table.ct-cards > tbody > tr > td > * { min-width: 0; }
+  /* long names wrap instead of being cut with … */
+  table.ct-cards > tbody > tr > td :is(p, span, div, a) { white-space: normal !important; text-overflow: clip !important; max-width: 100% !important; }
+  /* first cell = card title, full width */
+  table.ct-cards > tbody > tr > td:first-child:not([data-ct-extra]) {
+    justify-content: flex-start;
+    text-align: start !important;
+    font-size: 14px;
+  }
+  table.ct-cards > tbody > tr > td:first-child:not([data-ct-extra])::before { display: none; }
+  table.ct-cards > tbody > tr > td:first-child:has(> input[type="checkbox"]:only-child) { justify-content: flex-start; }
+  table.ct-cards > tbody > tr > td[data-ct-extra] { display: none; }
+  table.ct-cards > tbody > tr[data-ct-open] > td[data-ct-extra] { display: flex; }
+  table.ct-cards > tbody > tr[data-ct-full] > td { display: block; text-align: center !important; }
+  table.ct-cards > tbody > tr[data-ct-full] > td::before { display: none; }
+  table.ct-cards > tbody > tr > td.ct-more {
+    order: 999;
+    justify-content: center;
+    padding: 4px 10px 2px !important;
+  }
+  table.ct-cards > tbody > tr > td.ct-more::before { display: none; }
+  .ct-more-btn {
+    width: 100%;
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px dashed var(--ct-card-line);
+    background: transparent;
+    color: var(--ct-card-ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+}
+

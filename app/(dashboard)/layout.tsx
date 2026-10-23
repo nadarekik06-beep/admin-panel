@@ -1,6 +1,7 @@
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/ClientSidebar'
 import { NavigationLoaderHost } from '@/components/brand/NavigationLoader'
+import MobileTables from '@/components/mobile/MobileTables'
 
 export default function DashboardLayout({
   children,
@@ -10,16 +11,17 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-bg-primary overflow-hidden">
       <Sidebar />
+      <MobileTables />
 
-      <div className="flex-1 flex flex-col ml-[260px] transition-all duration-300 min-w-0">
+      <div className="flex-1 flex flex-col lg:ml-[260px] transition-all duration-300 min-w-0">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
           <div className="animate-fade-in">
             {children}
           </div>
         </main>
         {/* navigation loader over the content area: sidebar and header stay visible */}
-        <div style={{ '--ctl-area-start': '260px', '--ctl-area-top': '64px' } as React.CSSProperties}>
+        <div className="admin-loader-area" style={{ '--ctl-area-top': '64px' } as React.CSSProperties}>
           <NavigationLoaderHost area />
         </div>
       </div>

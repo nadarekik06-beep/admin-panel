@@ -341,8 +341,8 @@ export default function ProductEditorPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="sticky -top-6 z-20 -mx-6 px-6 bg-bg-primary/95 backdrop-blur border-b border-border mb-5">
-        <nav className="flex gap-1 overflow-x-auto" role="tablist">
+      <div className="sticky -top-3 sm:-top-4 lg:-top-6 z-20 -mx-3 sm:-mx-4 lg:-mx-6 px-3 lg:px-6 bg-bg-primary/95 backdrop-blur border-b border-border mb-5">
+        <nav className="flex gap-1 overflow-x-auto max-md:flex-wrap" role="tablist">
           {TABS.map((t) => {
             const n = errorCount(t.id)
             const Icon = t.icon
@@ -596,7 +596,7 @@ export default function ProductEditorPage() {
       {tab === 'history' && <HistoryPanel history={payload.history} moderation={payload.moderation} />}
 
       {/* ── Sticky action bar ── */}
-      <div className="sticky -bottom-6 z-30 -mx-6 mt-8 -mb-6 border-t border-border bg-bg-secondary/95 backdrop-blur shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
+      <div className="sticky -bottom-3 sm:-bottom-4 lg:-bottom-6 z-30 -mx-3 sm:-mx-4 lg:-mx-6 mt-8 -mb-3 sm:-mb-4 lg:-mb-6 border-t border-border bg-bg-secondary/95 backdrop-blur shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
         {progress !== null && (
           <div className="h-1 bg-border">
             <div className="h-full bg-[#198f41] transition-all" style={{ width: `${progress}%` }} />

@@ -501,6 +501,7 @@ export default function ProductsPage() {
 
         <DataTable
           columns={columns}
+          mobileShow="0,1,2,4"
           data={products?.data ?? []}
           loading={loading}
           emptyMessage={

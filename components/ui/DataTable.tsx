@@ -14,6 +14,8 @@ interface DataTableProps<T> {
   loading?: boolean
   emptyMessage?: string
   keyField?: keyof T
+  /** Phones: column indexes kept visible on each card (others open with "Details"). */
+  mobileShow?: string
 }
 
 function TableSkeleton({ cols }: { cols: number }) {
@@ -38,10 +40,11 @@ export default function DataTable<T extends { id?: number | string }>({
   loading = false,
   emptyMessage = 'No data found.',
   keyField,
+  mobileShow,
 }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm" data-ct-show={mobileShow}>
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
