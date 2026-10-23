@@ -1,7 +1,8 @@
 'use client'
 
 /**
- * Seller page: identity + the full "Adresse de pickup" card (Intigo form
+ * Seller page: identity, "Profil de la boutique" (logo / description /
+ * activity categories, history, restore) and the full "Adresse de pickup" card (Intigo form
  * order, copy buttons, map, verify / create in Intigo, change history).
  * Linked from the sellers list, the seller modal and the admin notification
  * "Adresse de pickup modifiée : mettre à jour dans Intigo".
@@ -14,6 +15,7 @@ import { ArrowLeft, Mail, Phone, Store } from 'lucide-react'
 import { format } from 'date-fns'
 import Badge from '@/components/ui/Badge'
 import PickupAddressCard from '@/components/pickup/PickupAddressCard'
+import StoreProfileAdminCard from '@/components/seller/StoreProfileAdminCard'
 import { sellersApi } from '@/lib/api/sellers'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -83,6 +85,8 @@ export default function SellerPage() {
           {status && <Badge variant={status}>{status}</Badge>}
         </div>
       )}
+
+      {seller && <StoreProfileAdminCard key={seller.id} sellerId={seller.id} />}
 
       {(seller || error) && Number.isFinite(sellerId) && <PickupAddressCard sellerId={sellerId} />}
     </div>
