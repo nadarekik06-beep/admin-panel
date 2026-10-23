@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Search, CheckCircle, XCircle, PauseCircle, Eye, Pencil, X, Save, MapPinned } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
@@ -71,6 +72,77 @@ function InfoCard({ label, value }: { label: string; value?: string | number | n
   )
 }
 
+// ─── Shell of the seller details modal ───────────────────────────────────────
+// Fixed header and footer, scrolling body, never taller than the viewport.
+// Rendered in document.body so the page's fade-in transform and the layout's
+// overflow-hidden containers can't clip or reposition it.
+function SellerDetailsShell({ open, onClose, label, header, footer, children }: {
+  open: boolean
+  onClose: () => void
+  label: string
+  header: React.ReactNode
+  footer?: React.ReactNode
+  children: React.ReactNode
+}) {
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handle = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', handle)
+    return () => document.removeEventListener('keydown', handle)
+  }, [open, onClose])
+
+  // Lock page scroll while open, restore on close
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [open])
+
+  if (!open || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain px-3 sm:px-4 py-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+    >
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Panel — dvh where supported so mobile browser bars don't hide the footer */}
+      <div
+        className="relative w-full max-w-2xl max-h-[calc(100vh-4rem)] flex flex-col overflow-hidden bg-bg-card border border-border rounded-xl shadow-card animate-fade-in"
+        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
+      >
+        <div className="shrink-0 flex items-center gap-3 p-4 sm:p-5 border-b border-border">
+          <div className="flex-1 min-w-0">{header}</div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          {children}
+        </div>
+
+        {footer && (
+          <div className="shrink-0 flex flex-wrap gap-3 justify-end p-4 sm:px-5 border-t border-border">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function SellersPage() {
   const [sellers, setSellers]             = useState<PaginatedResponse<Seller> | null>(null)
   const [loading, setLoading]             = useState(true)
@@ -123,6 +195,8 @@ export default function SellersPage() {
     } catch { setToast({ message: 'Failed to load seller details.', type: 'error' }) }
     finally { setViewLoading(false) }
   }
+
+  const closeView = useCallback(() => { setViewSeller(null); setEditMode(false) }, [])
 
   // Deep link: /sellers?view={id} opens that seller's details (used by the product review page)
   useEffect(() => {
@@ -296,28 +370,20 @@ export default function SellersPage() {
       {/* ══════════════════════════════════════════════════════════════════
           VIEW / EDIT MODAL
       ══════════════════════════════════════════════════════════════════ */}
-      <Modal
+      <SellerDetailsShell
         open={!!viewSeller || viewLoading}
-        onClose={() => { setViewSeller(null); setEditMode(false) }}
-        title={editMode ? 'Edit Seller' : 'Seller Details'}
-        size="lg"
-      >
-        {/* Loading state */}
-        {viewLoading && !viewSeller && (
-          <BrandLoader variant="section" minHeight={200} />
-        )}
-
-        {viewSeller && !editMode && (
-          <div className="space-y-5">
-
-            {/* ── Header: avatar + name + status ── */}
-            <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#0d0f14', border: '1px solid #1e2128' }}>
+        onClose={closeView}
+        label={editMode ? 'Edit Seller' : 'Seller Details'}
+        header={
+          viewSeller && !editMode ? (
+            /* ── Header: avatar + name + status ── */
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               {viewSeller.profile_picture ? (
                 <img src={viewSeller.profile_picture} alt={viewSeller.full_name ?? viewSeller.name}
-                  className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover flex-shrink-0"
                   style={{ border: '2px solid #db142e' }} />
               ) : (
-                <div className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xl text-white"
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xl text-white"
                   style={{ background: 'linear-gradient(135deg, #db142e 0%, #9b0d1f 100%)', boxShadow: '0 0 12px rgba(219,20,46,0.4)' }}>
                   {(viewSeller.full_name ?? viewSeller.name).charAt(0).toUpperCase()}
                 </div>
@@ -333,12 +399,51 @@ export default function SellersPage() {
                   </span>
                 )}
               </div>
-              <Badge variant={getSellerStatus(viewSeller)}>{getSellerStatus(viewSeller)}</Badge>
+              <div className="flex-shrink-0">
+                <Badge variant={getSellerStatus(viewSeller)}>{getSellerStatus(viewSeller)}</Badge>
+              </div>
             </div>
+          ) : (
+            <h2 className="text-base font-semibold text-text-primary">{editMode ? 'Edit Seller' : 'Seller Details'}</h2>
+          )
+        }
+        footer={
+          viewSeller && !editMode ? (
+            <>
+              <button onClick={closeView}
+                className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm">
+                Close
+              </button>
+              <button onClick={() => setEditMode(true)}
+                className="px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-colors"
+                style={{ background: 'linear-gradient(135deg, #db142e 0%, #9b0d1f 100%)', boxShadow: '0 4px 12px rgba(219,20,46,0.3)' }}>
+                <Pencil size={14} /> Edit Seller
+              </button>
+            </>
+          ) : viewSeller && editMode ? (
+            <>
+              <button onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm">Cancel</button>
+              <button onClick={handleSave} disabled={saveLoading}
+                className="px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-60"
+                style={{ background: '#198f41' }}>
+                {saveLoading ? <BrandLoader variant="inline" size={14} /> : <Save size={14} />}
+                {saveLoading ? 'Saving…' : 'Save Changes'}
+              </button>
+            </>
+          ) : null
+        }
+      >
+        {/* Loading state */}
+        {viewLoading && !viewSeller && (
+          <BrandLoader variant="section" minHeight={200} />
+        )}
+
+        {viewSeller && !editMode && (
+          <div className="space-y-5">
 
             {/* ── Info grid ── */}
-            <div className="grid grid-cols-2 gap-3">
-              <Link href={`/sellers/${viewSeller.id}`} className="col-span-2 flex items-center gap-3 p-3 rounded-lg border hover:border-accent-purple transition-colors" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link href={`/sellers/${viewSeller.id}`} className="sm:col-span-2 flex flex-wrap items-center gap-3 p-3 rounded-lg border hover:border-accent-purple transition-colors" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
                 <MapPinned size={18} className="text-accent-purple-light shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#6b7280' }}>Adresse de pickup (Intigo)</p>
@@ -375,7 +480,7 @@ export default function SellersPage() {
               } />
 
               {/* ── NEW: Categories (multi) — spans full row ── */}
-              <div className="col-span-2 p-3 rounded-lg border" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
+              <div className="sm:col-span-2 p-3 rounded-lg border" style={{ background: '#0d0f14', borderColor: '#1e2128' }}>
                 <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#6b7280' }}>Categories</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {(
@@ -454,79 +559,55 @@ export default function SellersPage() {
                 )}
               </div>
             )}
-
-            {/* ── Actions ── */}
-            <div className="flex gap-3 justify-end pt-1">
-              <button onClick={() => { setViewSeller(null); setEditMode(false) }}
-                className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm">
-                Close
-              </button>
-              <button onClick={() => setEditMode(true)}
-                className="px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-colors"
-                style={{ background: 'linear-gradient(135deg, #db142e 0%, #9b0d1f 100%)', boxShadow: '0 4px 12px rgba(219,20,46,0.3)' }}>
-                <Pencil size={14} /> Edit Seller
-              </button>
-            </div>
           </div>
         )}
 
         {/* ── EDIT MODE ── */}
         {viewSeller && editMode && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Name *</label>
-                <input value={editForm.name ?? ''} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors ${formErrors.name ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
-                  placeholder="Full name" />
-                {formErrors.name && <p className="text-xs text-accent-red mt-1">{formErrors.name}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Email *</label>
-                <input type="email" value={editForm.email ?? ''} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors ${formErrors.email ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
-                  placeholder="email@example.com" />
-                {formErrors.email && <p className="text-xs text-accent-red mt-1">{formErrors.email}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Phone</label>
-                <input value={editForm.phone ?? ''} onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
-                  placeholder="+216 XX XXX XXX" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Store Name</label>
-                <input value={editForm.store_name ?? ''} onChange={(e) => setEditForm(f => ({ ...f, store_name: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
-                  placeholder="Store name" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-text-muted mb-1">Address</label>
-                <input value={editForm.address ?? ''} onChange={(e) => setEditForm(f => ({ ...f, address: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
-                  placeholder="Full address" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-text-muted mb-1">Account Status</label>
-                <select value={editForm.is_active ? 'active' : 'suspended'} onChange={(e) => setEditForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1">Name *</label>
+              <input value={editForm.name ?? ''} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors ${formErrors.name ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
+                placeholder="Full name" />
+              {formErrors.name && <p className="text-xs text-accent-red mt-1">{formErrors.name}</p>}
             </div>
-            <div className="flex gap-3 justify-end pt-1">
-              <button onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-hover transition-colors text-sm">Cancel</button>
-              <button onClick={handleSave} disabled={saveLoading}
-                className="px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-60"
-                style={{ background: '#198f41' }}>
-                {saveLoading ? <BrandLoader variant="inline" size={14} /> : <Save size={14} />}
-                {saveLoading ? 'Saving…' : 'Save Changes'}
-              </button>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1">Email *</label>
+              <input type="email" value={editForm.email ?? ''} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                className={`w-full bg-bg-primary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none transition-colors ${formErrors.email ? 'border-accent-red' : 'border-border focus:border-accent-purple'}`}
+                placeholder="email@example.com" />
+              {formErrors.email && <p className="text-xs text-accent-red mt-1">{formErrors.email}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1">Phone</label>
+              <input value={editForm.phone ?? ''} onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
+                placeholder="+216 XX XXX XXX" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1">Store Name</label>
+              <input value={editForm.store_name ?? ''} onChange={(e) => setEditForm(f => ({ ...f, store_name: e.target.value }))}
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
+                placeholder="Store name" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-text-muted mb-1">Address</label>
+              <input value={editForm.address ?? ''} onChange={(e) => setEditForm(f => ({ ...f, address: e.target.value }))}
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors"
+                placeholder="Full address" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-text-muted mb-1">Account Status</label>
+              <select value={editForm.is_active ? 'active' : 'suspended'} onChange={(e) => setEditForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
             </div>
           </div>
         )}
-      </Modal>
+      </SellerDetailsShell>
 
       {/* ── Confirm action modal ── */}
       <Modal
