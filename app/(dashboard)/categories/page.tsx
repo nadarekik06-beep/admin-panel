@@ -95,6 +95,7 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
     name: initial?.name ?? '', name_fr: initial?.name_fr ?? '', name_ar: initial?.name_ar ?? '',
     description: initial?.description ?? '', icon: initial?.icon ?? '',
     is_active: initial?.is_active ?? true, order: initial?.order ?? 0,
+    is_gendered: initial?.is_gendered ?? false,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -132,6 +133,17 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
               </button>
             ))}
           </div>
+        </Field>
+        <Field label="Women / Men menu">
+          <div className="flex gap-2">
+            {([true, false] as const).map(v => (
+              <button key={String(v)} type="button" onClick={() => set('is_gendered', v)}
+                className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${form.is_gendered === v ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-border text-text-muted hover:bg-bg-hover'}`}>
+                {v ? 'Gendered (Femme | Homme)' : 'Not gendered'}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted mt-1.5">Columns, genders and images are managed in Gender menu.</p>
         </Field>
         <div className="flex gap-3 mt-2">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors">Cancel</button>

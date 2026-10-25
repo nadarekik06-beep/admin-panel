@@ -15,6 +15,8 @@ export interface Category {
   icon: string | null
   image: string | null
   is_active: boolean
+  /** Femme / Homme switch in the storefront mega-menu (Mode & Vêtements) */
+  is_gendered?: boolean
   order: number
   products_count?: number
   subcategories_count?: number
@@ -76,6 +78,7 @@ export interface CategoryPayload {
   icon?: string
   image?: string
   is_active?: boolean
+  is_gendered?: boolean
   order?: number
 }
 
