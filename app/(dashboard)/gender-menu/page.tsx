@@ -58,9 +58,10 @@ export default function GenderMenuPage() {
           <Shirt size={16} className="text-accent-red" />
           <div>
             <p className="text-sm font-bold text-text-primary">Mega-menu</p>
-            <p className="text-[11px] text-text-muted">Storefront mega-menu columns of each category (Femme / Homme on gendered ones). Subcategories without products are hidden on the storefront.</p>
+            <p className="text-[11px] text-text-muted">Storefront mega-menu columns of each category (Femme / Homme on gendered ones).</p>
           </div>
         </div>
+        <HideEmptyToggle />
         {cats.length > 0 && (
           <select value={catId ?? ''} onChange={e => { setCatId(Number(e.target.value)); setTab('menu') }}
             className="bg-bg-card border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:outline-none focus:border-accent-red">
@@ -418,6 +419,38 @@ function ProductGenders({ categoryId }: { categoryId: number }) {
 }
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
+
+/** Admin setting: hide subcategories / categories without products in the storefront mega-menu. */
+function HideEmptyToggle() {
+  const [on, setOn] = useState<boolean | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    adminGenderMenuApi.getSettings().then(r => setOn(!!r.data.data.hide_empty)).catch(() => setOn(null))
+  }, [])
+
+  const toggle = async () => {
+    if (on === null) return
+    setSaving(true); setError('')
+    try { const r = await adminGenderMenuApi.updateSettings(!on); setOn(!!r.data.data.hide_empty) }
+    catch (e) { setError(errMsg(e)) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="flex items-center gap-2 bg-bg-card border border-border rounded-xl px-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-text-primary">Masquer les sous-catégories vides dans le mega-menu</p>
+        <p className="text-[10px] text-text-muted">{error || (on ? 'Only subcategories / categories with products are shown' : 'Every active category and subcategory is shown')}</p>
+      </div>
+      <button type="button" role="switch" aria-checked={!!on} disabled={on === null || saving} onClick={toggle}
+        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${on ? 'bg-accent-red' : 'bg-border'}`}>
+        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+      </button>
+    </div>
+  )
+}
 
 function IconBtn({ children, title, disabled, danger, onClick }: { children: React.ReactNode; title: string; disabled?: boolean; danger?: boolean; onClick: () => void }) {
   return (

@@ -65,6 +65,13 @@ export interface ProductGenderRow {
 export interface Paged<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 export const adminGenderMenuApi = {
+  /** "Masquer les sous-catégories vides dans le mega-menu" (off by default) */
+  getSettings: () =>
+    api.get<{ success: boolean; data: { hide_empty: boolean } }>('/admin/gender-menu/settings'),
+
+  updateSettings: (hideEmpty: boolean) =>
+    api.put<{ success: boolean; data: { hide_empty: boolean } }>('/admin/gender-menu/settings', { hide_empty: hideEmpty }),
+
   get: (categoryId: number) =>
     api.get<{ success: boolean; data: GenderMenuData }>(`/admin/gender-menu/${categoryId}`),
 
