@@ -3,7 +3,8 @@
 
 import api from '@/lib/axios'
 
-export type MenuGender = 'women' | 'men'
+/** Femme / Homme columns of a gendered category, 'all' columns of the others */
+export type MenuGender = 'women' | 'men' | 'all'
 export type ProductGender = 'women' | 'men' | 'unisex' | 'kids'
 export type GenderSource = 'seller' | 'inherited' | 'admin'
 

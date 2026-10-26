@@ -3,7 +3,7 @@
 /**
  * app/(dashboard)/gender-menu/page.tsx
  *
- * Gender menu of gendered categories (Mode & Vêtements → Femme / Homme):
+ * Mega-menu of every category; gendered ones (Mode & Vêtements) have Femme / Homme columns:
  *   - Menu tab: columns per gender (names FR/EN/AR, order), subcategories in each column (order),
  *     Women / Men checkboxes per subcategory (both = unisex), round image per subcategory × gender
  *   - Products tab: products per gender, with a manual fix when the automatic gender is wrong
@@ -23,7 +23,7 @@ import {
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
 
-const G_LABEL: Record<MenuGender, string> = { women: 'Women (Femme)', men: 'Men (Homme)' }
+const G_LABEL: Record<MenuGender, string> = { women: 'Women (Femme)', men: 'Men (Homme)', all: 'Columns' }
 const P_LABEL: Record<ProductGender | 'none', string> = { women: 'Women', men: 'Men', unisex: 'Unisex', kids: 'Kids', none: 'No gender' }
 const SRC_LABEL: Record<string, string> = { seller: 'Seller', inherited: 'From subcategory', admin: 'Admin fix' }
 
@@ -42,14 +42,14 @@ export default function GenderMenuPage() {
       .then(r => {
         const all = r.data.data ?? []
         setCats(all)
-        const first = all.find(c => c.is_gendered)
+        const first = all.find(c => c.is_gendered) ?? all[0]
         if (first) setCatId(first.id)
       })
       .catch(() => setCats([]))
       .finally(() => setLoadingCats(false))
   }, [])
 
-  const gendered = cats.filter(c => c.is_gendered)
+  const current = cats.find(c => c.id === catId)
 
   return (
     <div className="space-y-4">
@@ -57,33 +57,31 @@ export default function GenderMenuPage() {
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           <Shirt size={16} className="text-accent-red" />
           <div>
-            <p className="text-sm font-bold text-text-primary">Gender menu</p>
-            <p className="text-[11px] text-text-muted">Femme / Homme columns of the storefront mega-menu and subcategory bar</p>
+            <p className="text-sm font-bold text-text-primary">Mega-menu</p>
+            <p className="text-[11px] text-text-muted">Storefront mega-menu columns of each category (Femme / Homme on gendered ones). Subcategories without products are hidden on the storefront.</p>
           </div>
         </div>
-        {gendered.length > 0 && (
-          <select value={catId ?? ''} onChange={e => setCatId(Number(e.target.value))}
+        {cats.length > 0 && (
+          <select value={catId ?? ''} onChange={e => { setCatId(Number(e.target.value)); setTab('menu') }}
             className="bg-bg-card border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:outline-none focus:border-accent-red">
-            {gendered.map(c => <option key={c.id} value={c.id}>{c.name_fr || c.name}</option>)}
+            {cats.map(c => <option key={c.id} value={c.id}>{c.name_fr || c.name}{c.is_gendered ? ' (Femme | Homme)' : ''}</option>)}
           </select>
         )}
       </div>
 
-      {loadingCats ? <BrandLoader variant="section" size="sm" minHeight={160} /> : gendered.length === 0 ? (
-        <div className="bg-bg-card border border-border rounded-xl p-6 text-sm text-text-muted">
-          No gendered category yet. Open <b>Categories</b>, edit a category and choose <b>Gendered (Femme | Homme)</b>.
-        </div>
+      {loadingCats ? <BrandLoader variant="section" size="sm" minHeight={160} /> : cats.length === 0 ? (
+        <div className="bg-bg-card border border-border rounded-xl p-6 text-sm text-text-muted">No category yet.</div>
       ) : catId && (
         <>
-          <div className="flex gap-1 bg-bg-card border border-border rounded-xl p-1 w-fit">
+          {current?.is_gendered && <div className="flex gap-1 bg-bg-card border border-border rounded-xl p-1 w-fit">
             {(['menu', 'products'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === t ? 'bg-accent-red text-white' : 'text-text-muted hover:text-text-primary'}`}>
                 {t === 'menu' ? 'Menu & images' : 'Product genders'}
               </button>
             ))}
-          </div>
-          {tab === 'menu' ? <MenuEditor key={catId} categoryId={catId} /> : <ProductGenders key={catId} categoryId={catId} />}
+          </div>}
+          {tab === 'menu' || !current?.is_gendered ? <MenuEditor key={catId} categoryId={catId} /> : <ProductGenders key={catId} categoryId={catId} />}
         </>
       )}
     </div>
@@ -111,11 +109,14 @@ function MenuEditor({ categoryId }: { categoryId: number }) {
 
   if (!data) return error ? <ErrorBox msg={error} onClose={() => setError('')} /> : <BrandLoader variant="section" size="sm" minHeight={160} />
 
-  const groups = data.groups[gender] ?? []
+  // Non-gendered categories have one set of columns ('all')
+  const gendered = data.category.is_gendered
+  const mg: MenuGender = gendered ? (gender === 'all' ? 'women' : gender) : 'all'
+  const groups = data.groups[mg] ?? []
   const subsById = new Map(data.subcategories.map(s => [s.id, s]))
 
   const order = (next: GenderMenuGroup[]) =>
-    run(() => adminGenderMenuApi.reorder(categoryId, gender, next.map(g => ({ id: g.id, items: g.items.map(i => i.id) }))))
+    run(() => adminGenderMenuApi.reorder(categoryId, mg, next.map(g => ({ id: g.id, items: g.items.map(i => i.id) }))))
   const moveGroup = (idx: number, dir: -1 | 1) => {
     const next = [...groups]; const j = idx + dir
     if (j < 0 || j >= next.length) return
@@ -135,26 +136,27 @@ function MenuEditor({ categoryId }: { categoryId: number }) {
       {error && <ErrorBox msg={error} onClose={() => setError('')} />}
 
       <div className="flex flex-wrap items-center gap-2">
-        {(['women', 'men'] as const).map(g => (
+        {gendered && (['women', 'men'] as const).map(g => (
           <button key={g} onClick={() => setGender(g)}
             className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all ${gender === g ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-border text-text-muted hover:bg-bg-hover'}`}>
             {G_LABEL[g]} · {data.groups[g]?.length ?? 0} columns
           </button>
         ))}
+        {!gendered && <p className="text-xs text-text-muted">{groups.length} columns</p>}
         {busy && <BrandLoader variant="inline" size={14} />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {groups.map((g, gi) => (
-          <GroupCard key={g.id} group={g} gender={gender} first={gi === 0} last={gi === groups.length - 1}
+          <GroupCard key={g.id} group={g} gender={mg} first={gi === 0} last={gi === groups.length - 1}
             subsById={subsById} allSubs={data.subcategories} busy={busy}
             onMove={d => moveGroup(gi, d)} onMoveItem={(ii, d) => moveItem(gi, ii, d)}
             run={run} />
         ))}
-        <NewGroupCard gender={gender} busy={busy} onCreate={p => run(() => adminGenderMenuApi.createGroup(categoryId, { gender, ...p }))} />
+        <NewGroupCard gender={mg} busy={busy} onCreate={p => run(() => adminGenderMenuApi.createGroup(categoryId, { gender: mg, ...p }))} />
       </div>
 
-      <SubcategoryGenders data={data} categoryId={categoryId} busy={busy} run={run} />
+      {gendered && <SubcategoryGenders data={data} categoryId={categoryId} busy={busy} run={run} />}
     </div>
   )
 }
@@ -177,7 +179,7 @@ function GroupCard({ group, gender, first, last, subsById, allSubs, busy, onMove
         <IconBtn title="Move column up" disabled={busy || first} onClick={() => onMove(-1)}><ArrowUp size={13} /></IconBtn>
         <IconBtn title="Move column down" disabled={busy || last} onClick={() => onMove(1)}><ArrowDown size={13} /></IconBtn>
         <IconBtn title="Delete column" disabled={busy} danger onClick={() => {
-          if (confirm(`Delete the column "${group.name_fr || group.name}"? Its subcategories leave the ${gender === 'women' ? 'Femme' : 'Homme'} menu.`))
+          if (confirm(`Delete the column "${group.name_fr || group.name}"? Its subcategories leave this menu (they are not deleted).`))
             run(() => adminGenderMenuApi.deleteGroup(group.id))
         }}><Trash2 size={13} /></IconBtn>
       </div>
@@ -199,7 +201,7 @@ function GroupCard({ group, gender, first, last, subsById, allSubs, busy, onMove
           const s = subsById.get(it.subcategory_id)
           return (
             <li key={it.id} className="flex items-center gap-2">
-              <ImageSlot sub={s} subId={it.subcategory_id} gender={gender} busy={busy} run={run} />
+              {gender !== 'all' && <ImageSlot sub={s} subId={it.subcategory_id} gender={gender} busy={busy} run={run} />}
               <div className="flex-1 min-w-0">
                 <p className={`text-xs font-semibold truncate ${s?.is_active === false ? 'text-text-muted line-through' : 'text-text-primary'}`}>{s?.name_fr || s?.name || it.subcategory?.name}</p>
                 <p className="text-[10px] text-text-muted truncate">{s?.category_name} · {countFor(s, gender)} products</p>
@@ -227,6 +229,7 @@ function GroupCard({ group, gender, first, last, subsById, allSubs, busy, onMove
 
 function countFor(s: GenderMenuSubcategory | undefined, gender: MenuGender): number {
   if (!s) return 0
+  if (gender === 'all') return Object.values(s.counts).reduce((a, b) => a + (b ?? 0), 0)
   return (s.counts[gender] ?? 0) + (s.counts.unisex ?? 0)
 }
 

@@ -70,7 +70,7 @@ const navItems = [
   { href: '/vip-requests',  label: 'VIP Requests', icon: Crown         }, 
   { href: '/sponsoring',    label: 'Sponsoring',   icon: Megaphone     },
   { href: '/categories', label: 'Categories', icon: Tag },
-  { href: '/gender-menu', label: 'Gender menu', icon: Shirt },
+  { href: '/gender-menu', label: 'Mega-menu', icon: Shirt },
   { href: '/search',     label: 'Missed searches', icon: SearchX },
   { href: '/calendar',   label: 'Tunisian calendar', icon: CalendarDays },
   { href: '/statistics',          label: 'Statistics',   icon: BarChart3       },
