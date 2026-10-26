@@ -21,9 +21,11 @@ interface Props {
   errors: Errors
   limits: { set_max: number; max_colors_per_group: number; max_file_kb: number }
   notify: (msg: string) => void
+  /** Seller's Multicolore description, shown next to that color (read-only) */
+  multicolorLabel?: string | null
 }
 
-export default function VariantsEditor({ state, setState, axes, axesLoading, hasSubcategory, errors, limits, notify }: Props) {
+export default function VariantsEditor({ state, setState, axes, axesLoading, hasSubcategory, errors, limits, notify, multicolorLabel }: Props) {
   const colorAxis    = useMemo(() => axes.find(isColorAxis) ?? null, [axes])
   const otherAxes    = useMemo(() => axes.filter((a) => !isColorAxis(a)), [axes])
   const rows         = state.variants
@@ -57,7 +59,11 @@ export default function VariantsEditor({ state, setState, axes, axesLoading, has
     return { ...s, colorImages: { ...s.colorImages, [from]: [], [to]: target.slice(0, limits.set_max) } }
   })
 
-  const colorName = (key: string) => key.split('|').map((id) => colorAxis?.options.find((o) => o.id === Number(id))?.value ?? `#${id}`).join(' + ')
+  const colorName = (key: string) => key.split('|').map((id) => {
+    const o = colorAxis?.options.find((x) => x.id === Number(id))
+    if (o?.is_multicolor && multicolorLabel) return `${o.value} · ${multicolorLabel}`
+    return o?.value ?? `#${id}`
+  }).join(' + ')
 
   if (!hasSubcategory) {
     return <EmptyNote>Choose a subcategory in <b>General</b> to manage variants — variant attributes (color, size…) come from the subcategory.</EmptyNote>

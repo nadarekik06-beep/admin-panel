@@ -210,9 +210,18 @@ export function isEmptyValue(v: unknown) {
 
 // ── Validation (mirrors AdminProductEditor::validate) ───────────────────────
 
+/** "3-18": a variant's option ids, sorted */
+export function comboKey(ids: number[]): string {
+  return [...ids].sort((a, b) => a - b).join('-')
+}
+
 export function validate(
   s: EditorState,
-  ctx: { variantAxes: Attribute[]; infoAxes: Attribute[]; approve: boolean; galleryMax: number; setMax: number; maxColors: number; occasionsApply: boolean },
+  ctx: {
+    variantAxes: Attribute[]; infoAxes: Attribute[]; approve: boolean; galleryMax: number; setMax: number; maxColors: number; occasionsApply: boolean
+    /** Sorted option-id keys ("3-18") of the variants already saved: legacy ones keep missing axes */
+    existingSets?: Set<string>
+  },
 ): Errors {
   const e: Errors = {}
   const colorAxis = ctx.variantAxes.find(isColorAxis) ?? null
@@ -243,9 +252,10 @@ export function validate(
   const seen = new Map<string, number>()
   s.variants.forEach((v, i) => {
     const missing: string[] = []
+    const isExisting = !!ctx.existingSets?.has(comboKey(v.option_ids))
     for (const axis of ctx.variantAxes) {
       const picked = axis.options.filter((o) => v.option_ids.includes(o.id)).length
-      if (picked === 0) missing.push(axis.name)
+      if (picked === 0 && !isExisting) missing.push(axis.name)
       else if (isColorAxis(axis) && picked > ctx.maxColors) e[`variants.${i}.option_ids`] = `At most ${ctx.maxColors} colors per variant.`
     }
     if (missing.length) e[`variants.${i}.option_ids`] = `Choose ${missing.join(' and ')}.`

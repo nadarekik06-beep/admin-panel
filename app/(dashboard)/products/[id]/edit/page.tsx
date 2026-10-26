@@ -22,7 +22,7 @@ import HistoryPanel from './_components/HistoryPanel'
 import { Card, Field, Toasts, Toggle, inputCls, type ToastMsg } from './_components/ui'
 import {
   type EditorState, type Errors, type ImgItem, type TabId,
-  activeColorGroups, fingerprint, fromPayload, isColorAxis, mapServerErrors, tabOf, toDocument, validate,
+  activeColorGroups, comboKey, fingerprint, fromPayload, isColorAxis, mapServerErrors, tabOf, toDocument, validate,
 } from './_components/editorModel'
 
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -147,11 +147,17 @@ export default function ProductEditorPage() {
   const categorySlug   = categories.find((c) => String(c.id) === categoryId)?.slug
   const occasionsApply = !!categorySlug && !!payload?.occasions.category_slugs.includes(categorySlug)
 
+  // Variants as saved: legacy option sets (e.g. without a size) stay valid as they are
+  const existingSets = useMemo(
+    () => new Set((payload?.variants ?? []).map((v) => comboKey(v.option_ids.map(Number)))),
+    [payload],
+  )
+
   const validationCtx = useCallback((approve: boolean) => ({
     variantAxes, infoAxes, approve,
     galleryMax: limits.gallery_max, setMax: limits.set_max, maxColors: limits.max_colors_per_group,
-    occasionsApply,
-  }), [variantAxes, infoAxes, limits, occasionsApply])
+    occasionsApply, existingSets,
+  }), [variantAxes, infoAxes, limits, occasionsApply, existingSets])
 
   const clientErrors = useMemo(
     () => (state && showErrors ? validate(state, validationCtx(false)) : {}),
@@ -567,6 +573,7 @@ export default function ProductEditorPage() {
           state={state} setState={setState} axes={variantAxes} axesLoading={axesLoading}
           hasSubcategory={!!state.subcategory_id} errors={errors} limits={limits}
           notify={(m) => toast(m, 'error')}
+          multicolorLabel={p.multicolor_label}
         />
       )}
 

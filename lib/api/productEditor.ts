@@ -71,6 +71,8 @@ export interface EditorPayload {
     created_at: string
     updated_at: string
     storefront_url: string
+    /** Seller's description of the Multicolore color ("Noir / Blanc"), read-only */
+    multicolor_label?: string | null
   }
   attributes: Record<string, any>
   variants: EditorVariant[]
