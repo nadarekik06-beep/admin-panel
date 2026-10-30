@@ -125,7 +125,13 @@ export type OrderStatus = 'pending' | 'confirmed' | 'handed_to_courier' | 'out_f
 export interface Order {
   id: number
   order_number?: string
-  user?: { id: number; name: string; email: string }
+  user?: { id: number; name: string; email: string } | null
+  // Guest checkout (no account): user is null, the buyer is guest_name / guest_email
+  is_guest?: boolean
+  guest_name?: string | null
+  guest_phone?: string | null
+  guest_email?: string | null
+  tracking_url?: string | null
   status: OrderStatus
   payment_status?: string
   payment_method?: string

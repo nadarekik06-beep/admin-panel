@@ -45,6 +45,7 @@ interface OrdersParams {
   search?:          string
   payment_method?:  string
   seller_type?:     'all' | 'platform' | 'sellers'  // ← NEW
+  buyer_type?:      'guest' | 'registered'           // guest checkout (no account) vs account orders
   date_from?:       string
   date_to?:         string
   needs_slips?:     1          // confirmed orders whose delivery slips were never exported

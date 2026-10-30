@@ -240,7 +240,7 @@ export default function DashboardPage() {
                       #{order.order_number ?? order.id}
                     </td>
                     <td className="px-5 py-3 text-text-primary">
-                      {order.user?.name ?? '—'}
+                      {order.user?.name ?? order.guest_name ?? '—'}{order.is_guest ? ' · Guest' : ''}
                     </td>
                     <td className="px-5 py-3">
                       <Badge

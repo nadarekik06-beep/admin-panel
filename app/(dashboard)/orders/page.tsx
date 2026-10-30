@@ -186,6 +186,18 @@ const PAYMENT_METHOD_CONFIG: Record<string, { label: string; icon: string; color
   wallet: { label: 'Wallet',           icon: '💰', color: '#6366f1' },
 }
 
+/** Order placed without an account (guest checkout). */
+function GuestBadge() {
+  return (
+    <span title="Ordered without an account (guest checkout)" style={{
+      display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '2px 7px', borderRadius: 999, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', whiteSpace: 'nowrap',
+    }}>
+      Guest
+    </span>
+  )
+}
+
 function PaymentMethodBadge({ method }: { method?: string }) {
   const cfg = PAYMENT_METHOD_CONFIG[method ?? 'cod'] ?? PAYMENT_METHOD_CONFIG['cod']
   return (
@@ -369,6 +381,7 @@ function ContactModal({
               <StatusChip status={(order as OrderDetail).display_status ?? order.status} />
               <PaymentMethodBadge method={(order as any).payment_method} />
               <Badge variant={order.payment_status as OrderStatus}>{order.payment_status}</Badge>
+              {(order as any).is_guest && <GuestBadge />}
             </div>
 
             {/* Client contact info */}
@@ -384,7 +397,7 @@ function ContactModal({
               </p>
               <div className="ct-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { icon: User,   label: 'Name',    value: (order as OrderDetail).shipping_address?.recipient_name ?? order.user?.name ?? `User #${(order as any).user_id}` },
+                  { icon: User,   label: 'Name',    value: (order as OrderDetail).shipping_address?.recipient_name ?? order.user?.name ?? (order as any).guest_name ?? `User #${(order as any).user_id}` },
                   { icon: Phone,  label: 'Phone',   value: phone ?? '—' },
                   { icon: MapPin, label: 'Wilaya',  value: (order as any).wilaya ?? '—' },
                   { icon: MapPin, label: 'Address', value: (order as OrderDetail).shipping_address?.formatted || ((order as any).address ?? '—') },
@@ -1071,6 +1084,7 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                   <StatusChip status={detail.display_status ?? detail.status} />
                   <Badge variant={detail.payment_status as OrderStatus}>{detail.payment_status}</Badge>
                   <PaymentMethodBadge method={(detail as any).payment_method} />
+                  {(detail as any).is_guest && <GuestBadge />}
                 </div>
                 <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
                   {format(new Date(detail.created_at), 'MMM d, yyyy · HH:mm')}
@@ -1080,7 +1094,9 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
               {/* Customer info grid */}
               <div className="ct-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { icon: User,        label: 'Customer account', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
+                  (detail as any).is_guest && !detail.user
+                    ? { icon: User, label: 'Customer — GUEST (no account)', value: (detail as any).guest_name ?? '—', sub: (detail as any).guest_email ?? 'No e-mail given' }
+                    : { icon: User, label: (detail as any).is_guest ? 'Customer account (ordered as guest)' : 'Customer account', value: detail.user?.name ?? `User #${(detail as any).user_id}`, sub: detail.user?.email },
                   detail.is_cancelled
                     ? { icon: ShoppingBag, label: 'Amount due', value: formatCurrency(0),
                         sub: `Cancelled — nothing to pay (was ${formatCurrency(detail.original_amounts?.total ?? 0)})` }
@@ -1402,6 +1418,7 @@ export default function OrdersPage() {
   const [status,     setStatus]     = useState('')
   const [payMethod,  setPayMethod]  = useState('')
   const [sellerType, setSellerType] = useState<SellerTypeFilter>('all')
+  const [buyerType,  setBuyerType]  = useState<'' | 'guest' | 'registered'>('')
   const [dateFrom,   setDateFrom]   = useState('')
   const [dateTo,     setDateTo]     = useState('')
   const [page,       setPage]       = useState(1)
@@ -1421,6 +1438,7 @@ export default function OrdersPage() {
         status:         status      || undefined,
         payment_method: payMethod   || undefined,
         seller_type:    sellerType !== 'all' ? sellerType : undefined,
+        buyer_type:     buyerType   || undefined,
         date_from:      dateFrom    || undefined,
         date_to:        dateTo      || undefined,
         needs_slips:    needsSlips  ? 1 : undefined,
@@ -1430,7 +1448,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, status, payMethod, sellerType, dateFrom, dateTo, needsSlips, page])
+  }, [search, status, payMethod, sellerType, buyerType, dateFrom, dateTo, needsSlips, page])
 
   useEffect(() => {
     const t = setTimeout(fetchOrders, 300)
@@ -1515,8 +1533,11 @@ export default function OrdersPage() {
       key: 'user', header: 'Customer',
       render: row => (
         <div>
-          <p className="font-semibold text-text-primary text-sm">{(row as any).user?.name ?? `User #${(row as any).user_id}`}</p>
-          <p className="text-xs text-text-muted">{(row as any).user?.email ?? ''}</p>
+          <p className="font-semibold text-text-primary text-sm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {(row as any).user?.name ?? (row as any).guest_name ?? `User #${(row as any).user_id}`}
+            {(row as any).is_guest && <GuestBadge />}
+          </p>
+          <p className="text-xs text-text-muted">{(row as any).user?.email ?? (row as any).guest_email ?? ''}</p>
         </div>
       ),
     },
@@ -1605,6 +1626,12 @@ export default function OrdersPage() {
             <option value="wallet">💰 Wallet</option>
             <option value="d17">📱 D17</option>
             <option value="card">💳 Bank Card</option>
+          </select>
+          <select value={buyerType} onChange={e => { setBuyerType(e.target.value as '' | 'guest' | 'registered'); setPage(1) }} aria-label="Buyer type"
+            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-purple transition-colors">
+            <option value="">All Buyers</option>
+            <option value="guest">👤 Guests (no account)</option>
+            <option value="registered">🔑 Registered</option>
           </select>
           <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1) }}
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-muted focus:outline-none focus:border-accent-purple transition-colors" />
