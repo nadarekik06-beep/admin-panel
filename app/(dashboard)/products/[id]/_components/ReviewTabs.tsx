@@ -419,6 +419,7 @@ const EVENT_META: Record<string, { label: string; icon: React.ReactNode; color: 
   unfeatured:        { label: 'Removed from featured', icon: <Star size={13} />,                 color: 'text-text-muted bg-bg-hover' },
   disabled:          { label: 'Disabled',              icon: <EyeOff size={13} />,               color: 'text-text-muted bg-bg-hover' },
   restored:          { label: 'Restored to pending',   icon: <RotateCcw size={13} />,            color: 'text-accent-green bg-accent-green/15' },
+  created_by_admin:  { label: 'Created by admin for the seller', icon: <Send size={13} />,      color: 'text-accent-green bg-accent-green/15' },
 }
 
 function HistoryTab({ product }: { product: ProductReview }) {

@@ -213,6 +213,9 @@ export interface ProductReview {
 
   history: ReviewHistoryEvent[]
   checks: ReviewCheck[]
+  /** Listing problems (missing subcategory, stock 0, many photos without variants, weak short description) */
+  quality_warnings: import('@/lib/api/productEditor').QualityWarning[]
+  created_by_admin_id: number | null
   queue: { next_pending_id: number | null; pending_count: number } | null
   moderation_reasons: { code: string; label: string }[]
 }

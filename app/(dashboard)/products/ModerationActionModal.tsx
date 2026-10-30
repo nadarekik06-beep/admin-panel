@@ -17,6 +17,9 @@ interface Props {
   reasons?: { code: string; label: string }[]
   onClose: () => void
   onDone: (message: string) => void
+  /** Prefill (e.g. from the quality warnings): note text and reason codes */
+  initialNote?: string
+  initialReasons?: string[]
 }
 
 const COPY: Record<Mode, { title: string; intro: string; noteLabel: string; placeholder: string; submit: string; busy: string }> = {
@@ -38,7 +41,7 @@ const COPY: Record<Mode, { title: string; intro: string; noteLabel: string; plac
   },
 }
 
-export default function ModerationActionModal({ open, mode, product, reasons, onClose, onDone }: Props) {
+export default function ModerationActionModal({ open, mode, product, reasons, onClose, onDone, initialNote, initialReasons }: Props) {
   const [selected, setSelected] = useState<string[]>([])
   const [note, setNote]         = useState('')
   const [error, setError]       = useState<string | null>(null)
@@ -48,8 +51,13 @@ export default function ModerationActionModal({ open, mode, product, reasons, on
   const copy = COPY[mode]
 
   useEffect(() => {
-    if (open) { setSelected([]); setNote(''); setError(null) }
-  }, [open, mode, product?.id])
+    if (open) {
+      const known = new Set(list.map((r) => r.code))
+      setSelected(mode === 'request_changes' ? Array.from(new Set((initialReasons ?? []).filter((c) => known.has(c)))) : [])
+      setNote(mode === 'request_changes' ? (initialNote ?? '').slice(0, 1000) : '')
+      setError(null)
+    }
+  }, [open, mode, product?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (code: string) =>
     setSelected((s) => (s.includes(code) ? s.filter((c) => c !== code) : [...s, code]))

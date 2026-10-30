@@ -11,6 +11,7 @@ const ACTION_LABEL: Record<string, string> = {
   submitted: 'Submitted by seller', resubmitted: 'Resubmitted by seller', approved: 'Approved',
   rejected: 'Rejected', changes_requested: 'Changes requested', disabled: 'Disabled',
   restored: 'Restored', featured: 'Featured', unfeatured: 'Removed from featured',
+  created_by_admin: 'Created by admin for the seller',
 }
 
 const fmt = (d: string) => format(new Date(d), 'MMM d, yyyy · HH:mm')

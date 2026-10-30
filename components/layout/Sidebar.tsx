@@ -29,6 +29,7 @@ import {
   Truck,
   MessageCircle,
   PackageSearch,
+  PackagePlus,
   X,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
@@ -54,6 +55,7 @@ const navItems = [
   { href: '/seller-applications', label: 'Applications', icon: FileText        },
 
   { href: '/products',            label: 'Products',     icon: Package         },
+  { href: '/products/new',        label: 'Add product',  icon: PackagePlus     },
   { href: '/product-changes',     label: 'Product Changes', icon: History },
 
   { href: '/packs',                   label: 'Packs',           icon: Package2        },
@@ -223,7 +225,10 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon         = item.icon;
-          const isActive     = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          // Most specific item wins: /products/new highlights "Add product", not "Products"
+          const isActive     = item.href === '/' ? pathname === '/'
+            : (pathname === item.href || pathname.startsWith(item.href + '/'))
+              && !navItems.some((o) => o.href.length > item.href.length && o.href.startsWith(item.href + '/') && (pathname === o.href || pathname.startsWith(o.href + '/')));
           const isComplaints = item.href === '/complaints';
           const badge        = badgeFor(item.href);
           return (

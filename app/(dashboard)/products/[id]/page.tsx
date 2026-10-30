@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, CheckCircle, XCircle, MessageSquareWarning, Star, ExternalLink, SkipForward,
-  Edit2, EyeOff, RotateCcw, AlertTriangle, RefreshCw, Keyboard, Copy, Check,
+  Edit2, EyeOff, RotateCcw, AlertTriangle, RefreshCw, Keyboard, Copy, Check, Scissors,
 } from 'lucide-react'
 import clsx from 'clsx'
 import Badge from '@/components/ui/Badge'
@@ -17,6 +17,8 @@ import { STATUS_META, apiErrorMessage } from '../reviewUtils'
 import MediaGallery, { type GalleryFilter } from './_components/MediaGallery'
 import SummaryPanel from './_components/SummaryPanel'
 import ReviewTabs from './_components/ReviewTabs'
+import SplitProductModal from './_components/SplitProductModal'
+import QualityWarnings from './edit/_components/QualityWarnings'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -41,6 +43,7 @@ export default function ProductReviewPage() {
   const [autoAdvance, setAutoAdvance] = useState(true)
   const [showKeys, setShowKeys] = useState(false)
   const [copied, setCopied]     = useState(false)
+  const [splitting, setSplitting] = useState(false)
 
   useEffect(() => {
     try { setAutoAdvance(localStorage.getItem(AUTO_ADVANCE_KEY) !== '0') } catch { /* storage unavailable */ }
@@ -247,6 +250,11 @@ export default function ProductReviewPage() {
                 <Link href={`/products/${product.id}/edit`} className={clsx(btn, 'border border-[#db142e]/50 text-[#f87171] hover:bg-[#db142e]/10')} title="Open the full editor (E)">
                   <Edit2 size={14} /> Edit product
                 </Link>
+                {product.media.count >= 2 && (
+                  <button onClick={() => setSplitting(true)} className={clsx(btn, 'border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary')} title="Create one product per article from these photos">
+                    <Scissors size={14} /> Split
+                  </button>
+                )}
                 {product.status === 'approved' && (
                   <button onClick={() => setConfirm('disable')} className={clsx(btn, 'border border-accent-orange/40 text-accent-orange hover:bg-accent-orange/10')}>
                     <EyeOff size={14} /> Disable
@@ -322,6 +330,26 @@ export default function ProductReviewPage() {
           The seller removed this product{product.deleted_at ? ` on ${new Date(product.deleted_at).toLocaleDateString()}` : ''}. Restore it to send it back to review.
         </Banner>
       )}
+      {/* ── Quality warnings (prefill "Request changes") ──────────────────── */}
+      {product.quality_warnings?.length > 0 && (
+        <QualityWarnings
+          warnings={product.quality_warnings}
+          action={
+            <div className="flex flex-wrap gap-2">
+              {product.quality_warnings.some((w) => w.code === 'many_photos_no_variants') && product.status !== 'deleted_by_seller' && (
+                <button onClick={() => setSplitting(true)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-[11px] font-semibold text-text-secondary hover:bg-bg-hover">
+                  <Scissors size={12} /> Split into separate products
+                </button>
+              )}
+              {isQueued && (
+                <button onClick={() => setActionModal('request_changes')} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-accent-cyan/40 text-[11px] font-semibold text-accent-cyan hover:bg-accent-cyan/10">
+                  <MessageSquareWarning size={12} /> Request these changes
+                </button>
+              )}
+            </div>
+          }
+        />
+      )}
       {product.hidden_reason && (
         <Banner tone="orange" title="Hidden from storefront">
           {product.hidden_reason === 'over_plan_limit' ? "The seller is over their plan's product limit." : 'Suspended by an admin.'}
@@ -376,6 +404,15 @@ export default function ProductReviewPage() {
         reasons={product.moderation_reasons}
         onClose={() => setActionModal(null)}
         onDone={(msg) => { setActionModal(null); afterDecision(msg, isQueued) }}
+        initialNote={product.quality_warnings?.map((w) => `• ${w.seller_note}`).join('\n')}
+        initialReasons={product.quality_warnings?.map((w) => w.reason).filter((r) => r !== 'other')}
+      />
+
+      <SplitProductModal
+        open={splitting}
+        product={product}
+        onClose={() => setSplitting(false)}
+        onDone={(msg) => { setSplitting(false); setToast({ message: msg, type: 'success' }); load(true) }}
       />
 
     </div>

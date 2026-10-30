@@ -74,7 +74,7 @@ export function fromPayload(p: EditorPayload): EditorState {
     description:       pr.description ?? '',
     short_description: pr.short_description ?? '',
     price:             pr.price != null ? String(Number(pr.price)) : '',
-    stock:             String(pr.stock ?? 0),
+    stock:             pr.stock != null ? String(pr.stock) : '',
     category_id:       pr.category_id ? String(pr.category_id) : '',
     subcategory_id:    pr.subcategory_id ? String(pr.subcategory_id) : '',
     is_active:         pr.is_active,
@@ -210,6 +210,10 @@ export function isEmptyValue(v: unknown) {
 
 // ── Validation (mirrors AdminProductEditor::validate) ───────────────────────
 
+export const SHORT_DESCRIPTION_MIN = 20
+/** Tunisian phone number once the separators between digits are removed */
+const PHONE_RE = /(?<!\d)(?:\+?216|00216)?[2459]\d{7}(?!\d)/
+
 /** "3-18": a variant's option ids, sorted */
 export function comboKey(ids: number[]): string {
   return [...ids].sort((a, b) => a - b).join('-')
@@ -221,10 +225,29 @@ export function validate(
     variantAxes: Attribute[]; infoAxes: Attribute[]; approve: boolean; galleryMax: number; setMax: number; maxColors: number; occasionsApply: boolean
     /** Sorted option-id keys ("3-18") of the variants already saved: legacy ones keep missing axes */
     existingSets?: Set<string>
+    /** New product ("Add product"): the creation rules of every new product apply */
+    creating?: boolean
+    /** The category has subcategories */
+    subcategoryRequired?: boolean
   },
 ): Errors {
   const e: Errors = {}
   const colorAxis = ctx.variantAxes.find(isColorAxis) ?? null
+
+  // Creation rules (backend: ProductListingRules::creationErrors)
+  if (ctx.creating) {
+    if (s.category_id && ctx.subcategoryRequired && !s.subcategory_id) e.subcategory_id = 'Choose a subcategory: this category has some.'
+    const short = s.short_description.trim()
+    if (!short) e.short_description = `Add a short description (at least ${SHORT_DESCRIPTION_MIN} characters).`
+    else if (PHONE_RE.test(short.replace(/(?<=\d)[\s.-]+(?=\d)/g, ''))) e.short_description = 'No phone numbers in the description.'
+    else if (short.length < SHORT_DESCRIPTION_MIN) e.short_description = `At least ${SHORT_DESCRIPTION_MIN} characters (${short.length} now). Describe the item: material, color, use.`
+    if (s.variants.length === 0 && /^\d+$/.test(s.stock.trim()) && Number(s.stock) < 1) e.stock = 'Enter the real quantity available (at least 1).'
+    if (s.variants.length > 0 && s.variants.filter((v) => v.is_active).reduce((n, v) => n + (parseInt(v.stock, 10) || 0), 0) < 1) {
+      e.variants = 'The variants have 0 stock in total: enter the real quantities (at least 1).'
+    }
+    const anyImage = s.gallery.length > 0 || Object.values(s.colorImages).some((l) => l.length > 0)
+    if (!anyImage) e['images.gallery'] = 'Add at least one photo.'
+  }
 
   if (!s.name.trim()) e.name = 'Product name is required.'
   else if (s.name.length > 255) e.name = 'At most 255 characters.'

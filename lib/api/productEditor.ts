@@ -39,9 +39,34 @@ export interface ModerationEntry {
   created_at: string
 }
 
+/** Listing problem shown in the quality warnings box (ProductListingRules::warnings). */
+export interface QualityWarning {
+  code: string
+  /** For the admin */
+  message: string
+  /** Seller-facing text (seller's language), prefilled into "Request changes" */
+  seller_note: string
+  /** ProductModerationLog reason code */
+  reason: string
+}
+
+/** Seller picker row of the "Add product" page. */
+export interface SellerOption {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  shop_name: string | null
+  plan: { slug: string; name: string }
+  product_count: number
+  /** null = unlimited */
+  product_limit: number | null
+}
+
 export interface EditorPayload {
   product: {
-    id: number
+    /** null on the blank "Add product" document */
+    id: number | null
     name: string
     slug: string
     sku: string | null
@@ -63,9 +88,9 @@ export interface EditorPayload {
     admin_note: string | null
     admin_edited_at: string | null
     admin_edited_by: { id: number; name: string } | null
-    status: ModerationStatus
+    status: ModerationStatus | 'new'
     rejection_reason: string | null
-    seller: { id: number; name: string; email: string } | null
+    seller: { id: number; name: string; email: string; shop_name?: string | null } | null
     category: { id: number; name: string; slug: string } | null
     subcategory: { id: number; name: string; slug: string } | null
     created_at: string
@@ -73,13 +98,16 @@ export interface EditorPayload {
     storefront_url: string
     /** Seller's description of the Multicolore color ("Noir / Blanc"), read-only */
     multicolor_label?: string | null
+    /** Admin who created the product on behalf of the seller */
+    created_by_admin?: { id: number; name: string } | null
   }
+  quality_warnings: QualityWarning[]
   attributes: Record<string, any>
   variants: EditorVariant[]
   images: {
     gallery: EditorImage[]
     color_groups: EditorColorGroup[]
-    cover_id: number | null
+    cover_id?: number | null
   }
   history: EditLogEntry[]
   moderation: ModerationEntry[]
@@ -129,6 +157,23 @@ export interface EditorDocument {
   }
 }
 
+function toForm(doc: EditorDocument, uploads: Record<string, File>) {
+  const form = new FormData()
+  form.append('data', JSON.stringify(doc))
+  Object.entries(uploads).forEach(([key, file]) => form.append(`uploads[${key}]`, file, file.name))
+  return form
+}
+
+const uploadConfig = (onProgress?: (percent: number) => void) => ({
+  headers: { 'Content-Type': 'multipart/form-data' },
+  timeout: 0, // large uploads outlive the default 15s
+  onUploadProgress: (e: { loaded: number; total?: number }) => {
+    if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+  },
+})
+
+export interface SplitGroup { name: string; stock: number; price?: number | null; image_ids: number[] }
+
 export const productEditorApi = {
   async load(id: number): Promise<EditorPayload> {
     const res = await api.get(`/admin/products/${id}/editor`)
@@ -142,17 +187,40 @@ export const productEditorApi = {
     uploads: Record<string, File>,
     onProgress?: (percent: number) => void,
   ): Promise<{ message: string; data: EditorPayload }> {
-    const form = new FormData()
-    form.append('data', JSON.stringify(doc))
-    Object.entries(uploads).forEach(([key, file]) => form.append(`uploads[${key}]`, file, file.name))
+    const res = await api.post(`/admin/products/${id}/editor`, toForm(doc, uploads), uploadConfig(onProgress))
+    return { message: res.data.message, data: res.data.data }
+  },
 
-    const res = await api.post(`/admin/products/${id}/editor`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 0, // large uploads outlive the default 15s
-      onUploadProgress: (e) => {
-        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
-      },
-    })
+  // ── Add product on behalf of a seller ──────────────────────────────────────
+
+  async sellerOptions(search: string): Promise<SellerOption[]> {
+    const res = await api.get('/admin/products/seller-options', { params: { search } })
+    return res.data.data
+  },
+
+  async blank(sellerId: number): Promise<EditorPayload> {
+    const res = await api.get('/admin/products/blank-editor', { params: { seller_id: sellerId } })
+    return res.data.data
+  },
+
+  /** Creates the product in the seller's shop: published (approved) or saved as a draft. */
+  async create(
+    sellerId: number,
+    doc: EditorDocument,
+    uploads: Record<string, File>,
+    publish: boolean,
+    onProgress?: (percent: number) => void,
+  ): Promise<{ message: string; id: number; data: EditorPayload }> {
+    const form = toForm(doc, uploads)
+    form.append('seller_id', String(sellerId))
+    form.append('publish', publish ? '1' : '0')
+    const res = await api.post('/admin/products', form, uploadConfig(onProgress))
+    return { message: res.data.message, id: res.data.data.id, data: res.data.data.editor }
+  },
+
+  /** "Split into separate products": one new product per group of gallery photos. */
+  async split(id: number, groups: SplitGroup[], moveImages: boolean, publish: boolean): Promise<{ message: string; data: { id: number; name: string }[] }> {
+    const res = await api.post(`/admin/products/${id}/split`, { groups, move_images: moveImages, publish })
     return { message: res.data.message, data: res.data.data }
   },
 }

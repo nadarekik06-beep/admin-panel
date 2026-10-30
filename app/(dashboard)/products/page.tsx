@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Search, CheckCircle, XCircle, EyeOff, Trash2,
-  Eye, X, Edit2, RotateCcw, AlertTriangle, UserCog,
+  Eye, X, Edit2, RotateCcw, AlertTriangle, UserCog, PackagePlus,
 } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
@@ -53,6 +53,8 @@ interface AdminProduct {
   primary_image_url: string | null
   rejection_reason?: string | null
   admin_edited_at?: string | null
+  /** Set when an admin created the product on behalf of the seller */
+  created_by_admin_id?: number | null
   seller: { id: number; name: string; email: string } | null
   category: { id: number; name: string } | null
   images: ProductImage[]
@@ -203,7 +205,15 @@ export default function ProductsPage() {
             <p className="font-medium text-text-primary">{row.name}</p>
             <p className="text-xs text-text-muted flex items-center gap-1.5">
               {row.category?.name ?? 'Uncategorized'}
-              {row.admin_edited_at && (
+              {row.created_by_admin_id && (
+                <span
+                  title="Added by an admin on behalf of the seller"
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#198f41]/10 text-[#34d399] border border-[#198f41]/30"
+                >
+                  <PackagePlus size={9} /> Added by admin
+                </span>
+              )}
+              {!row.created_by_admin_id && row.admin_edited_at && (
                 <span
                   title={`Edited by an admin on ${format(new Date(row.admin_edited_at), 'MMM d, yyyy HH:mm')}`}
                   className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#db142e]/10 text-[#f87171] border border-[#db142e]/30"
