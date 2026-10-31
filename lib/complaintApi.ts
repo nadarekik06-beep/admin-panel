@@ -61,7 +61,17 @@ export const adminComplaintApi = {
   /** Reference of the return booked by hand in the Intigo dashboard (after-sale returns aren't automated). */
   intigoReturnRef: (id: number, ref: string | null) => patch(id, 'intigo-return-ref', { intigo_return_ref: ref }),
 
-  /** Return slip PDF for the delivery company. Resolves with the file name. */
-  returnSlip: (id: number) =>
-    downloadPdf(() => api.get(`/admin/complaints/${id}/return-slip`, { responseType: 'blob', timeout: 120_000 }), `return-${id}-slip.pdf`),
+  // ── Exchange ──
+  /** Book the Intigo exchange parcel again (after fixing what blocked it). 422 with a message when it isn't sent. */
+  exchangeBook: (id: number) => patch(id, 'exchange/book'),
+  /** Booked by hand in the Intigo dashboard, or found there after a lost answer: its tracking number. */
+  exchangeNid: (id: number, nid: string) => patch(id, 'exchange/nid', { nid }),
+  exchangeDelivered: (id: number, note?: string) => patch(id, 'exchange/delivered', { note }),
+  exchangeFailed: (id: number, note?: string) => patch(id, 'exchange/failed', { note }),
+  /** Failed exchange: book a new parcel, switch to a return, or cancel. */
+  exchangeDecide: (id: number, action: 'retry' | 'return' | 'cancel', note?: string) => patch(id, 'exchange/decide', { action, note }),
+
+  /** Return or exchange slip PDF for the delivery company. Resolves with the file name. */
+  returnSlip: (id: number, exchange = false) =>
+    downloadPdf(() => api.get(`/admin/complaints/${id}/return-slip`, { responseType: 'blob', timeout: 120_000 }), `${exchange ? 'exchange' : 'return'}-${id}-slip.pdf`),
 }

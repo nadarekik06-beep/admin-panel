@@ -1,10 +1,12 @@
 /**
- * Returns ("réclamations") as the admin moderates them. Return + refund only;
- * legacy "exchange" records stay readable and can only be closed.
+ * After-sale requests ("réclamations") as the admin moderates them: a RETURN
+ * (refund) or an EXCHANGE (another variant, Intigo exchange parcel). Legacy
+ * exchange records (is_legacy_exchange) stay readable and can only be closed.
  *
- *   requested → seller_accepted | seller_rejected (→ escalated by the client)
- *             → admin_approved → pickup_scheduled → picked_up
- *             → returned_to_seller (received & inspected) → refunded
+ *   requested → seller_accepted | seller_rejected (→ escalated by the client) → admin_approved
+ *   return:   → pickup_scheduled → picked_up → returned_to_seller (received & inspected) → refunded
+ *   exchange: → exchange_in_transit → exchanged → exchange_completed (seller got the old item)
+ *             exchange_in_transit → exchange_failed → retry | switch to return | cancel
  *   terminal: rejected | cancelled | closed
  */
 
@@ -21,19 +23,33 @@ export type ComplaintStatus =
   | 'rejected'
   | 'cancelled'
   | 'closed'
+  | 'exchange_in_transit'
+  | 'exchanged'
+  | 'exchange_failed'
+  | 'exchange_completed'
 
-export type ComplaintType = 'wrong_product' | 'wrong_size' | 'wrong_color' | 'damaged_product' | 'other'
+export type ComplaintType =
+  | 'wrong_product' | 'wrong_size' | 'wrong_color' | 'damaged_product'
+  | 'changed_mind' | 'doesnt_fit' | 'prefer_other_color' | 'other'
 export type ResolutionType = 'return_refund' | 'exchange'
 export type RefundMethod = 'cash' | 'wallet' | 'bank_transfer' | 'd17' | 'original'
 export type ItemCondition = 'resaleable' | 'damaged'
+export type Payer = 'seller' | 'client'
+export type ExchangeSyncStatus = 'sending' | 'sent' | 'manual' | 'needs_check' | 'failed' | 'cancelled'
 
 export const COMPLAINT_TYPE_LABELS: Record<ComplaintType, string> = {
-  wrong_product:   'Wrong product received',
-  wrong_size:      'Wrong size',
-  wrong_color:     'Wrong color',
-  damaged_product: 'Damaged / defective product',
-  other:           'Other',
+  wrong_product:      'Wrong product received',
+  wrong_size:         'Wrong size sent',
+  wrong_color:        'Wrong color sent',
+  damaged_product:    'Damaged / defective product',
+  changed_mind:       'Changed my mind',
+  doesnt_fit:         "Size doesn't fit",
+  prefer_other_color: 'Prefers another color',
+  other:              'Other',
 }
+
+/** Seller at fault → the seller pays the after-sale parcel (the admin may switch it). */
+export const SELLER_FAULT_TYPES: ComplaintType[] = ['wrong_product', 'wrong_size', 'wrong_color', 'damaged_product']
 
 export const REFUND_METHOD_LABELS: Record<RefundMethod, string> = {
   cash:          'Cash, paid by the courier at pick-up',
@@ -56,10 +72,22 @@ export const STATUS_CONFIG: Record<ComplaintStatus, { label: string; color: stri
   rejected:           { label: 'Rejected',           color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
   cancelled:          { label: 'Cancelled',          color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
   closed:             { label: 'Closed',             color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+  exchange_in_transit: { label: 'Exchange in transit', color: '#818cf8', bg: 'rgba(99,102,241,0.14)' },
+  exchanged:          { label: 'Exchanged · old item due', color: '#2dd4bf', bg: 'rgba(20,184,166,0.12)' },
+  exchange_failed:    { label: 'Exchange failed',    color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  exchange_completed: { label: 'Exchange completed', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
 }
 
-export const statusConfig = (s: string) =>
-  STATUS_CONFIG[s as ComplaintStatus] ?? { label: s, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' }
+/** Shared decision steps read as "Exchange requested / approved…" on an exchange. */
+const EXCHANGE_LABELS: Partial<Record<ComplaintStatus, string>> = {
+  requested: 'Exchange requested', admin_approved: 'Exchange approved', seller_accepted: 'Seller accepted (exchange)',
+}
+
+export const statusConfig = (s: string, resolution?: ResolutionType | null) => {
+  const base = STATUS_CONFIG[s as ComplaintStatus] ?? { label: s, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' }
+  const label = resolution === 'exchange' ? EXCHANGE_LABELS[s as ComplaintStatus] : undefined
+  return label ? { ...base, label } : base
+}
 
 /** One attribute of the bought variant, frozen at checkout. */
 export interface PurchasedVariantAttribute {
@@ -87,6 +115,30 @@ export interface ComplaintOrderItem {
   return_amount:       number
   condition:           ItemCondition | null
   restocked_quantity:  number
+  /** Exchange: the variant sent instead */
+  replacement_variant_id?: number | null
+  replacement_label?:      string | null
+  replacement_reserved?:   boolean
+}
+
+export interface ComplaintCost {
+  id: number; kind: 'return' | 'exchange' | 'exchange_failed'; size: string | null
+  intigo_cost: number | string; recovered_client: number | string; recovered_seller: number | string
+  margin: number; payer: Payer | null; intigo_nid: string | null; booked_at: string | null
+}
+
+export interface ComplaintFees {
+  case_fee: number; return_fee: number; exchange_fee: number; client_fee: number; seller_fee: number
+  items_amount: number; default_payer: Payer
+}
+
+export interface ExchangeInfo {
+  original_nid: string | null
+  can_book: boolean
+  problems: string[]
+  payload: Record<string, unknown> | null
+  cod: number
+  intigo_mode: 'fake' | 'live'
 }
 
 export interface ComplaintOrder {
@@ -141,8 +193,22 @@ export interface Complaint {
   complaint_type:      ComplaintType
   resolution_type:     ResolutionType | null
   return_scope:        'full' | 'partial' | null
-  shipping_payer:      'seller' | 'client' | null
+  shipping_payer:      Payer | null
   return_shipping_fee: number | string
+  exchange_fee?:       number | string
+  fee_size?:           'S' | 'L' | 'XL' | null
+  fee_exceeds_refund?: boolean
+  is_legacy_exchange?: boolean
+  old_item_overdue?:   boolean
+  intigo_exchange_nid?: string | null
+  exchange_sync_status?: ExchangeSyncStatus | null
+  exchange_sync_error?: string | null
+  intigo_exchange_status_code?: number | null
+  intigo_exchange_status_label?: string | null
+  exchange_shipped_at?: string | null
+  exchanged_at?:       string | null
+  exchange_failed_at?: string | null
+  old_item_received_at?: string | null
   items_amount:        number | string
   refund_amount:       number | string
   refund_method:       RefundMethod | null
@@ -176,5 +242,8 @@ export interface Complaint {
   cash_refund?:        boolean   // COD: the courier pays the client back in cash at pick-up
   adjustments?:        SellerAdjustment[]
   allowed_transitions?: ComplaintStatus[]
+  fees?:               ComplaintFees
+  costs?:              ComplaintCost[]
+  exchange?:           ExchangeInfo
   refund_task?:        { id: number; status: string; delivery_guy?: { id: number; name: string } | null } | null
 }

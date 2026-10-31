@@ -513,7 +513,15 @@ function ComplaintTableRow({ complaint, onSelect }: {
         <span style={{ fontSize: 12, color: 'var(--t2)' }}>{complaint.seller?.name ?? '—'}</span>
       </td>
       <td>
-        <ReturnStatusBadge status={complaint.status} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+          <ReturnStatusBadge status={complaint.status} resolution={complaint.resolution_type} />
+          <span style={{ fontSize: 10, fontWeight: 800, color: complaint.resolution_type === 'exchange' ? '#818cf8' : 'var(--t3)' }}>
+            {complaint.resolution_type === 'exchange' ? (complaint.is_legacy_exchange ? 'Legacy exchange' : 'Exchange') : 'Return'}
+            {complaint.old_item_overdue && <span style={{ color: '#ef4444' }}> · Old item not received</span>}
+            {complaint.exchange_sync_status === 'needs_check' && <span style={{ color: '#ef4444' }}> · Check Intigo</span>}
+            {complaint.fee_exceeds_refund && <span style={{ color: '#ef4444' }}> · Fee above refund</span>}
+          </span>
+        </div>
       </td>
       <td>
         <span style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600 }}>
@@ -554,6 +562,8 @@ export default function AdminComplaintsPage() {
   const [filterFromDate, setFilterFromDate] = useState('')
   const [filterToDate,   setFilterToDate]   = useState('')
   const [filterSearch,   setFilterSearch]   = useState('')
+  const [filterType,     setFilterType]     = useState('')   // '' | return | exchange
+  const [filterFlag,     setFilterFlag]     = useState('')   // '' | old_item_overdue | needs_check | fee_exceeds_refund
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -563,6 +573,8 @@ export default function AdminComplaintsPage() {
       if (filterFromDate) params.from_date = filterFromDate
       if (filterToDate)   params.to_date   = filterToDate
       if (filterSearch)   params.search    = filterSearch
+      if (filterType)     params.resolution = filterType
+      if (filterFlag)     params[filterFlag] = '1'
 
       const [listRes, statsRes] = await Promise.all([
         adminComplaintApi.getAll(params),
@@ -573,7 +585,7 @@ export default function AdminComplaintsPage() {
       setStats(statsRes.data)
     } catch { setComplaints([]) }
     finally { setLoading(false) }
-  }, [filterStatus, filterFromDate, filterToDate, filterSearch])
+  }, [filterStatus, filterFromDate, filterToDate, filterSearch, filterType, filterFlag])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -593,7 +605,7 @@ export default function AdminComplaintsPage() {
     if (selectedId) adminComplaintApi.getOne(selectedId).then(r => setSelected(r.data)).catch(() => {})
   }, [fetchAll, selectedId])
 
-  const hasFilters = filterStatus || filterSearch || filterFromDate || filterToDate
+  const hasFilters = filterStatus || filterSearch || filterFromDate || filterToDate || filterType || filterFlag
 
   const statItems = stats ? [
     { label: 'Total',          value: stats.total,       color: '#8891a4', icon: <FileText size={18} />,    alert: false },
@@ -604,6 +616,11 @@ export default function AdminComplaintsPage() {
     { label: 'To refund',      value: stats.to_refund,   color: '#2dd4bf', icon: <AlertCircle size={18} />, alert: true  },
     { label: 'Refunded',       value: stats.refunded,    color: GREEN,     icon: <CheckCircle size={18} />, alert: false },
     { label: 'Closed',         value: stats.closed,      color: '#ef4444', icon: <XCircle size={18} />,     alert: false },
+    // Exchanges
+    { label: 'Exchanges in transit', value: stats.exchanges_in_transit ?? 0, color: '#818cf8', icon: <Package size={18} />, alert: false },
+    { label: 'Exchanges failed',     value: stats.exchanges_failed ?? 0,     color: '#ef4444', icon: <XCircle size={18} />, alert: true },
+    { label: 'Check Intigo',         value: stats.exchanges_needs_check ?? 0, color: '#ef4444', icon: <AlertTriangle size={18} />, alert: true },
+    { label: 'Old item not received', value: stats.old_item_not_received ?? 0, color: '#ef4444', icon: <Clock size={18} />, alert: true },
   ] : []
 
   return (
@@ -627,7 +644,7 @@ export default function AdminComplaintsPage() {
             </div>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--t1)', margin: 0, lineHeight: 1.2 }}>
-                Returns &amp; Refunds
+                Returns, Exchanges &amp; Refunds
               </h1>
               <p style={{ fontSize: 13, color: 'var(--t2)', margin: '4px 0 0', fontWeight: 500 }}>
                 Decide, schedule pick-ups, confirm receptions and refund
@@ -682,8 +699,27 @@ export default function AdminComplaintsPage() {
             <label className="ct-label"><Filter size={9} style={{ verticalAlign: 'middle', marginRight: 4 }} />Status</label>
             <select className="ct-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="">All statuses</option>
-              <option value="seller_accepted,escalated">Needs your decision</option>
+              <option value="seller_accepted,escalated,exchange_failed">Needs your decision</option>
               {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          {/* Type */}
+          <div style={{ flex: '0 0 140px' }}>
+            <label className="ct-label">Type</label>
+            <select className="ct-select" value={filterType} onChange={e => setFilterType(e.target.value)}>
+              <option value="">Returns &amp; exchanges</option>
+              <option value="return">Returns</option>
+              <option value="exchange">Exchanges</option>
+            </select>
+          </div>
+          {/* Flags */}
+          <div style={{ flex: '0 0 185px' }}>
+            <label className="ct-label">Flag</label>
+            <select className="ct-select" value={filterFlag} onChange={e => setFilterFlag(e.target.value)}>
+              <option value="">Any</option>
+              <option value="old_item_overdue">Old item not received</option>
+              <option value="needs_check">Check in Intigo</option>
+              <option value="fee_exceeds_refund">Fee above refund</option>
             </select>
           </div>
           {/* Date range */}
@@ -699,7 +735,7 @@ export default function AdminComplaintsPage() {
           {/* Reset */}
           {hasFilters && (
             <button className="ct-btn ct-btn--ghost" style={{ alignSelf: 'flex-end', gap: 6 }}
-              onClick={() => { setFilterStatus(''); setFilterFromDate(''); setFilterToDate(''); setFilterSearch('') }}>
+              onClick={() => { setFilterStatus(''); setFilterFromDate(''); setFilterToDate(''); setFilterSearch(''); setFilterType(''); setFilterFlag('') }}>
               <RotateCcw size={13} /> Reset
             </button>
           )}

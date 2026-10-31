@@ -14,7 +14,6 @@ export interface DeliverySettingsValues {
   client_delivery_fee: number
   agency_delivery_cost: number
   seller_free_delivery_contribution: number
-  return_shipping_fee: number
   refused_parcel_agency_fee: number
   refused_parcel_fee_paid_by: 'platform' | 'seller'
   intigo_can_open: boolean
@@ -25,6 +24,11 @@ export interface SizeRates {
   agency_cost: number
   return_fee: number
   seller_contribution: number
+  /** Complaint return of this size (= agency_cost while after_sale_use_agency_cost is on). */
+  after_sale_return_fee: number
+  after_sale_use_agency_cost: boolean
+  /** What Intigo bills for an exchange parcel of this size. */
+  exchange_fee: number
   package_size: number
   margin_normal: number
   margin_free: number
@@ -52,9 +56,14 @@ export interface DeliverySettingsPayload {
 }
 
 /** Amounts are sent as typed (strings): the server validates TND with 3 decimals max. */
+export type AfterSaleField = 'after_sale_return_fee' | 'exchange_fee'
+
+export interface SizeForm extends Record<SizeField | AfterSaleField, string> {
+  after_sale_use_agency_cost: boolean
+}
+
 export interface DeliverySettingsForm {
-  sizes: Record<ParcelSize, Record<SizeField, string>>
-  return_shipping_fee: string
+  sizes: Record<ParcelSize, SizeForm>
   refused_parcel_fee_paid_by: 'platform' | 'seller'
   intigo_can_open: boolean
   payment_methods: Record<PaymentMethodKey, boolean>

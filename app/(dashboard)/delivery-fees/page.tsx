@@ -2,15 +2,16 @@
 
 // Delivery & Fees: per parcel size (S / L / XL), what the client pays, what
 // Intigo charges to deliver and to bring a parcel back, and what a
-// free-delivery seller pays; the after-sale return fee, the "customer may open
-// the parcel" switch and the checkout payment methods. Values apply to NEW
-// orders only: every parcel keeps the amounts frozen at its checkout.
+// free-delivery seller pays; the after-sale fees per size (complaint return,
+// exchange), the "customer may open the parcel" switch and the checkout
+// payment methods. Values apply to NEW orders / complaints only: each keeps
+// the amounts frozen when it was created.
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   deliverySettingsApi, toMillimes, fromMillimes, PARCEL_SIZES, SIZE_FIELDS,
-  type DeliverySettingsPayload, type DeliverySettingsForm, type PaymentMethodKey, type ParcelSize, type SizeField,
+  type DeliverySettingsPayload, type DeliverySettingsForm, type PaymentMethodKey, type ParcelSize, type SizeField, type AfterSaleField,
 } from '@/lib/deliverySettingsApi'
 import { Btn, card, input, Notice, GREEN, RED, GOLD } from '../sponsoring/_components/ui'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -30,7 +31,7 @@ const SIZE_INFO: Record<ParcelSize, string> = {
 const COLUMNS: { key: SizeField; label: string; help: string }[] = [
   { key: 'client_fee', label: 'Client fee', help: 'What the client pays for this parcel at checkout.' },
   { key: 'agency_cost', label: 'Intigo delivery cost', help: 'What Intigo keeps per delivered parcel.' },
-  { key: 'return_fee', label: 'Intigo return fee', help: 'Charged when the parcel comes back (refused / not delivered).' },
+  { key: 'return_fee', label: 'Intigo return fee', help: 'Charged when a refused parcel comes back (4.280 TTC; see the S tiers below).' },
   { key: 'seller_contribution', label: 'Seller contribution', help: 'Taken from the seller payout when the seller offers free delivery.' },
 ]
 
@@ -45,7 +46,7 @@ const FIELD_LABELS: Record<string, string> = {
   client_delivery_fee: 'Client delivery fee',
   agency_delivery_cost: 'Agency delivery cost',
   seller_free_delivery_contribution: 'Seller free-delivery contribution',
-  return_shipping_fee: 'After-sale return fee',
+  return_shipping_fee: 'After-sale return fee (old flat value)',
   refused_parcel_agency_fee: 'Refused parcel agency fee',
   refused_parcel_fee_paid_by: 'Return fee of a refused parcel paid by',
   intigo_can_open: 'Customer may open the parcel',
@@ -53,9 +54,14 @@ const FIELD_LABELS: Record<string, string> = {
   'payment_method.d17': 'Payment: D17',
   'payment_method.wallet': 'Payment: wallet',
 }
+const AFTER_SALE_LABELS: Record<string, string> = {
+  after_sale_return_fee: 'After-sale return fee',
+  after_sale_use_agency_cost: 'After-sale fee uses the Intigo delivery cost',
+  exchange_fee: 'Exchange fee',
+}
 const fieldLabel = (f: string) => {
   const m = /^(S|L|XL)\.(\w+)$/.exec(f)
-  if (m) return `${m[1]} · ${COLUMNS.find(c => c.key === m[2])?.label ?? m[2]}`
+  if (m) return `${m[1]} · ${COLUMNS.find(c => c.key === m[2])?.label ?? AFTER_SALE_LABELS[m[2]] ?? m[2]}`
   return FIELD_LABELS[f] ?? f
 }
 
@@ -64,11 +70,15 @@ function toForm(d: DeliverySettingsPayload): DeliverySettingsForm {
   const sizes = {} as DeliverySettingsForm['sizes']
   for (const s of PARCEL_SIZES) {
     const r = d.sizes[s]
-    sizes[s] = { client_fee: t(r.client_fee), agency_cost: t(r.agency_cost), return_fee: t(r.return_fee), seller_contribution: t(r.seller_contribution) }
+    sizes[s] = {
+      client_fee: t(r.client_fee), agency_cost: t(r.agency_cost), return_fee: t(r.return_fee), seller_contribution: t(r.seller_contribution),
+      after_sale_return_fee: t(r.after_sale_return_fee ?? r.agency_cost),
+      after_sale_use_agency_cost: r.after_sale_use_agency_cost ?? true,
+      exchange_fee: t(r.exchange_fee ?? r.agency_cost),
+    }
   }
   return {
     sizes,
-    return_shipping_fee: t(d.settings.return_shipping_fee),
     refused_parcel_fee_paid_by: d.settings.refused_parcel_fee_paid_by,
     intigo_can_open: !!d.settings.intigo_can_open,
     payment_methods: { ...d.payment_methods },
@@ -104,13 +114,20 @@ export default function DeliveryFeesPage() {
         normal: client !== null && agency !== null ? client - agency : null,
         free: contrib !== null && agency !== null ? contrib - agency : null,
       }
+      if (!form.sizes[s].after_sale_use_agency_cost && toMillimes(form.sizes[s].after_sale_return_fee) === null) invalid.push(`${s}.after_sale_return_fee`)
+      if (toMillimes(form.sizes[s].exchange_fee) === null) invalid.push(`${s}.exchange_fee`)
     }
-    if (toMillimes(form.return_shipping_fee) === null) invalid.push('return_shipping_fee')
     return { margins, invalid }
   }, [form])
 
-  const setRate = (s: ParcelSize, k: SizeField, v: string) =>
+  const setRate = (s: ParcelSize, k: SizeField | AfterSaleField, v: string) =>
     setForm(f => (f ? { ...f, sizes: { ...f.sizes, [s]: { ...f.sizes[s], [k]: v } } } : f))
+  const setSync = (s: ParcelSize, on: boolean) =>
+    setForm(f => (f ? { ...f, sizes: { ...f.sizes, [s]: {
+      ...f.sizes[s], after_sale_use_agency_cost: on,
+      // Unchecking starts from the current delivery cost
+      after_sale_return_fee: on ? f.sizes[s].agency_cost : f.sizes[s].after_sale_return_fee || f.sizes[s].agency_cost,
+    } } } : f))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,9 +137,15 @@ export default function DeliveryFeesPage() {
       const clean = (v: string) => v.trim().replace(',', '.')
       const sizes = {} as DeliverySettingsForm['sizes']
       for (const s of PARCEL_SIZES) {
-        sizes[s] = { client_fee: clean(form.sizes[s].client_fee), agency_cost: clean(form.sizes[s].agency_cost), return_fee: clean(form.sizes[s].return_fee), seller_contribution: clean(form.sizes[s].seller_contribution) }
+        const r = form.sizes[s]
+        sizes[s] = {
+          client_fee: clean(r.client_fee), agency_cost: clean(r.agency_cost), return_fee: clean(r.return_fee), seller_contribution: clean(r.seller_contribution),
+          after_sale_use_agency_cost: r.after_sale_use_agency_cost,
+          after_sale_return_fee: clean(r.after_sale_use_agency_cost ? r.agency_cost : r.after_sale_return_fee),
+          exchange_fee: clean(r.exchange_fee),
+        }
       }
-      const res = await deliverySettingsApi.save({ ...form, sizes, return_shipping_fee: clean(form.return_shipping_fee) })
+      const res = await deliverySettingsApi.save({ ...form, sizes })
       setData(res.data); setForm(toForm(res.data))
       setMsg({ tone: 'ok', text: res.message })
     } catch (err: any) { setMsg({ tone: 'error', text: err.message }) } finally { setBusy(false) }
@@ -185,6 +208,63 @@ export default function DeliveryFeesPage() {
             {losing.length > 0 && (
               <Notice tone="error">Size {losing.join(', ')}: some parcels lose money (negative margin). You can still save.</Notice>
             )}
+            <p style={hint}>
+              <b>Intigo return fee:</b> Intigo bills 4.280 TTC per refused parcel for L and XL. For S it depends on our monthly return
+              rate: 0.000 under 10%, then 1.070 / 2.140 / 3.210 / 4.280 as the rate rises. Not automated: update the S value when the tier changes.
+            </p>
+          </section>
+
+          <section style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>After-sale fees per parcel size (TND)</h2>
+              <p style={{ ...hint, marginTop: 4 }}>
+                Complaints: one fee per parcel, at its largest size. Seller at fault (wrong / defective item): the client pays 0 and the fee comes
+                off the seller&apos;s next settlement. Client&apos;s choice: the return fee is deducted from the refund (never below 0); the exchange
+                fee is the cash the courier collects with the replacement. Frozen on each complaint when it is filed.
+              </p>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Size</th>
+                    <th style={th}>Intigo delivery cost<div style={{ ...hint, fontSize: 10.5 }}>from the table above</div></th>
+                    <th style={th}>After-sale return fee<div style={{ ...hint, fontSize: 10.5 }}>Intigo bills a complaint return as a new parcel of that size</div></th>
+                    <th style={th}>Exchange fee<div style={{ ...hint, fontSize: 10.5 }}>what Intigo bills for an exchange parcel</div></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PARCEL_SIZES.map(s => {
+                    const r = form.sizes[s]
+                    const badReturn = live?.invalid.includes(`${s}.after_sale_return_fee`)
+                    const badExchange = live?.invalid.includes(`${s}.exchange_fee`)
+                    return (
+                      <tr key={s}>
+                        <td style={td}><div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>{s}</div></td>
+                        <td style={{ ...td, fontWeight: 800, color: 'var(--text-primary)' }}>{r.agency_cost || '—'}</td>
+                        <td style={td}>
+                          <input required inputMode="decimal" aria-label={`${s} after-sale return fee`}
+                            value={r.after_sale_use_agency_cost ? r.agency_cost : r.after_sale_return_fee}
+                            disabled={r.after_sale_use_agency_cost} aria-invalid={badReturn || undefined}
+                            onChange={e => setRate(s, 'after_sale_return_fee', e.target.value)}
+                            style={{ ...input, width: 110, borderColor: badReturn ? RED : undefined, opacity: r.after_sale_use_agency_cost ? 0.65 : 1 }} />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={r.after_sale_use_agency_cost} onChange={e => setSync(s, e.target.checked)} />
+                            Use Intigo delivery cost
+                          </label>
+                        </td>
+                        <td style={td}>
+                          <input required inputMode="decimal" aria-label={`${s} exchange fee`} value={r.exchange_fee}
+                            onChange={e => setRate(s, 'exchange_fee', e.target.value)} aria-invalid={badExchange || undefined}
+                            style={{ ...input, width: 110, borderColor: badExchange ? RED : undefined }} />
+                          <div style={{ ...hint, fontSize: 10.5, marginTop: 6, maxWidth: 200 }}>Set this to Intigo&apos;s exchange price.</div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section style={{ ...card, display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
@@ -194,12 +274,6 @@ export default function DeliveryFeesPage() {
                 <option value="seller">Seller (deducted from the next settlement)</option>
               </select>
               <span style={hint}>The Intigo return fee of the parcel&apos;s size. A refused parcel never generates a payout or a commission.</span>
-            </label>
-            <label style={lbl}>After-sale return fee (TND)
-              <input required inputMode="decimal" value={form.return_shipping_fee}
-                onChange={e => setForm(f => f && ({ ...f, return_shipping_fee: e.target.value }))}
-                style={{ ...input, borderColor: live?.invalid.includes('return_shipping_fee') ? RED : undefined }} />
-              <span style={hint}>Complaint returns (booked by hand in the Intigo dashboard): paid by the seller when the item was wrong / defective, else deducted from the client refund.</span>
             </label>
             <label style={{ ...lbl, flexDirection: 'row', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.intigo_can_open} onChange={e => setForm(f => f && ({ ...f, intigo_can_open: e.target.checked }))} style={{ marginTop: 3 }} />

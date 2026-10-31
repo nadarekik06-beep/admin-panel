@@ -542,6 +542,13 @@ export default function FinancePage() {
                     sub="Already removed from revenue & commission" />
                   <KpiCard label="Pending Seller Debits" value={fmt(overview.kpis.pending_seller_debits ?? 0)} color="#ef4444" icon={AlertCircle}
                     sub="Deducted on each seller's next settlement" />
+                  {/* After-sale parcels: what Intigo bills for complaint returns / exchanges vs what we got back */}
+                  {overview.kpis.after_sale && (
+                    <KpiCard label="Returns & Exchanges Margin" value={fmt(overview.kpis.after_sale.margin)}
+                      color={Number(overview.kpis.after_sale.margin) < 0 ? '#ef4444' : '#10b981'} icon={Number(overview.kpis.after_sale.margin) < 0 ? TrendingDown : TrendingUp}
+                      sub={`${overview.kpis.after_sale.count} parcel(s) · Intigo ${fmt(overview.kpis.after_sale.intigo_cost)} · from clients ${fmt(overview.kpis.after_sale.recovered_client)} · from sellers ${fmt(overview.kpis.after_sale.recovered_seller)}`
+                        + ` · returns ${overview.kpis.after_sale.by_kind?.return?.count ?? 0}, exchanges ${overview.kpis.after_sale.by_kind?.exchange?.count ?? 0}, refused ${overview.kpis.after_sale.by_kind?.exchange_failed?.count ?? 0}`} />
+                  )}
                   <KpiCard label="Orders"          value={String(overview.kpis.orders_count)}       color="#f59e0b" icon={Package}      />
                   {/* Paid click charges only; free plan credit is not revenue */}
                   <KpiCard label="Ad Revenue"      value={fmt(overview.kpis.ad_revenue ?? 0)} color="#22c55e" icon={TrendingUp}
