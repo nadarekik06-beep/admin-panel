@@ -9,13 +9,14 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 const sizeClasses = {
   sm: 'max-w-md',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
 }
 
 export default function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
@@ -40,11 +41,13 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
       <div
         className={clsx(
           'relative w-full bg-bg-card border border-border rounded-xl shadow-card',
+          // Tall content scrolls inside the panel, the header stays visible
+          'flex flex-col max-h-[calc(100dvh-2rem)]',
           'animate-fade-in',
           sizeClasses[size]
         )}
       >
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
           <h2 className="text-base font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
@@ -53,7 +56,7 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
             <X size={18} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   )

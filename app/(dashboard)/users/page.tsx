@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Trash2, UserX, UserCheck, Eye, Pencil, X, Save, CheckCircle } from 'lucide-react'
+import { Search, Trash2, UserX, UserCheck, Eye, Pencil, X, Save, CheckCircle, Store } from 'lucide-react'
 import DataTable, { Column } from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
+import SellerApplicationForm from '@/components/seller/SellerApplicationForm'
 import { usersApi, UserUpdatePayload } from '@/lib/api/users'
 import { User, PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
@@ -46,6 +47,12 @@ export default function UsersPage() {
   const [toast, setToast]             = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const [confirmModal, setConfirmModal] = useState<{ type: 'ban' | 'unban' | 'delete'; user: User } | null>(null)
+
+  // Create seller application (admin on the user's behalf)
+  const [applyUser, setApplyUser] = useState<User | null>(null)
+  const closeApply = () => {
+    if (window.confirm('Close the form? What you entered will be lost.')) setApplyUser(null)
+  }
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -172,6 +179,20 @@ export default function UsersPage() {
               <UserX size={15} />
             </button>
           )}
+          {/* 🏪 Create seller application */}
+          {(() => {
+            const blocked = row.seller_application_status === 'pending'
+              ? 'This user already has a pending seller application (see Applications)'
+              : !row.is_active ? 'Unban the user first' : null
+            return (
+              <span title={blocked ?? 'Create seller application'}>
+                <button onClick={() => setApplyUser(row)} disabled={!!blocked} aria-label="Create seller application"
+                  className="p-1.5 rounded-md text-accent-green hover:bg-accent-green/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                  <Store size={15} />
+                </button>
+              </span>
+            )
+          })()}
           <button onClick={() => setConfirmModal({ type: 'delete', user: row })} className="p-1.5 rounded-md text-accent-red hover:bg-accent-red/10 transition-colors" title="Delete user">
             <Trash2 size={15} />
           </button>
@@ -213,6 +234,24 @@ export default function UsersPage() {
           <Pagination currentPage={users.current_page} lastPage={users.last_page} total={users.total} from={users.from} to={users.to} onPageChange={setPage} />
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════════════
+          CREATE SELLER APPLICATION MODAL
+      ══════════════════════════════════════════════════════ */}
+      <Modal open={!!applyUser} onClose={closeApply} title="Create seller application" size="xl">
+        {applyUser && (
+          <SellerApplicationForm
+            key={applyUser.id}
+            user={applyUser}
+            onCancel={closeApply}
+            onDone={(message) => {
+              setApplyUser(null)
+              setToast({ message, type: 'success' })
+              fetchUsers()
+            }}
+          />
+        )}
+      </Modal>
 
       {/* ══════════════════════════════════════════════════════
           VIEW / EDIT MODAL

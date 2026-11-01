@@ -83,6 +83,18 @@ function StatusBadge({ status }: { status: Tab }) {
   )
 }
 
+// ─── Submitted by admin ───────────────────────────────────────────────────────
+function AdminSubmittedBadge({ app }: { app: SellerApplication }) {
+  if (!app.created_by_admin_id) return null
+  return (
+    <span title={app.created_by_admin?.name ? `Submitted by ${app.created_by_admin.name} from Admin > Users` : 'Submitted from Admin > Users'}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+      style={{ color: '#a78bfa', background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.35)' }}>
+      Submitted by admin
+    </span>
+  )
+}
+
 // ─── Preferred Plan Badge ─────────────────────────────────────────────────────
 function PreferredPlanBadge({ plan }: { plan: PreferredPlan }) {
   const meta = preferredPlanMeta(plan)
@@ -173,6 +185,12 @@ function DetailModal({
             <div>
               <h3 className="font-bold" style={{ color: '#fcfdfd' }}>{app.business_name}</h3>
               <p className="text-sm" style={{ color: '#6b7280' }}>{app.full_name} · {app.user?.email}</p>
+              {app.created_by_admin_id ? (
+                <p className="mt-1 flex items-center gap-2 text-xs" style={{ color: '#9ca3af' }}>
+                  <AdminSubmittedBadge app={app} />
+                  {app.created_by_admin?.name && <span>by {app.created_by_admin.name}</span>}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -580,6 +598,7 @@ export default function SellerApplicationsPage() {
                             <div>
                               <p className="text-sm font-medium text-text-primary">{app.full_name}</p>
                               <p className="text-xs text-text-muted">{app.user?.email}</p>
+                              {app.created_by_admin_id ? <div className="mt-1"><AdminSubmittedBadge app={app} /></div> : null}
                             </div>
                           </div>
                         </td>

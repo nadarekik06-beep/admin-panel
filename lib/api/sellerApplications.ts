@@ -24,6 +24,9 @@ export interface SellerApplication {
   rejection_reason: string | null
   reviewed_at: string | null
   reviewed_by: number | null
+  /** Admin who submitted it from Admin > Users (null = the user applied) */
+  created_by_admin_id?: number | null
+  created_by_admin?: { id: number; name: string } | null
   created_at: string
   updated_at: string
 

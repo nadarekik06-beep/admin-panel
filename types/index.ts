@@ -32,6 +32,9 @@ export interface User {
   is_active: boolean
   is_approved: boolean
   orders_count?: number
+  phone?: string | null
+  /** Latest seller application's status (null = none): Users page "Create seller application" */
+  seller_application_status?: 'pending' | 'approved' | 'rejected' | null
   created_at: string
   updated_at: string
 }
