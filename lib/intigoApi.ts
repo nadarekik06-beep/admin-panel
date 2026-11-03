@@ -81,6 +81,8 @@ export interface ParcelIntigo {
   history?: { id: number; nid: string; new_status: number; old_status: number | null; status_label: string | null; source: string; result: string | null; event_timestamp: string; created_at: string }[]
   logs?: IntigoLogRow[]
   payload_problems?: string[]
+  /** Bordereau of this seller_order (manual upload, or Intigo's while the flag is on) */
+  bordereau?: import('./bordereauApi').BordereauSummary
 }
 
 export interface IntigoParcelBody {

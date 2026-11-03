@@ -23,6 +23,8 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
 import { ParcelWhatsAppBlock } from '@/components/whatsapp/SellerWhatsApp'
 import ParcelIntigoBlock from '@/components/intigo/ParcelIntigoBlock'
+import ParcelBordereauBlock from '@/components/intigo/ParcelBordereauBlock'
+import type { BordereauSummary } from '@/lib/bordereauApi'
 import type { ParcelIntigo } from '@/lib/intigoApi'
 import type { ParcelWhatsApp } from '@/lib/whatsappRemindersApi'
 function formatCurrency(v: number | string) {
@@ -1196,6 +1198,17 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                         {so.intigo && (
                           <ParcelIntigoBlock intigo={so.intigo} onChanged={() => { refreshDetail(); onUpdated() }} notify={notify} />
                         )}
+                        {so.intigo?.bordereau && (
+                          <ParcelBordereauBlock
+                            key={`${so.id}-${JSON.stringify(so.intigo.bordereau)}`}
+                            sellerOrderId={so.id}
+                            bordereau={so.intigo.bordereau}
+                            sellerName={so.seller?.name ?? `Seller #${so.seller_id}`}
+                            shopName={so.pickup?.shop_name}
+                            onChanged={() => { refreshDetail(); onUpdated() }}
+                            notify={notify}
+                          />
+                        )}
                         {so.whatsapp && (
                           <ParcelWhatsAppBlock
                             sellerOrderId={so.id}
@@ -1404,7 +1417,29 @@ type ListOrder = Order & {
   parcels_summary?:   ParcelSummary[]
 }
 
-type ParcelSummary = { id: number; status: string; prepared_at: string | null; intigo_nid: string | null; intigo: string | null }
+type ParcelSummary = { id: number; status: string; prepared_at: string | null; intigo_nid: string | null; intigo: string | null; bordereau?: BordereauSummary }
+
+const LIVE_PARCEL = ['confirmed', 'handed_to_courier', 'out_for_delivery']
+
+/** "Bordereau 2/3" (uploaded per seller) and "Printed 1/3" (opened by the seller), on prepared / uploaded parcels. */
+function BordereauBadges({ parcels }: { parcels?: ParcelSummary[] }) {
+  const relevant = (parcels ?? []).filter(p => p.bordereau && LIVE_PARCEL.includes(p.status) && (p.prepared_at || p.bordereau.available))
+  if (!relevant.length) return null
+  const ready   = relevant.filter(p => p.bordereau!.available).length
+  const printed = relevant.filter(p => p.bordereau!.available && p.bordereau!.first_printed_at).length
+  const n = relevant.length
+  const chip = (color: string, text: string, title: string) => (
+    <span title={title} style={{ fontSize: 9, fontWeight: 800, color, border: `1px solid ${color}55`, background: `${color}14`, padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap' }}>{text}</span>
+  )
+  return (
+    <>
+      {chip(ready === n ? '#10b981' : '#f59e0b', n > 1 ? `📄 Bordereau ${ready}/${n}` : ready ? '📄 Bordereau ✓' : '📄 Bordereau missing',
+        n > 1 ? `${ready} of ${n} sellers have their bordereau` : ready ? 'Bordereau attached' : 'Prepared: attach the bordereau')}
+      {ready > 0 && chip(printed === ready ? '#10b981' : '#94a3b8', n > 1 ? `🖨 Printed ${printed}/${n}` : printed ? '🖨 Printed ✓' : '🖨 Not printed',
+        printed === ready ? 'Every attached bordereau was opened by its seller' : 'Some sellers have not opened their bordereau yet')}
+    </>
+  )
+}
 
 /** List badges per order: "Prepared" (seller clicked prepared, still confirmed) and the Intigo send state. */
 function ParcelsBadges({ parcels }: { parcels?: ParcelSummary[] }) {
@@ -1451,6 +1486,7 @@ export default function OrdersPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [needsSlips, setNeedsSlips] = useState(false)
+  const [bordereauFilter, setBordereauFilter] = useState<'' | 'missing' | 'uploaded_not_printed'>('')
   // Rows ticked for bulk export, kept across pages (id → row, for its export_issues)
   const [picked,     setPicked]     = useState<Map<number, ListOrder>>(new Map())
   const [bulkBusy,   setBulkBusy]   = useState(false)
@@ -1468,13 +1504,14 @@ export default function OrdersPage() {
         date_from:      dateFrom    || undefined,
         date_to:        dateTo      || undefined,
         needs_slips:    needsSlips  ? 1 : undefined,
+        bordereau:      bordereauFilter || undefined,
         page,
       })
       setOrders(res)
     } finally {
       setLoading(false)
     }
-  }, [search, status, payMethod, sellerType, buyerType, dateFrom, dateTo, needsSlips, page])
+  }, [search, status, payMethod, sellerType, buyerType, dateFrom, dateTo, needsSlips, bordereauFilter, page])
 
   useEffect(() => {
     const t = setTimeout(fetchOrders, 300)
@@ -1550,6 +1587,7 @@ export default function OrdersPage() {
           {(row as any).has_platform_items && <PlatformBadge />}
           {(row as ListOrder).slips_exported_at && <ExportedBadge at={(row as ListOrder).slips_exported_at!} />}
           <ParcelsBadges parcels={(row as ListOrder).parcels_summary} />
+          <BordereauBadges parcels={(row as ListOrder).parcels_summary} />
           {(row as ListOrder).address_status === 'missing' && (
             <span title="Legacy order without a shipping address" style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b' }}>⚠ no address</span>
           )}
@@ -1674,6 +1712,13 @@ export default function OrdersPage() {
             }}>
             <FileDown size={14} /> Needs slips
           </button>
+          <select value={bordereauFilter} onChange={e => { setBordereauFilter(e.target.value as typeof bordereauFilter); setPage(1) }}
+            title="Bordereau per seller: attach it once the seller prepared the parcel, then check the seller opened it"
+            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-muted focus:outline-none focus:border-accent-purple transition-colors">
+            <option value="">📄 Bordereau: all</option>
+            <option value="missing">Prepared — bordereau missing</option>
+            <option value="uploaded_not_printed">Uploaded — not printed by seller</option>
+          </select>
         </div>
       </div>
 

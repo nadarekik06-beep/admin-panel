@@ -49,6 +49,7 @@ interface OrdersParams {
   date_from?:       string
   date_to?:         string
   needs_slips?:     1          // confirmed orders whose delivery slips were never exported
+  bordereau?:       'missing' | 'uploaded_not_printed' | 'not_printed'  // per-seller bordereau follow-up
   page?:            number
   per_page?:        number
 }
