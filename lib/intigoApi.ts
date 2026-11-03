@@ -35,6 +35,8 @@ export type IntigoSyncStatus = 'pending' | 'sent' | 'failed' | 'cancelled' | nul
 export type ParcelSize = 'S' | 'L' | 'XL'
 
 /** seller_orders[].intigo in the order drawer (backend IntigoController::parcelPayload). */
+export type IntigoSendState = 'sent' | 'pending' | 'failed' | 'missing_pickup' | 'cancelled' | null
+
 export interface ParcelIntigo {
   seller_order_id: number
   parcel_size: ParcelSize
@@ -43,6 +45,10 @@ export interface ParcelIntigo {
   can_change_size: boolean
   nid: string | null
   sync_status: IntigoSyncStatus
+  /** sent | pending | failed | missing_pickup | cancelled | null (not requested yet) */
+  send_state?: IntigoSendState
+  /** Seller clicked "prepared" (the parcel stays confirmed until Intigo picks it up) */
+  prepared_at?: string | null
   error: string | null
   attention: string | null
   status_code: number | null

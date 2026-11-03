@@ -68,7 +68,7 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
     }
   }
 
-  const syncLabel = i.nid && i.sync_status !== 'cancelled' ? 'Sent' : i.sync_status === 'pending' ? 'Sending…' : i.sync_status === 'failed' ? 'Failed' : i.sync_status === 'cancelled' ? 'Cancelled at Intigo' : 'Not sent yet'
+  const syncLabel = i.nid && i.sync_status !== 'cancelled' ? 'Sent' : i.sync_status === 'pending' ? 'Sending…' : i.send_state === 'missing_pickup' ? 'Failed · missing pickup' : i.sync_status === 'failed' ? 'Failed' : i.sync_status === 'cancelled' ? 'Cancelled at Intigo' : 'Not sent yet'
 
   return (
     <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'rgba(96,165,250,0.05)', border: `1px solid ${i.attention || i.sync_status === 'failed' ? 'rgba(239,68,68,0.45)' : 'rgba(96,165,250,0.2)'}` }}>
@@ -94,6 +94,7 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
       </div>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 11.5, color: '#94a3b8' }}>
+        <span>Prepared <strong style={{ color: i.prepared_at ? '#14b8a6' : '#f59e0b' }}>{i.prepared_at ? new Date(i.prepared_at).toLocaleString() : 'not yet by the seller'}</strong></span>
         <span>Ref <strong style={{ fontFamily: 'monospace', color: '#f1f5f9' }}>{i.nid ?? '—'}</strong></span>
         <span>Status <strong style={{ color: tone }}>{i.status_label ?? (i.nid ? 'Waiting for pickup' : '—')}{i.status_code ? ` (${i.status_code})` : ''}</strong></span>
         <span>COD <strong style={{ color: '#f1f5f9' }}>{i.cod_amount.toFixed(3)} TND</strong></span>

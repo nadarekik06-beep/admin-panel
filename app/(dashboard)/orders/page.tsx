@@ -1401,6 +1401,32 @@ type ListOrder = Order & {
   slips_exported_at?: string | null
   address_status?:    'complete' | 'legacy' | 'missing'
   export_issues?:     string[]
+  parcels_summary?:   ParcelSummary[]
+}
+
+type ParcelSummary = { id: number; status: string; prepared_at: string | null; intigo_nid: string | null; intigo: string | null }
+
+/** List badges per order: "Prepared" (seller clicked prepared, still confirmed) and the Intigo send state. */
+function ParcelsBadges({ parcels }: { parcels?: ParcelSummary[] }) {
+  if (!parcels?.length) return null
+  const live = parcels.filter(p => p.status === 'confirmed')
+  const prepared = live.filter(p => p.prepared_at)
+  const sent = parcels.filter(p => p.intigo === 'sent').length
+  const failed = parcels.filter(p => p.intigo === 'failed' || p.intigo === 'missing_pickup')
+  const pending = parcels.filter(p => p.intigo === 'pending').length
+  const chip = (color: string, text: string, title: string) => (
+    <span title={title} style={{ fontSize: 9, fontWeight: 800, color, border: `1px solid ${color}55`, background: `${color}14`, padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap' }}>{text}</span>
+  )
+  const last = prepared.map(p => p.prepared_at!).sort().pop()
+  return (
+    <>
+      {prepared.length > 0 && chip('#14b8a6', parcels.length > 1 ? `✓ Prepared ${prepared.length}/${live.length}` : '✓ Prepared',
+        `Prepared by the seller${last ? ` · ${new Date(last).toLocaleString()}` : ''} · waiting for the Intigo pickup`)}
+      {sent > 0 && chip('#60a5fa', parcels.length > 1 ? `🚚 Intigo ${sent}/${parcels.length}` : `🚚 ${parcels.find(p => p.intigo === 'sent')?.intigo_nid ?? 'Intigo'}`, 'Sent to Intigo')}
+      {pending > 0 && chip('#f59e0b', 'Intigo sending…', 'Intigo parcel being created')}
+      {failed.length > 0 && chip('#ef4444', failed.some(p => p.intigo === 'missing_pickup') ? '⚠ Intigo: missing pickup' : '⚠ Intigo failed', 'Not sent to Intigo: open the order, fix it, then Retry send')}
+    </>
+  )
 }
 
 const SELLER_TYPE_TABS: { value: SellerTypeFilter; label: string; icon: React.ElementType; color: string }[] = [
@@ -1523,6 +1549,7 @@ export default function OrdersPage() {
           </span>
           {(row as any).has_platform_items && <PlatformBadge />}
           {(row as ListOrder).slips_exported_at && <ExportedBadge at={(row as ListOrder).slips_exported_at!} />}
+          <ParcelsBadges parcels={(row as ListOrder).parcels_summary} />
           {(row as ListOrder).address_status === 'missing' && (
             <span title="Legacy order without a shipping address" style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b' }}>⚠ no address</span>
           )}
