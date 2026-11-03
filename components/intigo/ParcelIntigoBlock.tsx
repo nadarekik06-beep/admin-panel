@@ -2,8 +2,8 @@
 
 /**
  * Intigo block of one parcel in the order drawer: nid, send status, error,
- * carrier status + history, size override (before sending), Retry send and
- * Cancel parcel (pickup phase only). The backend enforces every rule
+ * carrier status + history, size override (before sending), Retry send,
+ * Sync with Intigo (reads the parcel, GET only) and Cancel parcel (pickup phase only). The backend enforces every rule
  * (no duplicate parcel, cancel only before pickup); buttons follow its flags.
  */
 
@@ -30,13 +30,13 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
   onChanged: () => void
   notify: (type: 'success' | 'error', msg: string) => void
 }) {
-  const [busy, setBusy] = useState<null | 'retry' | 'cancel' | 'size' | 'dismiss'>(null)
+  const [busy, setBusy] = useState<null | 'retry' | 'cancel' | 'size' | 'dismiss' | 'sync'>(null)
   const [detail, setDetail] = useState<ParcelIntigo | null>(null)
   const [open, setOpen] = useState(false)
   const i = detail ?? intigo
   const tone = intigoTone(i.status_code, i.sync_status)
 
-  const run = async (kind: 'retry' | 'cancel' | 'dismiss', fn: () => Promise<{ message?: string; data?: ParcelIntigo } | { success: boolean }>, confirmText?: string) => {
+  const run = async (kind: 'retry' | 'cancel' | 'dismiss' | 'sync', fn: () => Promise<{ message?: string; data?: ParcelIntigo } | { success: boolean }>, confirmText?: string) => {
     if (confirmText && !window.confirm(confirmText)) return
     setBusy(kind)
     try {
@@ -84,6 +84,13 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
               <RefreshCw size={11} /> {busy === 'retry' ? 'Sending…' : 'Retry send'}
             </button>
           )}
+          {i.nid && i.sync_status === 'sent' && (
+            <button type="button" style={btn('#14b8a6', busy !== null)} disabled={busy !== null}
+              title="Reads the parcel's current status at Intigo (read-only) and applies it"
+              onClick={() => run('sync', () => intigoApi.sync(i.seller_order_id))}>
+              <RefreshCw size={11} /> {busy === 'sync' ? 'Syncing…' : 'Sync with Intigo'}
+            </button>
+          )}
           {i.can_cancel && (
             <button type="button" style={btn('#f97316', busy !== null)} disabled={busy !== null}
               onClick={() => run('cancel', () => intigoApi.cancel(i.seller_order_id), `Cancel Intigo parcel ${i.nid}? The order itself stays as it is.`)}>
@@ -97,6 +104,7 @@ export default function ParcelIntigoBlock({ intigo, onChanged, notify }: {
         <span>Prepared <strong style={{ color: i.prepared_at ? '#14b8a6' : '#f59e0b' }}>{i.prepared_at ? new Date(i.prepared_at).toLocaleString() : 'not yet by the seller'}</strong></span>
         <span>Ref <strong style={{ fontFamily: 'monospace', color: '#f1f5f9' }}>{i.nid ?? '—'}</strong></span>
         <span>Status <strong style={{ color: tone }}>{i.status_label ?? (i.nid ? 'Waiting for pickup' : '—')}{i.status_code ? ` (${i.status_code})` : ''}</strong></span>
+        {i.status_at && <span>Last update <strong style={{ color: '#f1f5f9' }}>{new Date(i.status_at).toLocaleString()}</strong></span>}
         <span>COD <strong style={{ color: '#f1f5f9' }}>{i.cod_amount.toFixed(3)} TND</strong></span>
         <span>Pickup index <strong style={{ color: i.pickup_index === null ? '#ef4444' : '#f1f5f9' }}>{i.pickup_index ?? 'not set'}</strong></span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

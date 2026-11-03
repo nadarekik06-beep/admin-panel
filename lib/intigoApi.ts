@@ -160,6 +160,8 @@ export const intigoApi = {
   parcel: (sellerOrderId: number) => request<Wrapped<ParcelIntigo>>('GET', `/admin/seller-orders/${sellerOrderId}/intigo`).then(r => r.data),
   retry: (sellerOrderId: number) => request<Wrapped<ParcelIntigo>>('POST', `/admin/seller-orders/${sellerOrderId}/intigo/retry`),
   cancel: (sellerOrderId: number) => request<Wrapped<ParcelIntigo>>('POST', `/admin/seller-orders/${sellerOrderId}/intigo/cancel`),
+  /** Read-only at Intigo (GET /parcels/{nid}); applies the status like a webhook */
+  sync: (sellerOrderId: number) => request<Wrapped<ParcelIntigo> & { result?: string; status?: string }>('POST', `/admin/seller-orders/${sellerOrderId}/intigo/sync`),
   dismiss: (sellerOrderId: number) => request<{ success: boolean }>('POST', `/admin/seller-orders/${sellerOrderId}/intigo/dismiss`),
   setSize: (sellerOrderId: number, size: ParcelSize) => request<Wrapped<ParcelIntigo>>('PUT', `/admin/seller-orders/${sellerOrderId}/parcel-size`, { size }),
   pickupAddresses: () => request<{ success: boolean; mode: string; data: PickupAddress[] }>('GET', '/admin/intigo/pickup-addresses'),
