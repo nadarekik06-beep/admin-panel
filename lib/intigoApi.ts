@@ -97,6 +97,7 @@ export interface IntigoParcelBody {
   description: string
   additional_info: string
   can_open: boolean
+  is_exchange?: boolean
   pickup_index: number | null
   cid: string
 }
@@ -142,6 +143,7 @@ export interface IntigoOverview {
     sellers_with_pickup: number
     active_sellers: number
     can_open: boolean
+    is_exchange: boolean
   }
   failed: IntigoParcelRow[]
   attention: IntigoParcelRow[]

@@ -117,6 +117,7 @@ export default function IntigoPage() {
             <Check ok={s.active_sellers > 0 && s.sellers_with_pickup >= s.active_sellers} label="Sellers' pickup addresses"
               detail={<>{s.sellers_with_pickup} / {s.active_sellers} active sellers have an Intigo pickup index (set it on the <Link href="/sellers" style={{ color: GOLD }}>seller page</Link>).</>} />
             <Check ok label={`Customer may open parcels: ${s.can_open ? 'yes' : 'no'}`} detail="Changed on the Delivery & Fees page." />
+            <Check ok label={`Exchange parcel (Échange): ${s.is_exchange ? 'yes' : 'no'}`} detail="Changed on the Delivery & Fees page." />
           </section>
 
           <section style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>

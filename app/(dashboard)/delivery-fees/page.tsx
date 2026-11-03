@@ -3,7 +3,7 @@
 // Delivery & Fees: per parcel size (S / L / XL), what the client pays, what
 // Intigo charges to deliver and to bring a parcel back, and what a
 // free-delivery seller pays; the after-sale fees per size (complaint return,
-// exchange), the "customer may open the parcel" switch and the checkout
+// exchange), the "customer may open the parcel" and "exchange parcel" switches and the checkout
 // payment methods. Values apply to NEW orders / complaints only: each keeps
 // the amounts frozen when it was created.
 
@@ -50,6 +50,7 @@ const FIELD_LABELS: Record<string, string> = {
   refused_parcel_agency_fee: 'Refused parcel agency fee',
   refused_parcel_fee_paid_by: 'Return fee of a refused parcel paid by',
   intigo_can_open: 'Customer may open the parcel',
+  intigo_is_exchange: 'Exchange parcel (Échange)',
   'payment_method.card': 'Payment: bank card',
   'payment_method.d17': 'Payment: D17',
   'payment_method.wallet': 'Payment: wallet',
@@ -81,6 +82,7 @@ function toForm(d: DeliverySettingsPayload): DeliverySettingsForm {
     sizes,
     refused_parcel_fee_paid_by: d.settings.refused_parcel_fee_paid_by,
     intigo_can_open: !!d.settings.intigo_can_open,
+    intigo_is_exchange: !!d.settings.intigo_is_exchange,
     payment_methods: { ...d.payment_methods },
   }
 }
@@ -280,6 +282,13 @@ export default function DeliveryFeesPage() {
               <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ color: 'var(--text-primary)' }}>Customer may open the parcel before paying</span>
                 <span style={hint}>Sent with every new Intigo parcel (can_open). Off by default.</span>
+              </span>
+            </label>
+            <label style={{ ...lbl, flexDirection: 'row', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.intigo_is_exchange} onChange={e => setForm(f => f && ({ ...f, intigo_is_exchange: e.target.checked }))} style={{ marginTop: 3 }} />
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: 'var(--text-primary)' }}>Exchange parcel (Échange)</span>
+                <span style={hint}>Sent with every new Intigo parcel (exchange). Off by default.</span>
               </span>
             </label>
           </section>

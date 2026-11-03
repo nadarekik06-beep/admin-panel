@@ -17,6 +17,8 @@ export interface DeliverySettingsValues {
   refused_parcel_agency_fee: number
   refused_parcel_fee_paid_by: 'platform' | 'seller'
   intigo_can_open: boolean
+  /** Sent as is_exchange with every new Intigo parcel. */
+  intigo_is_exchange: boolean
 }
 
 export interface SizeRates {
@@ -50,7 +52,7 @@ export interface DeliverySettingsPayload {
   margins: { normal: number; free_delivery: number }
   warnings: string[]
   payment_methods: Record<PaymentMethodKey, boolean>
-  intigo: { mode: 'fake' | 'live'; can_open: boolean }
+  intigo: { mode: 'fake' | 'live'; can_open: boolean; is_exchange: boolean }
   updated_at: string | null
   history: DeliverySettingChange[]
 }
@@ -66,6 +68,7 @@ export interface DeliverySettingsForm {
   sizes: Record<ParcelSize, SizeForm>
   refused_parcel_fee_paid_by: 'platform' | 'seller'
   intigo_can_open: boolean
+  intigo_is_exchange: boolean
   payment_methods: Record<PaymentMethodKey, boolean>
 }
 
