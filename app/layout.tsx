@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+// Self-hosted (app/fonts, built from google/fonts by subsetting to the same
+// character sets next/font/google used): builds never need the internet.
+import localFont from 'next/font/local'
 import './globals.css'
 import { NavigationLoaderProvider, NavigationLoaderHost } from '@/components/brand/NavigationLoader'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' })
+const inter = localFont({ src: './fonts/inter-latin.woff2', weight: '100 900', variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
   title: "Choose'Tounsi — Admin Panel",
