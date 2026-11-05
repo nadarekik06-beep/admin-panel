@@ -30,6 +30,7 @@ import {
   MessageCircle,
   PackageSearch,
   PackagePlus,
+  BadgePercent,
   X,
 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api/auth';
@@ -59,6 +60,7 @@ const navItems = [
   { href: '/product-changes',     label: 'Product Changes', icon: History },
 
   { href: '/packs',                   label: 'Packs',           icon: Package2        },
+  { href: '/promotions',              label: 'Promotions',      icon: BadgePercent    },
 
   { href: '/orders',              label: 'Orders',       icon: ShoppingCart    },
   { href: '/whatsapp-reminders',  label: 'WhatsApp reminders', icon: MessageCircle },
