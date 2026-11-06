@@ -29,6 +29,7 @@ export interface AdminPromotion {
   flash_stock: number | null
   flash_stock_used: number
   flash_stock_remaining: number | null
+  per_customer_limit: number | null
   order_items_count: number
   products_count: number
   products: Array<{
@@ -110,6 +111,8 @@ export interface PromotionPayload {
   starts_at: string
   ends_at: string
   flash_stock?: number | null
+  per_customer_limit?: number | null
+  funded_by?: 'seller' | 'platform'
   product_ids: number[]
   replace_conflicts?: boolean
 }

@@ -39,12 +39,20 @@ const STATUS: Record<PromotionStatus, { label: string; cls: string }> = {
 
 const money = (n: number) => `${n.toFixed(3)} DT`
 const fmtDate = (iso: string) => format(new Date(iso), 'dd/MM/yyyy HH:mm')
-/** ISO → value of a datetime-local input, in the admin's local time. */
+/**
+ * Dates are typed in Tunis time, whatever the admin's device timezone (AUDIT L-3).
+ * ISO → value of a datetime-local input, as Tunis wall-clock time.
+ */
 const toLocalInput = (iso: string) => {
-  const d = new Date(iso)
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Tunis', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(iso))
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
 }
-const fromLocalInput = (v: string) => new Date(v).toISOString()
+/** datetime-local value (Tunis time) → ISO with Tunis's offset (UTC+1, no DST). */
+const fromLocalInput = (v: string) => `${v.length === 16 ? `${v}:00` : v}+01:00`
 
 export default function PromotionsPage() {
   const [filters, setFilters] = useState<PromotionFilters>({ page: 1 })
@@ -274,7 +282,8 @@ function PromotionRow({ promo: p, busy, onEdit, onPause, onResume, onDelete }: {
           {p.source === 'admin'
             ? <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#db142e] text-white"><Tag size={10} /> Choose&apos;Tounsi</span>
             : <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/10 text-text-secondary"><Store size={10} /> Seller</span>}
-          {p.type === 'flash_sale' && <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#f59e0b]/15 text-[#fbbf24]"><Zap size={10} /> Flash</span>}
+          {p.type === 'flash_sale' && <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#f59e0b]/15 text-[#fbbf24]"><Zap size={10} /> Flash{p.per_customer_limit ? ` · max ${p.per_customer_limit}/customer` : ''}</span>}
+          {p.funded_by === 'platform' && <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#8b5cf6]/15 text-[#c4b5fd]">Platform-funded</span>}
           <span className={clsx('text-[10px] font-black uppercase px-2 py-0.5 rounded-full border', st.cls)}>{st.label}</span>
         </div>
         <p className="text-xs text-text-muted mt-1">
@@ -334,6 +343,10 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
   const [startsAt, setStartsAt]       = useState(promo ? toLocalInput(promo.starts_at) : toLocalInput(now.toISOString()))
   const [endsAt, setEndsAt]           = useState(promo ? toLocalInput(promo.ends_at) : toLocalInput(new Date(now.getTime() + 7 * 86400000).toISOString()))
   const [flashStock, setFlashStock]   = useState(promo?.flash_stock ? String(promo.flash_stock) : '')
+  // Flash sales: units per customer at the flash price (AUDIT L-4); who pays the discount (AUDIT M-8)
+  const [perCustomer, setPerCustomer] = useState(promo?.per_customer_limit ? String(promo.per_customer_limit) : '2')
+  const [fundedBy, setFundedBy]       = useState<'seller' | 'platform'>(promo?.funded_by === 'platform' ? 'platform' : 'seller')
+  const canFund = !promo || promo.source === 'admin'
   const [selected, setSelected]       = useState<Array<{ id: number; name: string; seller: string; image: string | null }>>(
     promo?.products.map((p) => ({ id: p.id, name: p.name, seller: promo.seller.name, image: p.primary_image_url })) ?? [])
   const [query, setQuery]             = useState('')
@@ -395,6 +408,8 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
       starts_at: fromLocalInput(startsAt), ends_at: fromLocalInput(endsAt),
       product_ids: selectedIds,
       ...(type === 'flash_sale' && flashStock ? { flash_stock: Number(flashStock) } : {}),
+      ...(type === 'flash_sale' ? { per_customer_limit: Math.max(1, Number(perCustomer) || 2) } : {}),
+      ...(canFund ? { funded_by: fundedBy } : {}),
       ...(replace ? { replace_conflicts: true } : {}),
     }
     try {
@@ -462,6 +477,29 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
             <div>
               <label className={label} htmlFor="pf-stock">Flash stock limit (optional)</label>
               <input id="pf-stock" type="number" min={1} value={flashStock} onChange={(e) => setFlashStock(e.target.value)} className={clsx(inputCls, 'w-full')} placeholder="Unlimited" />
+            </div>
+          )}
+          {type === 'flash_sale' && (
+            <div>
+              <label className={label} htmlFor="pf-per-customer">Max per customer</label>
+              <input id="pf-per-customer" type="number" min={1} max={100} value={perCustomer} onChange={(e) => setPerCustomer(e.target.value)} className={clsx(inputCls, 'w-full')} />
+              <p className="text-[11px] text-text-muted mt-1">Units one customer (account, or phone for guests) can buy at the flash price.</p>
+              {fieldErr('per_customer_limit')}
+            </div>
+          )}
+          {canFund && (
+            <div>
+              <label className={label} htmlFor="pf-funded">Who pays the discount</label>
+              <select id="pf-funded" value={fundedBy} onChange={(e) => setFundedBy(e.target.value as 'seller' | 'platform')} className={clsx(inputCls, 'w-full')}>
+                <option value="seller">Seller (commission on the final price)</option>
+                <option value="platform">Choose&apos;Tounsi (seller paid on the original price)</option>
+              </select>
+              <p className="text-[11px] text-text-muted mt-1">
+                {fundedBy === 'platform'
+                  ? 'The seller is paid as if sold at the original price; the platform absorbs the discount. Applies to orders placed from now on.'
+                  : 'The seller receives the final price minus commission. Applies to orders placed from now on.'}
+              </p>
+              {fieldErr('funded_by')}
             </div>
           )}
         </div>

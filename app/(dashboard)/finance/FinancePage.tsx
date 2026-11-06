@@ -525,7 +525,11 @@ export default function FinancePage() {
                   <KpiCard label="Gross Revenue"   value={fmt(overview.kpis.gross_revenue)}         color="#94a3b8" icon={DollarSign}  />
                   <KpiCard label="Platform Profit" value={fmt(overview.kpis.total_platform_profit)} color="#10b981" icon={TrendingUp}
                     sub="Commission + delivery margin − refused-parcel fees we paid" />
-                  <KpiCard label="Commissions"     value={fmt(overview.kpis.total_commission)}      color="#db142e" icon={TrendingDown} />
+                  <KpiCard label="Commissions"     value={fmt(overview.kpis.total_commission)}      color="#db142e" icon={TrendingDown}
+                    sub={Number(overview.kpis.total_platform_funded_discounts ?? 0) > 0 ? 'Net of platform-funded discounts' : undefined} />
+                  {/* Admin promotions funded by Choose'Tounsi: sellers paid on the original price */}
+                  <KpiCard label="Platform-funded discounts" value={fmt(overview.kpis.total_platform_funded_discounts ?? 0)} color="#8b5cf6" icon={TrendingDown}
+                    sub="Paid to sellers on platform-funded promotions (already deducted from commission & profit)" />
                   <KpiCard label="Shipping · Customers" value={fmt(overview.kpis.total_delivery_fees)} color="#3b82f6" icon={Package}
                     sub="Delivery fees paid at checkout" />
                   <KpiCard label="Shipping · Sellers" value={fmt(overview.kpis.total_seller_shipping ?? 0)} color="#f59e0b" icon={Package}
