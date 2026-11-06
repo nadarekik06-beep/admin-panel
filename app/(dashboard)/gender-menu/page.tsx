@@ -385,7 +385,7 @@ function ProductGenders({ categoryId }: { categoryId: number }) {
         ) : res.data.data.map(p => (
           <div key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
             <div className="w-10 h-10 rounded-lg bg-bg-primary border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-              {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-cover" /> : <Package size={14} className="text-text-muted" />}
+              {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain bg-[#f5f5f5]" /> : <Package size={14} className="text-text-muted" />}
             </div>
             <div className="flex-1 min-w-[160px]">
               <p className="text-xs font-semibold text-text-primary truncate">#{p.id} · {p.name}</p>

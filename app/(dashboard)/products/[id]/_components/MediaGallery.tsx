@@ -116,7 +116,7 @@ export default function MediaGallery({ product, filter, onFilterChange }: Props)
                 <img
                   src={img.url}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-[#f5f5f5]"
                   onError={() => setBroken((s) => new Set(s).add(img.id))}
                 />
               )}

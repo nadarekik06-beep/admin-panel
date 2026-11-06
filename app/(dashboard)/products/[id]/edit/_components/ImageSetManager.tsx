@@ -113,7 +113,7 @@ export default function ImageSetManager({
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.url} alt="" className="w-full h-full object-cover pointer-events-none select-none" />
+              <img src={item.url} alt="" className="w-full h-full object-contain bg-[#f5f5f5] pointer-events-none select-none" />
 
               <div className="absolute top-1 left-1 flex gap-1">
                 {isCover && (

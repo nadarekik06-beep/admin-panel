@@ -655,7 +655,7 @@ function OrderItemRow({ item }: { item: any }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
           {imageUrl
-            ? <img src={imageUrl} alt={item.product_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={imageUrl} alt={item.product_name} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
             : <Package size={14} color="#4b5563" />}
         </div>
       </td>

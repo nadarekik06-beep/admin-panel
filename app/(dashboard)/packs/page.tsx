@@ -377,7 +377,7 @@ function PackDetailDrawer({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {detail.image_url
-                    ? <img src={detail.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src={detail.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
                     : <Package2 size={32} color="#334155" />
                   }
                 </div>
@@ -523,7 +523,7 @@ function PackDetailDrawer({
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           {item.product?.primary_image_url
-                            ? <img src={item.product.primary_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ? <img src={item.product.primary_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
                             : <ShoppingBag size={16} color="#334155" />
                           }
                         </div>
@@ -733,7 +733,7 @@ function PackRow({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {pack.image_url
-              ? <img src={pack.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={pack.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
               : <Package2 size={18} color="#334155" />
             }
           </div>

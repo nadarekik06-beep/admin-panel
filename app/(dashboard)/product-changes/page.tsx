@@ -318,7 +318,7 @@ function ChangeCard({ set, open, busy, highlighted, onToggle, onRevert, onDeacti
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full flex items-start gap-3 p-3 sm:p-4 text-left hover:bg-bg-hover/40 transition-colors">
         <div className="w-11 h-11 rounded-lg overflow-hidden bg-bg-hover flex-shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {p?.primary_image_url && <img src={p.primary_image_url} alt="" className="w-full h-full object-cover" />}
+          {p?.primary_image_url && <img src={p.primary_image_url} alt="" className="w-full h-full object-contain bg-[#f5f5f5]" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -412,7 +412,7 @@ function Thumb({ src, faded }: { src: string; faded: boolean }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt="" onError={() => setBroken(true)}
-      className={clsx('w-10 h-10 rounded object-cover border', faded ? 'border-border opacity-70' : 'border-border-light')} />
+      className={clsx('w-10 h-10 rounded object-contain bg-[#f5f5f5] border', faded ? 'border-border opacity-70' : 'border-border-light')} />
   )
 }
 

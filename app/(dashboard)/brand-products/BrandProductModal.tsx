@@ -101,7 +101,7 @@ function ImageThumb({ src, isPrimary, onRemove, onSetPrimary, saving }: {
   return (
     <div style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: `2px solid ${isPrimary ? '#db142e' : border}`, background: '#0d1117' }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
       {isPrimary && (
         <div style={{ position: 'absolute', top: 4, left: 4, background: '#db142e', color: '#fff', fontSize: 8, fontWeight: 800, padding: '2px 5px', borderRadius: 999 }}>Primary</div>
       )}

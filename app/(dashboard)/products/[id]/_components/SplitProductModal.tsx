@@ -93,7 +93,7 @@ export default function SplitProductModal({ open, product, onClose, onDone }: {
                 o === -1 ? 'border-border hover:border-text-muted' : o === active ? 'border-[#198f41]' : 'border-[#db142e]/60 opacity-70')}
               title={o === -1 ? 'Add to the selected new product' : `In new product ${o + 1}`}
             >
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              <img src={img.url} alt="" className="w-full h-full object-contain bg-[#f5f5f5]" />
               {o !== -1 && (
                 <span className={clsx('absolute top-1 left-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center',
                   o === active ? 'bg-[#198f41]' : 'bg-[#db142e]')}>{o + 1}</span>

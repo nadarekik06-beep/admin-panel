@@ -135,7 +135,7 @@ function VariantsTab({ product, onShowImages }: { product: ProductReview; onShow
                       title="Show this variant's images in the gallery"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={v.image_urls[0]} alt="" className="w-full h-full object-cover" />
+                      <img src={v.image_urls[0]} alt="" className="w-full h-full object-contain bg-[#f5f5f5]" />
                       {v.image_urls.length > 1 && (
                         <span className="absolute bottom-0 right-0 text-[9px] bg-black/70 text-white px-1 rounded-tl">{v.image_urls.length}</span>
                       )}

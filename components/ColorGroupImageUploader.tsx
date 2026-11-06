@@ -153,7 +153,7 @@ export default function ColorGroupImageUploader({
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     {slot.existingUrls.map((url, i) => (
                       <div key={i} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: `1px solid ${dim2}`, flexShrink: 0 }}>
-                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
                         <div style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '1px 4px', fontSize: 8, color: '#fff', fontWeight: 700 }}>saved</div>
                       </div>
                     ))}
@@ -165,7 +165,7 @@ export default function ColorGroupImageUploader({
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     {slot.previews.map((preview, fi) => (
                       <div key={fi} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(99,102,241,0.4)', flexShrink: 0 }}>
-                        <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
                         <button type="button" disabled={disabled} onClick={() => removeFile(group.key, fi)}
                           style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: 'rgba(239,68,68,0.9)', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                           <X size={9} color="#fff" />

@@ -189,7 +189,7 @@ export default function ProductsPage() {
               <img
                 src={resolveImageUrl(row.primary_image_url) ?? ''}
                 alt={row.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-[#f5f5f5]"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-text-muted">

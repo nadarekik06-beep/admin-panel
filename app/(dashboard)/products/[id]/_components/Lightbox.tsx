@@ -189,7 +189,7 @@ export default function Lightbox({ images, index, onIndexChange, onClose }: Prop
               aria-label={`Image ${i + 1}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              <img src={img.url} alt="" className="w-full h-full object-contain bg-[#f5f5f5]" />
             </button>
           ))}
         </div>

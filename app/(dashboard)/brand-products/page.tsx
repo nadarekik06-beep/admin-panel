@@ -340,7 +340,7 @@ export default function BrandProductsPage() {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}>
                                 {thumbUrl
-                                  ? <img src={thumbUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ? <img src={thumbUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }} />
                                   : <ImageIcon size={14} style={{ color: textMuted, opacity: 0.5 }} />
                                 }
                               </div>
