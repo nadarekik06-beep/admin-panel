@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import {
@@ -371,14 +371,31 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
     return () => clearTimeout(t)
   }, [query, sellerFilter])
 
-  // Live preview with the server's rules (30-day reference price, rounding)
+  // Back on this tab (a price may have been edited elsewhere): price again
+  const [refreshTick, setRefreshTick] = useState(0)
   useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === 'visible') setRefreshTick((n) => n + 1) }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [])
+
+  // Live preview with the server's rules (current price read from the database, rounding);
+  // only the latest request may set it (an older, slower answer is dropped)
+  const previewSeq = useRef(0)
+  useEffect(() => {
+    const seq = ++previewSeq.current
     if (!selectedIds.length || !(numValue > 0)) { setPreview([]); return }
     const t = setTimeout(() => {
-      promotionsApi.preview(selectedIds, discountType, numValue).then(setPreview).catch(() => setPreview([]))
+      promotionsApi.preview(selectedIds, discountType, numValue)
+        .then((rows) => { if (seq === previewSeq.current) setPreview(rows) })
+        .catch(() => { if (seq === previewSeq.current) setPreview([]) })
     }, 250)
     return () => clearTimeout(t)
-  }, [selectedIds, discountType, numValue])
+  }, [selectedIds, discountType, numValue, refreshTick])
 
   const add = (p: PromoProduct) => {
     if (selectedIds.includes(p.id)) return
@@ -394,7 +411,7 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
     if (!startsAt || !endsAt) e.ends_at = ['Start and end are required.']
     else if (new Date(endsAt) <= new Date(startsAt)) e.ends_at = ['The end must be after the start.']
     if (!selected.length) e.product_ids = ['Choose at least one product.']
-    if (preview.some((p) => !p.valid || p.variants.some((v) => !v.valid))) e.discount_value = ['The final price would be 0 DT or less for some products.']
+    if (preview.some((p) => !p.valid || p.variants.some((v) => !v.valid))) e.discount_value = ['The discount must be lower than the current price: the final price would be 0 DT or less for some products.']
     return e
   }
 
@@ -590,7 +607,7 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
             </ul>
             {selected.length > 0 && (
               <p className="text-[11px] text-text-muted mt-2">
-                Crossed-out price = lowest price of the last 30 days (anti fake-discount), same as the storefront. Shipping is never discounted.
+                Crossed-out price = the current price (product or variant), same as the storefront, cart and checkout. Shipping is never discounted.
               </p>
             )}
           </div>
