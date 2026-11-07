@@ -184,10 +184,18 @@ export interface SellerAdjustment {
   settlement_batch_id: number | null; applied_at: string | null; created_at: string
 }
 
+/** Who asked (staff views): the account, or a guest's name + phone from the order. */
+export interface ComplaintBuyer {
+  is_guest: boolean
+  name:     string | null
+  phone:    string | null
+  email:    string | null
+}
+
 export interface Complaint {
   id:                  number
   reference:           string | null
-  user_id:             number
+  user_id:             number | null   // null: guest (no account)
   order_id:            number
   seller_id:           number | null
   complaint_type:      ComplaintType
@@ -232,6 +240,7 @@ export interface Complaint {
   refund_status?:      string | null
   order?:              ComplaintOrder
   user?:               ComplaintUser
+  buyer?:              ComplaintBuyer
   seller?:             ComplaintUser
   complained_items?:   ComplaintOrderItem[]
   timeline?:           TimelineStep[]

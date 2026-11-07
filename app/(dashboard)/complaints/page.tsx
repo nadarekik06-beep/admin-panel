@@ -494,10 +494,13 @@ function ComplaintTableRow({ complaint, onSelect }: {
         </div>
       </td>
       <td>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 2 }}>
-          {complaint.user?.name ?? '—'}
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {complaint.user?.name ?? complaint.buyer?.name ?? '—'}
+          {complaint.buyer?.is_guest && <GuestBadge />}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--t3)' }}>{complaint.user?.email ?? ''}</div>
+        <div style={{ fontSize: 11, color: 'var(--t3)' }}>
+          {complaint.buyer?.is_guest ? (complaint.buyer.phone ?? '') : (complaint.user?.email ?? '')}
+        </div>
       </td>
       <td>
         <span style={{ fontSize: 12, color: 'var(--t2)' }}>
@@ -551,6 +554,18 @@ function SkeletonRow() {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+/** Return asked without an account (guest checkout): name + phone come from the order. */
+function GuestBadge() {
+  return (
+    <span title="Asked without an account (guest checkout)" style={{
+      display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '2px 7px', borderRadius: 999, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', whiteSpace: 'nowrap',
+    }}>
+      Guest
+    </span>
+  )
+}
+
 export default function AdminComplaintsPage() {
   const [complaints,     setComplaints]     = useState<Complaint[]>([])
   const [stats,          setStats]          = useState<any>(null)
