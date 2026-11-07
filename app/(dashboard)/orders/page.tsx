@@ -22,6 +22,7 @@ import {
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
 import { ParcelWhatsAppBlock } from '@/components/whatsapp/SellerWhatsApp'
+import { GuestWhatsAppButton, guestOrderMessage } from '@/components/whatsapp/GuestWhatsApp'
 import ParcelIntigoBlock from '@/components/intigo/ParcelIntigoBlock'
 import ParcelBordereauBlock from '@/components/intigo/ParcelBordereauBlock'
 import type { BordereauSummary } from '@/lib/bordereauApi'
@@ -1114,6 +1115,17 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                   </div>
                 ))}
               </div>
+
+              {/* Guest (no account, often no e-mail): send the tracking link on WhatsApp, by hand */}
+              {(detail as any).is_guest && !detail.user && detail.order_number && (
+                <div style={{ background: 'rgba(25,143,65,0.06)', border: '1px solid rgba(25,143,65,0.25)', borderRadius: 12, padding: '12px 14px' }}>
+                  <GuestWhatsAppButton
+                    phone={(detail as any).guest_phone ?? (detail as any).phone}
+                    label="Send tracking link on WhatsApp"
+                    message={guestOrderMessage(detail.order_number, (detail as any).guest_name)}
+                  />
+                </div>
+              )}
 
               {/* Shipping address snapshot (taken at checkout) */}
               <ShippingAddressCard address={detail.shipping_address} />

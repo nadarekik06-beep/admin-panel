@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { adminComplaintApi } from '@/lib/complaintApi'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { GuestWhatsAppButton, guestReturnMessage } from '@/components/whatsapp/GuestWhatsApp'
 import type { Complaint, ItemCondition, Payer, RefundMethod, ResolutionType } from '@/types/complaint'
 import { COMPLAINT_TYPE_LABELS, REFUND_METHOD_LABELS, statusConfig } from '@/types/complaint'
 
@@ -285,7 +286,24 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
               <p className="ct-info-card-label"><User size={13} /> {exchange ? 'Client — delivery & old item' : 'Pickup — client'}</p>
               <AddressLines lines={[c.client_address?.name, c.client_address?.phone, c.client_address?.address, c.client_address?.delegation,
                 [c.client_address?.postal_code, c.client_address?.wilaya].filter(Boolean).join(' ')]} />
-              <p style={{ fontSize: 11, color: 'var(--drawer-t2)', margin: '6px 0 0' }}>{c.user?.email}</p>
+              {c.buyer?.is_guest ? (
+                <>
+                  <p style={{ fontSize: 11, color: '#f59e0b', fontWeight: 800, margin: '6px 0 8px' }}>
+                    GUEST · {[c.buyer.name, c.buyer.phone, c.buyer.email].filter(Boolean).join(' · ')}
+                  </p>
+                  {/* No account (often no e-mail): tell them the new status on WhatsApp, by hand */}
+                  <GuestWhatsAppButton
+                    phone={c.buyer.phone}
+                    label="Send status on WhatsApp"
+                    message={guestReturnMessage({
+                      orderNumber: c.order?.order_number ?? String(c.order_id),
+                      reference: c.reference, status: c.status, exchange, name: c.buyer.name,
+                    })}
+                  />
+                </>
+              ) : (
+                <p style={{ fontSize: 11, color: 'var(--drawer-t2)', margin: '6px 0 0' }}>{c.user?.email}</p>
+              )}
             </div>
             <div className="ct-info-card">
               <p className="ct-info-card-label"><Store size={13} /> {exchange ? 'Seller — replacement pickup & old item back' : 'Destination — seller'}</p>
