@@ -51,7 +51,7 @@ export default function UsersPage() {
   // Create seller application (admin on the user's behalf)
   const [applyUser, setApplyUser] = useState<User | null>(null)
   const closeApply = () => {
-    if (window.confirm('Close the form? What you entered will be lost.')) setApplyUser(null)
+    if (window.confirm('Close the form? What you entered is kept in this browser until the application is sent.')) setApplyUser(null)
   }
 
   const fetchUsers = useCallback(async () => {
