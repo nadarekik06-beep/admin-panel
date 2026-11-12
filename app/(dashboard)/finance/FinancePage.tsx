@@ -11,6 +11,9 @@ import api from '@/lib/axios'
 import { format } from 'date-fns'
 import { fmt, SHIPPING_PAYER, PayoutBadge, ParcelOutcomeBadge } from './financeShared'
 import FinanceOrderDrawer from './FinanceOrderDrawer'
+import SettlementPaymentModal, {
+  PaymentFields, PaymentValues, emptyPayment, paymentFormData, uploadConfig, methodLabel,
+} from './SettlementPaymentModal'
 
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -62,6 +65,8 @@ function CreateSettlementModal({
   const [sellerId,  setSellerId]  = useState('')
   const [batchDate, setBatchDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [notes,     setNotes]     = useState('')
+  // Payment details are optional here: the batch is usually paid later ("Marquer comme payé")
+  const [payment,   setPayment]   = useState<PaymentValues>({ ...emptyPayment(), date: '' })
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState('')
 
@@ -73,15 +78,14 @@ function CreateSettlementModal({
     setLoading(true)
     setError('')
     try {
-      await api.post('/admin/settlements/create', {
-        seller_id:  parseInt(sellerId),
-        batch_date: batchDate,
-        notes:      notes || undefined,
-      })
+      const extra: Record<string, string> = { seller_id: String(parseInt(sellerId)), batch_date: batchDate }
+      if (notes) extra.notes = notes
+      await api.post('/admin/settlements/create', paymentFormData(payment, extra), uploadConfig)
       onCreated()
       onClose()
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Failed to create settlement.')
+      const errs = e?.response?.data?.errors
+      setError((errs && Object.values(errs).flat()[0] as string) || e?.response?.data?.message || 'Failed to create settlement.')
     } finally {
       setLoading(false)
     }
@@ -188,6 +192,9 @@ function CreateSettlementModal({
             />
           </div>
 
+          {/* Payment details + proof (optional: can be added later with "Marquer comme payé") */}
+          <PaymentFields values={payment} onChange={setPayment} onError={setError} />
+
           {/* Info box */}
           <div style={{
             background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
@@ -249,6 +256,8 @@ export default function FinancePage() {
   const [cancelling,  setCancelling]  = useState<number | null>(null)
   const [showCreate,  setShowCreate]  = useState(false)
   const [detailRow,   setDetailRow]   = useState<any>(null)
+  // settlement row open in the "mark as paid" / proof modal
+  const [paymentRow,  setPaymentRow]  = useState<{ row: any; mode: 'pay' | 'edit' } | null>(null)
   const [sellersList, setSellersList] = useState<Seller[]>([])
 
   const [search,           setSearch]           = useState('')
@@ -401,6 +410,16 @@ export default function FinancePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Mark as paid / proof of payment modal */}
+      {paymentRow && (
+        <SettlementPaymentModal
+          row={paymentRow.row}
+          mode={paymentRow.mode}
+          onClose={() => setPaymentRow(null)}
+          onDone={fetchSettlements}
+        />
+      )}
 
       {/* Create settlement modal */}
       {showCreate && (
@@ -909,6 +928,12 @@ export default function FinancePage() {
                           <tr key={row.id}>
                             <td style={{ ...td(), fontFamily: 'monospace', fontWeight: 700, color: '#f1f5f9', fontSize: 11 }}>
                               {row.batch_reference}
+                              {row.has_proof && <span title="Preuve de paiement jointe" style={{ marginLeft: 6 }}>📎</span>}
+                              {row.payment_method && (
+                                <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 600, color: '#64748b', fontFamily: 'inherit' }}>
+                                  {methodLabel(row.payment_method)}{row.payment_reference ? ` · ${row.payment_reference}` : ''}
+                                </p>
+                              )}
                             </td>
                             <td style={{ ...td(), color: '#f1f5f9', fontWeight: 600 }}>
                               <p style={{ margin: 0, fontWeight: 700 }}>{row.seller_name}</p>
@@ -935,7 +960,7 @@ export default function FinancePage() {
                               {row.status === 'draft' && (
                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                   <button
-                                    onClick={() => handleConfirmBatch(row.id)}
+                                    onClick={() => setPaymentRow({ row, mode: 'pay' })}
                                     disabled={confirming === row.id}
                                     style={{
                                       padding: '5px 10px', borderRadius: 7, border: 'none',
@@ -946,7 +971,7 @@ export default function FinancePage() {
                                       whiteSpace: 'nowrap',
                                     }}
                                   >
-                                    {confirming === row.id ? '…' : '✓ Confirm Paid'}
+                                    {confirming === row.id ? '…' : '✓ Marquer comme payé'}
                                   </button>
                                   <button
                                     onClick={() => handleCancelBatch(row.id)}
@@ -963,6 +988,21 @@ export default function FinancePage() {
                                     {cancelling === row.id ? '…' : '✕ Cancel'}
                                   </button>
                                 </div>
+                              )}
+                              {/* Paid batches: view / replace / remove the proof of payment */}
+                              {row.status === 'paid' && (
+                                <button
+                                  onClick={() => setPaymentRow({ row, mode: 'edit' })}
+                                  style={{
+                                    padding: '5px 10px', borderRadius: 7,
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    background: 'rgba(255,255,255,0.06)',
+                                    color: '#cbd5e1', fontSize: 10, fontWeight: 700,
+                                    cursor: 'pointer', whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  📎 {row.has_proof ? 'Preuve' : 'Ajouter preuve'}
+                                </button>
                               )}
                             </td>
                           </tr>
