@@ -88,6 +88,10 @@ export interface PromoProduct {
 }
 
 export interface PreviewRow {
+  /** What the client will see (delivery included, never discounted): prices and the real -X % */
+  client_original_price?: number
+  client_final_price?: number
+  client_percent?: number
   current_price: number
   original_price: number
   final_price: number

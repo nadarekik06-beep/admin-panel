@@ -33,7 +33,6 @@ export interface EditorState {
   is_pack: boolean
   pack_quantity: string
   pack_contents: string
-  free_delivery: boolean
   parcel_size: 'S' | 'L' | 'XL'
   occasions: string[]
   admin_note: string
@@ -81,7 +80,6 @@ export function fromPayload(p: EditorPayload): EditorState {
     is_pack:           pr.is_pack,
     pack_quantity:     pr.pack_quantity != null ? String(pr.pack_quantity) : '',
     pack_contents:     pr.pack_contents ?? '',
-    free_delivery:     pr.free_delivery,
     parcel_size:       pr.parcel_size ?? 'S',
     occasions:         pr.occasions?.length ? pr.occasions : ['all_season'],
     admin_note:        pr.admin_note ?? '',
@@ -175,7 +173,6 @@ export function toDocument(s: EditorState, loadedUpdatedAt: string, colorAxis: A
     is_pack:           s.is_pack,
     pack_quantity:     s.is_pack && s.pack_quantity.trim() ? Number(s.pack_quantity) : null,
     pack_contents:     s.is_pack ? nullIfBlank(s.pack_contents) : null,
-    free_delivery:     s.free_delivery,
     parcel_size:       s.parcel_size,
     // Categories without occasions are stored as all_season by the backend
     occasions:         s.occasions.length ? s.occasions : ['all_season'],
@@ -314,7 +311,7 @@ export function tabOf(errorKey: string): TabId {
   if (errorKey.startsWith('variants')) return 'variants'
   if (errorKey.startsWith('images.color')) return 'variants'
   if (errorKey.startsWith('images')) return 'images'
-  if (['price', 'stock', 'occasions', 'sku', 'is_active', 'is_pack', 'pack_quantity', 'pack_contents', 'free_delivery'].includes(errorKey)) return 'pricing'
+  if (['price', 'stock', 'occasions', 'sku', 'is_active', 'is_pack', 'pack_quantity', 'pack_contents', 'parcel_size'].includes(errorKey)) return 'pricing'
   if (['slug', 'admin_note'].includes(errorKey)) return 'seo'
   return 'general'
 }

@@ -83,8 +83,13 @@ export interface EditorPayload {
     pack_contents: string | null
     featured: boolean
     occasions: string[]
-    free_delivery: boolean
     parcel_size?: 'S' | 'L' | 'XL'
+    /** false: the size was never chosen by the seller or an admin (older products silently got S) */
+    parcel_size_confirmed?: boolean
+    /** What the client sees for the SAVED price and size: base price + the delivery included */
+    display_price?: number
+    /** Client fee included in the displayed price, per parcel size (Delivery & Fees) */
+    included_fees?: Record<'S' | 'L' | 'XL', number>
     admin_note: string | null
     admin_edited_at: string | null
     admin_edited_by: { id: number; name: string } | null
@@ -137,7 +142,6 @@ export interface EditorDocument {
   is_pack: boolean
   pack_quantity: number | null
   pack_contents: string | null
-  free_delivery: boolean
   parcel_size: 'S' | 'L' | 'XL'
   occasions: string[]
   admin_note: string | null

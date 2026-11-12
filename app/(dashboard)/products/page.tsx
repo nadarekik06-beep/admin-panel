@@ -38,6 +38,11 @@ interface AdminProduct {
   description: string | null
   short_description: string | null
   price: string | number
+  /** What the client sees: seller price + the delivery included for the product's size */
+  display_price?: number
+  parcel_size?: 'S' | 'L' | 'XL'
+  /** false: the size was never chosen by the seller or an admin (older products silently got S) */
+  parcel_size_confirmed?: boolean
   stock: number
   /** Total = active variants; per-variant rows for the Stock column tooltip */
   stock_breakdown?: StockBreakdown
@@ -115,6 +120,7 @@ export default function ProductsPage() {
   usePageLoading(loading)
   const [search, setSearch]               = useState('')
   const [status, setStatus]               = useState('pending')
+  const [sizeUnconfirmed, setSizeUnconfirmed] = useState(false)
   const [page, setPage]                   = useState(1)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
@@ -131,6 +137,7 @@ export default function ProductsPage() {
         search: search || undefined,
         status: status || undefined,
         page,
+        ...(sizeUnconfirmed ? { size_unconfirmed: 1 as const } : {}),
       })
       setProducts(res)
     } catch (err) {
@@ -138,7 +145,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, status, page])
+  }, [search, status, page, sizeUnconfirmed])
 
   useEffect(() => {
     const timer = setTimeout(fetchProducts, 300)
@@ -213,6 +220,14 @@ export default function ProductsPage() {
                   <PackagePlus size={9} /> Added by admin
                 </span>
               )}
+              {row.parcel_size_confirmed === false && (
+                <span
+                  title="The parcel size was never chosen by the seller or an admin (older products silently got S). It sets the delivery included in the displayed price: open the product and set it."
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/30"
+                >
+                  Size {row.parcel_size ?? 'S'} not confirmed
+                </span>
+              )}
               {!row.created_by_admin_id && row.admin_edited_at && (
                 <span
                   title={`Edited by an admin on ${format(new Date(row.admin_edited_at), 'MMM d, yyyy HH:mm')}`}
@@ -234,7 +249,16 @@ export default function ProductsPage() {
     {
       key: 'price',
       header: 'Price',
-      render: (row) => <span className="font-medium text-text-primary">{formatCurrency(row.price)}</span>,
+      render: (row) => (
+        <div>
+          <span className="font-medium text-text-primary" title="Seller price">{formatCurrency(row.price)}</span>
+          {row.display_price != null && (
+            <p className="text-[11px] text-text-muted" title="Seller price + delivery included for this parcel size">
+              Client sees {formatCurrency(row.display_price)}
+            </p>
+          )}
+        </div>
+      ),
     },
     {
       key: 'stock',
@@ -480,6 +504,10 @@ export default function ProductsPage() {
               className="w-full bg-bg-primary border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple transition-colors"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-text-secondary whitespace-nowrap cursor-pointer" title="Products whose parcel size was never chosen (older products silently got S)">
+            <input type="checkbox" checked={sizeUnconfirmed} onChange={(e) => { setSizeUnconfirmed(e.target.checked); setPage(1) }} />
+            Size not confirmed
+          </label>
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1) }}

@@ -80,6 +80,14 @@ interface Detail {
     seller_net_amount: number
     // Parcel cash flow (null on legacy orders)
     is_free_delivery?: boolean | null
+    /** 'included': delivery inside the displayed prices; null on older orders */
+    pricing_model?: string | null
+    /** What the client paid for this parcel (after returns) */
+    client_paid?: number
+    /** Sum of the fees included in the displayed prices of its units */
+    included_fees_total?: number
+    /** Given to the client for ordering several items from this shop */
+    multi_item_discount?: number
     platform_delivery_margin?: number
     cod_amount?: number
     amount_to_remit?: number
@@ -431,6 +439,16 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
                   value={fmt(f.commission_amount)}
                   color={RED}
                 />
+                {f.pricing_model === 'included' && (
+                  <>
+                    <div style={{ borderTop: '1px dashed rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                    <Line label="Client paid" value={fmt(f.client_paid ?? 0)} color="#14b8a6" strong
+                      sub="Displayed prices (delivery included) − coupon − multi-item discount" />
+                    <Line label="· Delivery included in the displayed prices" value={fmt(f.included_fees_total ?? 0)} />
+                    <Line label="· Multi-item discount given" value={`−${fmt(f.multi_item_discount ?? 0)}`} color="#34d399" />
+                    <Line label="· Delivery collected (parcel fee)" value={fmt(f.delivery_fee)} color="#3b82f6" />
+                  </>
+                )}
                 <div style={{ borderTop: '1px dashed rgba(255,255,255,0.08)', margin: '4px 0' }} />
                 <Line
                   label="Shipping"
@@ -439,10 +457,10 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
                   sub={payer ? `Paid by: ${payer.label}${shippingCollected > 0 ? ` · collected +${fmt(shippingCollected)}` : ''}` : null}
                 />
                 {Number(f.delivery_fee) > 0 && (
-                  <Line label="· Delivery fee from customer" value={`+${fmt(f.delivery_fee)}`} color="#3b82f6" />
+                  <Line label={f.pricing_model === 'included' ? '· Parcel fee collected (inside the prices)' : '· Delivery fee from customer'} value={`+${fmt(f.delivery_fee)}`} color="#3b82f6" />
                 )}
                 {Number(f.seller_shipping_charge) > 0 && (
-                  <Line label="· Charged to seller (free shipping)" value={`+${fmt(f.seller_shipping_charge)}`} color="#f59e0b" />
+                  <Line label="· Charged to seller (free shipping, old order)" value={`+${fmt(f.seller_shipping_charge)}`} color="#f59e0b" />
                 )}
                 {Number(f.shipping_cost) > 0 && (
                   <Line label="· Paid to delivery agency" value={`−${fmt(f.shipping_cost)}`} color="#ef4444" />

@@ -629,7 +629,7 @@ function PromotionForm({ promo, sellers, onClose, onSaved }: {
   )
 }
 
-function PriceCell({ row, small = false }: { row?: { original_price: number; final_price: number; discount_percent: number; valid: boolean }; small?: boolean }) {
+function PriceCell({ row, small = false }: { row?: { original_price: number; final_price: number; discount_percent: number; valid: boolean; client_original_price?: number; client_final_price?: number; client_percent?: number }; small?: boolean }) {
   if (!row) return <span className="text-[11px] text-text-muted">…</span>
   if (!row.valid) return <span className="text-[11px] font-bold text-[#f87171]">0 DT: not allowed</span>
   return (
@@ -637,6 +637,12 @@ function PriceCell({ row, small = false }: { row?: { original_price: number; fin
       <s className="text-text-muted mr-1.5">{money(row.original_price)}</s>
       <b style={{ color: '#f87171' }}>{money(row.final_price)}</b>
       <span className="ml-1.5 font-black" style={{ color: '#f87171' }}>-{row.discount_percent}%</span>
+      {/* The discount applies to the seller price; delivery is included in what the client sees */}
+      {row.client_final_price != null && (
+        <span className="block text-[10px] font-semibold text-text-muted" title="Displayed prices include delivery, which is never discounted">
+          Client sees {money(row.client_final_price)} (was {money(row.client_original_price ?? row.client_final_price)}) · <b style={{ color: '#34d399' }}>-{row.client_percent ?? 0}%</b>
+        </span>
+      )}
     </span>
   )
 }

@@ -258,8 +258,17 @@ function PricingTab({ product }: { product: ProductReview }) {
           <KV label="Variant price range" value={`${formatDT(pricing.min_price)} – ${formatDT(pricing.max_price)}`} />
         )}
         <KV label="Active discount" value={pricing.discount_amount > 0 ? `− ${formatDT(pricing.discount_amount)}` : 'None'} />
-        <KV label="Customer pays (base)" value={formatDT(pricing.effective_price)} strong />
-        <KV label="Delivery fee" value={pricing.delivery.is_free ? 'Free' : formatDT(pricing.delivery.fee)} />
+        <KV label="Seller price after discount" value={formatDT(pricing.effective_price)} strong />
+        <KV label="Delivery included (client fee of the size)" value={`+ ${formatDT(pricing.delivery.fee)}`} />
+        {pricing.delivery.display_final_price != null && (
+          <KV
+            label="Client sees"
+            value={pricing.delivery.display_price != null && pricing.delivery.display_price !== pricing.delivery.display_final_price
+              ? `${formatDT(pricing.delivery.display_final_price)} (was ${formatDT(pricing.delivery.display_price)})`
+              : formatDT(pricing.delivery.display_final_price)}
+            strong
+          />
+        )}
       </Section>
 
       <Section title={<>Commission <span className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: plan.color, background: plan.bg, border: `1px solid ${plan.border}` }}>{c.plan_name}</span></>}>
@@ -322,13 +331,13 @@ function ShippingTab({ product }: { product: ProductReview }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Section title="Delivery">
-        <KV
-          label="Delivery fee"
-          value={s.is_free_delivery ? 'Free (seller-funded)' : formatDT(s.delivery_fee)}
-          strong
-        />
-        <KV label="Source" value={s.uses_platform_default ? 'Platform default' : 'Set by seller'} />
+        <KV label="Delivery for the client" value="Free (included in the displayed price)" strong />
+        <KV label="Included in the price" value={formatDT(s.delivery_fee)} />
         <KV label="Parcel size" value={s.parcel_size ? `${s.parcel_size} (${{ S: 'small', L: 'large', XL: 'extra large' }[s.parcel_size]})` : 'S'} strong />
+        <KV
+          label="Size confirmed"
+          value={s.parcel_size_confirmed === false ? 'No: never chosen by the seller or an admin (check it)' : 'Yes'}
+        />
       </Section>
       <Section title="Package details">
         {s.fields.length === 0 ? (

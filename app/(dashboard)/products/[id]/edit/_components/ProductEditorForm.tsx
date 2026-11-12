@@ -489,13 +489,22 @@ export default function ProductEditorForm(props: ProductEditorFormProps) {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted">TND</span>
                 </div>
               </Field>
-              <Toggle checked={state.free_delivery} onChange={(v) => set('free_delivery', v)} label="Free delivery" description="The customer pays no delivery fee; the seller pays the free-delivery contribution per shipment (Delivery &amp; Fees)." />
-              <Field label="Parcel size" required hint="S fits in a shoebox · L a large box (shoes, bags, small appliances) · XL bulky or heavy (furniture, large appliances). Sets the delivery price (Delivery & Fees) and Intigo's package size.">
+              <Field label="Parcel size" required hint="S fits in a shoebox · L a large box (shoes, bags, small appliances) · XL bulky or heavy (furniture, large appliances). Sets the delivery included in the displayed price (Delivery & Fees) and Intigo's package size.">
                 <select value={state.parcel_size} onChange={(e) => set('parcel_size', e.target.value as 'S' | 'L' | 'XL')} className={inputCls(false)}>
                   <option value="S">S · small</option>
                   <option value="L">L · large</option>
                   <option value="XL">XL · extra large</option>
                 </select>
+                {p.parcel_size_confirmed === false && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-amber-400">
+                    Not confirmed yet: this size was never chosen by the seller or an admin. Saving this form confirms the size selected above.
+                  </p>
+                )}
+                {p.display_price != null && (
+                  <p className="mt-1.5 text-[11px] text-text-muted">
+                    Saved price and size: the client sees <b className="text-text-primary">{Number(p.display_price).toFixed(3)} TND</b> (delivery included, shown as free).
+                  </p>
+                )}
               </Field>
             </div>
           </Card>

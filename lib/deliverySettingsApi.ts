@@ -6,8 +6,9 @@ import api from './axios'
 export type PaymentMethodKey = 'cod' | 'card' | 'd17' | 'wallet'
 export type ParcelSize = 'S' | 'L' | 'XL'
 export const PARCEL_SIZES: ParcelSize[] = ['S', 'L', 'XL']
-export type SizeField = 'client_fee' | 'agency_cost' | 'return_fee' | 'seller_contribution'
-export const SIZE_FIELDS: SizeField[] = ['client_fee', 'agency_cost', 'return_fee', 'seller_contribution']
+// Seller-offered free delivery no longer exists: delivery is included in every displayed price.
+export type SizeField = 'client_fee' | 'agency_cost' | 'return_fee'
+export const SIZE_FIELDS: SizeField[] = ['client_fee', 'agency_cost', 'return_fee']
 
 export interface DeliverySettingsValues {
   // Flat values = size S (kept for older screens)
@@ -25,15 +26,14 @@ export interface SizeRates {
   client_fee: number
   agency_cost: number
   return_fee: number
-  seller_contribution: number
   /** Complaint return of this size (= agency_cost while after_sale_use_agency_cost is on). */
   after_sale_return_fee: number
   after_sale_use_agency_cost: boolean
   /** What Intigo bills for an exchange parcel of this size. */
   exchange_fee: number
   package_size: number
+  /** client fee − Intigo delivery cost */
   margin_normal: number
-  margin_free: number
 }
 
 export interface DeliverySettingChange {
@@ -49,7 +49,7 @@ export interface DeliverySettingChange {
 export interface DeliverySettingsPayload {
   settings: DeliverySettingsValues
   sizes: Record<ParcelSize, SizeRates>
-  margins: { normal: number; free_delivery: number }
+  margins: { normal: number }
   warnings: string[]
   payment_methods: Record<PaymentMethodKey, boolean>
   intigo: { mode: 'fake' | 'live'; can_open: boolean; is_exchange: boolean }

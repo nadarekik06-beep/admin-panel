@@ -127,7 +127,8 @@ export interface ProductReview {
     active_promotion: ReviewPromotion | null
     promotions: ReviewPromotion[]
     coupons: { id: number; code: string; label: string; min_order_amount: number | null }[]
-    delivery: { fee: number; is_free: boolean; is_default: boolean }
+    /** fee: client fee of the product's size, included in the price the client sees */
+    delivery: { fee: number; is_free: boolean; is_default: boolean; included?: boolean; display_price?: number; display_final_price?: number }
     commission: {
       plan: string
       plan_name: string
@@ -172,6 +173,8 @@ export interface ProductReview {
     uses_platform_default: boolean
     /** S | L | XL: the courier's package size (delivery price per size) */
     parcel_size?: 'S' | 'L' | 'XL'
+    /** false: never chosen by the seller or an admin (older products silently got S) */
+    parcel_size_confirmed?: boolean
     fields: { label: string; value: string }[]
   }
 

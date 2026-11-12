@@ -510,7 +510,10 @@ export default function FinancePage() {
                         <KpiCard label="Agency Fees" value={fmt(d.agency_fees)} color="#ef4444" icon={TrendingDown} sub="Kept by the delivery company" />
                         <KpiCard label="Remitted to Us" value={fmt(d.remitted_to_platform)} color="#10b981" icon={TrendingUp} sub="Remittance confirmed" />
                         <KpiCard label="Pending at Agency" value={fmt(d.pending_at_delivery_company)} color="#f59e0b" icon={Clock} sub="Collected, not remitted yet" />
-                        <KpiCard label="Seller Delivery Contributions" value={fmt(d.seller_free_delivery_contributions)} color="#f59e0b" icon={Package} sub="Free-delivery parcels" />
+                        {/* Seller-offered free delivery no longer exists: only orders placed before that still carry a contribution */}
+                        {Number(d.seller_free_delivery_contributions ?? 0) > 0 && (
+                          <KpiCard label="Seller Delivery Contributions" value={fmt(d.seller_free_delivery_contributions)} color="#f59e0b" icon={Package} sub="Old orders only (seller-offered free delivery)" />
+                        )}
                         <KpiCard label="Platform Delivery Margin" value={fmt(d.platform_delivery_margin)} color={Number(d.platform_delivery_margin) < 0 ? '#ef4444' : '#10b981'} icon={Package}
                           sub={`Refused parcels: ${d.refused_parcels} · platform loss ${fmt(d.refused_platform_loss)}`} />
                         <KpiCard label="Commission" value={fmt(d.commission)} color="#db142e" icon={TrendingUp} sub="On items − coupon, never on delivery" />
@@ -530,10 +533,12 @@ export default function FinancePage() {
                   {/* Admin promotions funded by Choose'Tounsi: sellers paid on the original price */}
                   <KpiCard label="Platform-funded discounts" value={fmt(overview.kpis.total_platform_funded_discounts ?? 0)} color="#8b5cf6" icon={TrendingDown}
                     sub="Paid to sellers on platform-funded promotions (already deducted from commission & profit)" />
-                  <KpiCard label="Shipping · Customers" value={fmt(overview.kpis.total_delivery_fees)} color="#3b82f6" icon={Package}
-                    sub="Delivery fees paid at checkout" />
-                  <KpiCard label="Shipping · Sellers" value={fmt(overview.kpis.total_seller_shipping ?? 0)} color="#f59e0b" icon={Package}
-                    sub="Free-delivery parcels, deducted from payouts" />
+                  <KpiCard label="Delivery collected" value={fmt(overview.kpis.total_delivery_fees)} color="#3b82f6" icon={Package}
+                    sub="One parcel fee per shop, included in the displayed prices" />
+                  {Number(overview.kpis.total_seller_shipping ?? 0) > 0 && (
+                    <KpiCard label="Shipping · Sellers" value={fmt(overview.kpis.total_seller_shipping ?? 0)} color="#f59e0b" icon={Package}
+                      sub="Old orders only (seller-offered free delivery)" />
+                  )}
                   {overview.kpis.refused_parcels && (
                     <KpiCard label="Refused Parcels" value={String(overview.kpis.refused_parcels.count)} color="#ef4444" icon={TrendingDown}
                       sub={`Agency fees lost ${fmt(overview.kpis.refused_parcels.agency_fees_lost)} · billed to sellers ${fmt(overview.kpis.refused_parcels.agency_fees_billed)}${overview.kpis.refused_parcels.awaiting_return ? ` · ${overview.kpis.refused_parcels.awaiting_return} awaiting return` : ''}`} />
@@ -610,8 +615,8 @@ export default function FinancePage() {
                             <th style={th(true)}>Orders</th>
                             <th style={th(true)}>Gross</th>
                             <th style={th(true)}>Commission</th>
-                            <th style={th(true)}>Shipping · Customers</th>
-                            <th style={th(true)}>Shipping · Sellers</th>
+                            <th style={th(true)}>Delivery collected</th>
+                            <th style={th(true)} title="Orders placed when sellers could offer free delivery">Seller delivery (old orders)</th>
                             <th style={th(true)}>Paid to Agency</th>
                             <th style={th(true)}>Platform Profit</th>
                             <th style={th(true)}>Seller Payouts</th>
@@ -743,6 +748,13 @@ export default function FinancePage() {
                                 <s style={{ opacity: 0.5, fontSize: '0.85em', marginRight: 6 }}>{fmt(row.original_subtotal)}</s>
                               )}
                               {fmt(row.subtotal)}
+                              {/* What the client paid for this parcel, and the multi-item discount given */}
+                              {row.client_paid != null && Number(row.client_paid) > 0 && (
+                                <p style={{ margin: 0, fontSize: 10, color: '#14b8a6', fontWeight: 700 }}>client paid {fmt(row.client_paid)}</p>
+                              )}
+                              {Number(row.multi_item_discount ?? 0) > 0 && (
+                                <p style={{ margin: 0, fontSize: 10, color: '#34d399', fontWeight: 600 }}>multi-item −{fmt(row.multi_item_discount)}</p>
+                              )}
                             </td>
                             <td style={{ ...td(true), color: '#db142e', fontWeight: 700 }}>{fmt(row.commission_amount)}</td>
                             <td style={{ ...td(true) }}>

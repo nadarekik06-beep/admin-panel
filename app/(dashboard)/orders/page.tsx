@@ -95,6 +95,10 @@ interface SellerSubOrder {
   slip_money?:   SlipMoney | null
   // Parcel delivery snapshot (null on legacy orders)
   is_free_delivery?:  boolean | null
+  /** 'included': delivery inside the displayed prices (null on older orders) */
+  pricing_model?:     string | null
+  delivery_fee?:      number | string | null
+  multi_item_discount?: number | string | null
   cash_collected_at?: string | null
   refused_at?:        string | null
   refused_agency_fee?:  number | string | null
@@ -1171,7 +1175,8 @@ function OrderDetailDrawer({ orderId, open, onClose, onUpdated, notify }: {
                             <span>
                               COD on slip: <strong style={{ color: so.slip_money.cod > 0 ? '#f1f5f9' : '#10b981' }}>{formatCurrency(so.slip_money.cod)}</strong>
                               {so.slip_money.shipping > 0 && ` (incl. ${formatCurrency(so.slip_money.shipping)} delivery)`}
-                              {so.slip_money.shipping === 0 && so.is_free_delivery && ' (free delivery, seller-funded)'}
+                              {so.slip_money.shipping === 0 && so.is_free_delivery && ' (free delivery, seller-funded, old order)'}
+                              {so.pricing_model === 'included' && ` (delivery inside the prices: parcel fee ${formatCurrency(Number(so.delivery_fee ?? 0))}${Number(so.multi_item_discount ?? 0) > 0 ? `, multi-item discount −${formatCurrency(Number(so.multi_item_discount))}` : ''})`}
                               {so.slip_money.cod === 0 && ' — prepaid'}
                             </span>
                           </div>

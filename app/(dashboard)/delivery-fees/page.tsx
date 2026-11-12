@@ -1,8 +1,8 @@
 'use client'
 
-// Delivery & Fees: per parcel size (S / L / XL), what the client pays, what
-// Intigo charges to deliver and to bring a parcel back, and what a
-// free-delivery seller pays; the after-sale fees per size (complaint return,
+// Delivery & Fees: per parcel size (S / L / XL), the fee included in every
+// displayed price (the client sees delivery as free), what Intigo charges to
+// deliver and to bring a parcel back; the after-sale fees per size (complaint return,
 // exchange), the "customer may open the parcel" and "exchange parcel" switches and the checkout
 // payment methods. Values apply to NEW orders / complaints only: each keeps
 // the amounts frozen when it was created.
@@ -29,10 +29,9 @@ const SIZE_INFO: Record<ParcelSize, string> = {
 }
 
 const COLUMNS: { key: SizeField; label: string; help: string }[] = [
-  { key: 'client_fee', label: 'Client fee', help: 'What the client pays for this parcel at checkout.' },
+  { key: 'client_fee', label: 'Client fee', help: 'Included in the displayed price of every product of this size, live. The client sees delivery as free.' },
   { key: 'agency_cost', label: 'Intigo delivery cost', help: 'What Intigo keeps per delivered parcel.' },
   { key: 'return_fee', label: 'Intigo return fee', help: 'Charged when a refused parcel comes back (4.280 TTC; see the S tiers below).' },
-  { key: 'seller_contribution', label: 'Seller contribution', help: 'Taken from the seller payout when the seller offers free delivery.' },
 ]
 
 const METHODS: { key: PaymentMethodKey; label: string }[] = [
@@ -45,7 +44,7 @@ const METHODS: { key: PaymentMethodKey; label: string }[] = [
 const FIELD_LABELS: Record<string, string> = {
   client_delivery_fee: 'Client delivery fee',
   agency_delivery_cost: 'Agency delivery cost',
-  seller_free_delivery_contribution: 'Seller free-delivery contribution',
+  seller_free_delivery_contribution: 'Seller free-delivery contribution (removed)',
   return_shipping_fee: 'After-sale return fee (old flat value)',
   refused_parcel_agency_fee: 'Refused parcel agency fee',
   refused_parcel_fee_paid_by: 'Return fee of a refused parcel paid by',
@@ -56,6 +55,7 @@ const FIELD_LABELS: Record<string, string> = {
   'payment_method.wallet': 'Payment: wallet',
 }
 const AFTER_SALE_LABELS: Record<string, string> = {
+  seller_contribution: 'Seller contribution (removed)',
   after_sale_return_fee: 'After-sale return fee',
   after_sale_use_agency_cost: 'After-sale fee uses the Intigo delivery cost',
   exchange_fee: 'Exchange fee',
@@ -72,7 +72,7 @@ function toForm(d: DeliverySettingsPayload): DeliverySettingsForm {
   for (const s of PARCEL_SIZES) {
     const r = d.sizes[s]
     sizes[s] = {
-      client_fee: t(r.client_fee), agency_cost: t(r.agency_cost), return_fee: t(r.return_fee), seller_contribution: t(r.seller_contribution),
+      client_fee: t(r.client_fee), agency_cost: t(r.agency_cost), return_fee: t(r.return_fee),
       after_sale_return_fee: t(r.after_sale_return_fee ?? r.agency_cost),
       after_sale_use_agency_cost: r.after_sale_use_agency_cost ?? true,
       exchange_fee: t(r.exchange_fee ?? r.agency_cost),
@@ -107,15 +107,12 @@ export default function DeliveryFeesPage() {
   const live = useMemo(() => {
     if (!form) return null
     const invalid: string[] = []
-    const margins = {} as Record<ParcelSize, { normal: number | null; free: number | null }>
+    const margins = {} as Record<ParcelSize, { normal: number | null }>
     for (const s of PARCEL_SIZES) {
       const m = (k: SizeField) => toMillimes(form.sizes[s][k])
       for (const k of SIZE_FIELDS) if (m(k) === null) invalid.push(`${s}.${k}`)
-      const client = m('client_fee'), agency = m('agency_cost'), contrib = m('seller_contribution')
-      margins[s] = {
-        normal: client !== null && agency !== null ? client - agency : null,
-        free: contrib !== null && agency !== null ? contrib - agency : null,
-      }
+      const client = m('client_fee'), agency = m('agency_cost')
+      margins[s] = { normal: client !== null && agency !== null ? client - agency : null }
       if (!form.sizes[s].after_sale_use_agency_cost && toMillimes(form.sizes[s].after_sale_return_fee) === null) invalid.push(`${s}.after_sale_return_fee`)
       if (toMillimes(form.sizes[s].exchange_fee) === null) invalid.push(`${s}.exchange_fee`)
     }
@@ -141,7 +138,7 @@ export default function DeliveryFeesPage() {
       for (const s of PARCEL_SIZES) {
         const r = form.sizes[s]
         sizes[s] = {
-          client_fee: clean(r.client_fee), agency_cost: clean(r.agency_cost), return_fee: clean(r.return_fee), seller_contribution: clean(r.seller_contribution),
+          client_fee: clean(r.client_fee), agency_cost: clean(r.agency_cost), return_fee: clean(r.return_fee),
           after_sale_use_agency_cost: r.after_sale_use_agency_cost,
           after_sale_return_fee: clean(r.after_sale_use_agency_cost ? r.agency_cost : r.after_sale_return_fee),
           exchange_fee: clean(r.exchange_fee),
@@ -153,7 +150,7 @@ export default function DeliveryFeesPage() {
     } catch (err: any) { setMsg({ tone: 'error', text: err.message }) } finally { setBusy(false) }
   }
 
-  const losing = live ? PARCEL_SIZES.filter(s => (live.margins[s].normal ?? 0) < 0 || (live.margins[s].free ?? 0) < 0) : []
+  const losing = live ? PARCEL_SIZES.filter(s => (live.margins[s].normal ?? 0) < 0) : []
 
   return (
     <div style={{ padding: '20px 16px 40px', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -162,7 +159,8 @@ export default function DeliveryFeesPage() {
         <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '4px 0 0' }}>
           Delivery company: Intigo{data ? ` (${data.intigo.mode === 'live' ? 'live' : 'fake mode: no real parcels'})` : ''} · <Link href="/intigo" style={{ color: GOLD, fontWeight: 700 }}>Intigo page</Link>.
           Each seller in an order ships one parcel; its size is the largest of its products (S / L / XL) and sets every amount below.
-          Changes apply to new orders only: existing orders, payouts and reports keep the amounts frozen at checkout.
+          Delivery is free for the client: the client fee of a product&apos;s size is included in its displayed price, and a change here
+          re-prices every product of that size at once. Existing orders, payouts and reports keep the amounts frozen at checkout.
         </p>
       </div>
 
@@ -173,13 +171,12 @@ export default function DeliveryFeesPage() {
           <section style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <h2 style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>Prices per parcel size (TND)</h2>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
                 <thead>
                   <tr>
                     <th style={th}>Size</th>
                     {COLUMNS.map(c => <th key={c.key} style={th} title={c.help}>{c.label}<div style={{ ...hint, fontWeight: 500, fontSize: 10.5 }}>{c.help}</div></th>)}
-                    <th style={th}>Margin · normal<div style={{ ...hint, fontSize: 10.5 }}>client fee − Intigo cost</div></th>
-                    <th style={th}>Margin · free delivery<div style={{ ...hint, fontSize: 10.5 }}>seller contribution − Intigo cost</div></th>
+                    <th style={th}>Margin<div style={{ ...hint, fontSize: 10.5 }}>client fee − Intigo cost, per parcel</div></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,7 +197,6 @@ export default function DeliveryFeesPage() {
                         )
                       })}
                       <td style={td}><MarginCell millimes={live?.margins[s].normal ?? null} /></td>
-                      <td style={td}><MarginCell millimes={live?.margins[s].free ?? null} /></td>
                     </tr>
                   ))}
                 </tbody>
