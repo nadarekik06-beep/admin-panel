@@ -15,7 +15,7 @@ import {
   ShieldAlert, User, Store, Package, Image as ImageIcon,
   CalendarDays, MessageSquare, X, AlertCircle, TrendingUp, Filter, ArrowUpRight,
 } from 'lucide-react'
-import { adminComplaintApi } from '@/lib/complaintApi'
+import { adminComplaintApi, type ReturnsPolicySettings } from '@/lib/complaintApi'
 import type { Complaint } from '@/types/complaint'
 import { COMPLAINT_TYPE_LABELS, STATUS_CONFIG } from '@/types/complaint'
 import ReturnDrawer, { ReturnStatusBadge } from './ReturnDrawer'
@@ -523,6 +523,8 @@ function ComplaintTableRow({ complaint, onSelect }: {
             {complaint.old_item_overdue && <span style={{ color: '#ef4444' }}> · Old item not received</span>}
             {complaint.exchange_sync_status === 'needs_check' && <span style={{ color: '#ef4444' }}> · Check Intigo</span>}
             {complaint.fee_exceeds_refund && <span style={{ color: '#ef4444' }}> · Fee above refund</span>}
+            {complaint.dispute_status === 'open' && <span style={{ color: '#ef4444' }}> · Dispute open</span>}
+            {complaint.payout_frozen_at && !complaint.payout_released_at && <span style={{ color: '#f59e0b' }}> · Payout frozen</span>}
           </span>
         </div>
       </td>
@@ -541,6 +543,53 @@ function ComplaintTableRow({ complaint, onSelect }: {
 }
 
 // ── Skeleton rows ─────────────────────────────────────────────────────────────
+/** Exchange-first policy: the kill switch and the two timeouts. */
+function PolicySettingsModal({ onClose }: { onClose: () => void }) {
+  const [s, setS] = useState<ReturnsPolicySettings | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { adminComplaintApi.policy().then(r => setS(r.data)).catch(() => setMsg('Could not load the settings.')) }, [])
+
+  const save = async () => {
+    if (!s) return
+    setSaving(true); setMsg('')
+    try { const r = await adminComplaintApi.updatePolicy(s); setS(r.data); setMsg('Saved.') }
+    catch (e: any) { setMsg(e?.message ?? 'Could not save.') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <>
+      <div className="ct-backdrop" style={{ zIndex: 10000 }} onClick={onClose} />
+      <div className="ct-modal" role="dialog" aria-modal="true" aria-label="Returns policy" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 900, color: 'var(--t1)', margin: '0 0 4px' }}>Exchange-first returns policy</h3>
+        <p style={{ fontSize: 12, color: 'var(--t2)', margin: '0 0 16px', lineHeight: 1.6 }}>
+          Off: every new request follows the previous rules. On: new requests need 2-3 photos, follow the reason rules,
+          the 48 h count from the real delivered date, and the refund paid in cash at pick-up is frozen at approval with the seller payout held until inspection.
+          Requests already filed keep the rules they were filed under.
+        </p>
+        {!s ? <p style={{ color: 'var(--t2)' }}>Loading…</p> : (
+          <>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13.5, fontWeight: 800, color: 'var(--t1)', marginBottom: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={s.v2_enabled} onChange={e => setS({ ...s, v2_enabled: e.target.checked })} />
+              Policy enabled (v2)
+            </label>
+            <label className="ct-label">Days after pick-up before the admin is warned that the shop has not confirmed reception</label>
+            <input className="ct-input" type="number" min={1} max={30} value={s.receive_timeout_days} onChange={e => setS({ ...s, receive_timeout_days: Number(e.target.value) })} style={{ marginBottom: 12 }} />
+            <label className="ct-label">Days the shop has to inspect once the parcel is received</label>
+            <input className="ct-input" type="number" min={1} max={30} value={s.inspection_days} onChange={e => setS({ ...s, inspection_days: Number(e.target.value) })} style={{ marginBottom: 12 }} />
+          </>
+        )}
+        {msg && <p style={{ fontSize: 12, color: msg === 'Saved.' ? GREEN : '#f87171', fontWeight: 700, margin: '4px 0 0' }}>{msg}</p>}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+          <button className="ct-btn ct-btn--ghost" onClick={onClose} disabled={saving}>Close</button>
+          <button className="ct-btn ct-btn--success" onClick={save} disabled={saving || !s}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 function SkeletonRow() {
   return (
     <tr>
@@ -578,7 +627,8 @@ export default function AdminComplaintsPage() {
   const [filterToDate,   setFilterToDate]   = useState('')
   const [filterSearch,   setFilterSearch]   = useState('')
   const [filterType,     setFilterType]     = useState('')   // '' | return | exchange
-  const [filterFlag,     setFilterFlag]     = useState('')   // '' | old_item_overdue | needs_check | fee_exceeds_refund
+  const [filterFlag,     setFilterFlag]     = useState('')   // '' | old_item_overdue | needs_check | fee_exceeds_refund | dispute_open
+  const [policyOpen,     setPolicyOpen]     = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -636,6 +686,10 @@ export default function AdminComplaintsPage() {
     { label: 'Exchanges failed',     value: stats.exchanges_failed ?? 0,     color: '#ef4444', icon: <XCircle size={18} />, alert: true },
     { label: 'Check Intigo',         value: stats.exchanges_needs_check ?? 0, color: '#ef4444', icon: <AlertTriangle size={18} />, alert: true },
     { label: 'Old item not received', value: stats.old_item_not_received ?? 0, color: '#ef4444', icon: <Clock size={18} />, alert: true },
+    // Exchange-first policy
+    { label: 'Disputes open',        value: stats.disputes_open ?? 0,        color: '#ef4444', icon: <ShieldAlert size={18} />, alert: true },
+    { label: 'Reception overdue',    value: stats.receive_overdue ?? 0,      color: '#f59e0b', icon: <Clock size={18} />, alert: true },
+    { label: 'Inspection overdue',   value: stats.inspection_overdue ?? 0,   color: '#f59e0b', icon: <Clock size={18} />, alert: true },
   ] : []
 
   return (
@@ -671,6 +725,17 @@ export default function AdminComplaintsPage() {
               </p>
             </div>
           </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setPolicyOpen(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px',
+              background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 10,
+              color: 'var(--t2)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+            }}
+          >
+            <ShieldAlert size={13} /> Returns policy
+          </button>
           <button
             onClick={fetchAll}
             style={{
@@ -684,7 +749,10 @@ export default function AdminComplaintsPage() {
           >
             <RefreshCw size={13} /> Refresh
           </button>
+          </div>
         </div>
+
+        {policyOpen && <PolicySettingsModal onClose={() => setPolicyOpen(false)} />}
 
         {/* ── Stats ── */}
         {stats && (
@@ -735,6 +803,7 @@ export default function AdminComplaintsPage() {
               <option value="old_item_overdue">Old item not received</option>
               <option value="needs_check">Check in Intigo</option>
               <option value="fee_exceeds_refund">Fee above refund</option>
+              <option value="dispute_open">Non-conforming: dispute open</option>
             </select>
           </div>
           {/* Date range */}

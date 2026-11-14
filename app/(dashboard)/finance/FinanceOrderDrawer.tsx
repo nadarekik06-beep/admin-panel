@@ -59,6 +59,7 @@ interface Detail {
   order_status: string | null
   payment_method: string | null
   payout_status: string
+  payout_held?: boolean
   coupon_code: string | null
   items_count: number
   seller:   { name: string | null; email: string | null; phone: string | null }
@@ -389,7 +390,7 @@ export default function FinanceOrderDrawer({ sellerOrderId, orderNumber, onClose
                   </div>
                   <div>
                     <SectionTitle>Payout</SectionTitle>
-                    <PayoutBadge status={data.payout_status} />
+                    <PayoutBadge status={data.payout_status} held={!!data.payout_held} />
                   </div>
                 </div>
               </div>

@@ -208,6 +208,28 @@ export interface Complaint {
   fee_exceeds_refund?: boolean
   is_legacy_exchange?: boolean
   old_item_overdue?:   boolean
+  // Returns policy v2 (exchange-first): NULL = the old flow
+  policy_version?:     number | null
+  refund_amount_locked?: number | string | null   // the figure frozen at approval = what the courier pays
+  payout_frozen_at?:   string | null
+  payout_released_at?: string | null
+  exchange_impossible_at?: string | null
+  exchange_impossible_reason?: string | null
+  switched_to_refund_at?: string | null
+  inspection_result?:  'conform' | 'nonconform' | null
+  inspection_comment?: string | null
+  inspection_photos?:  string[] | null
+  inspection_due_at?:  string | null
+  inspection_at?:      string | null
+  dispute_status?:     'open' | 'resolved' | null
+  dispute_decision?:   'charge_seller' | 'absorb' | 'contact_client' | 'send_back' | 'treat_as_conform' | null
+  dispute_amount?:     number | string | null
+  dispute_note?:       string | null
+  sent_back_nid?:      string | null
+  sent_back_fee?:      number | string | null
+  sent_back_cod?:      number | string | null       // COD of the parcel back to the client (refund paid + delivery)
+  sent_back_refused_at?: string | null
+  v2?: { inspection_flow: boolean; refund_locked: number | null; payout_frozen: boolean; inspection_photos: string[]; dispute_decisions: string[]; send_back_suggested?: { refund: number; fee: number; cod: number } } | null
   intigo_exchange_nid?: string | null
   exchange_sync_status?: ExchangeSyncStatus | null
   exchange_sync_error?: string | null

@@ -31,6 +31,19 @@ async function jsonRequest<T>(method: string, path: string, body?: unknown): Pro
   return json
 }
 
+export interface ReturnsPolicySettings { v2_enabled: boolean; receive_timeout_days: number; inspection_days: number }
+
+async function formRequest<T>(path: string, data: FormData): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: { Accept: 'application/json', ...authHeaders() }, body: data })
+  const json = await res.json()
+  if (!res.ok) {
+    const err: any = new Error(json.message ?? 'Request failed')
+    err.response = { data: json, status: res.status }
+    throw err
+  }
+  return json
+}
+
 type One = { success: boolean; message: string; data: Complaint }
 const patch = (id: number, step: string, body?: unknown) =>
   jsonRequest<One>('PATCH', `/admin/complaints/${id}/${step}`, body)
@@ -70,6 +83,32 @@ export const adminComplaintApi = {
   exchangeFailed: (id: number, note?: string) => patch(id, 'exchange/failed', { note }),
   /** Failed exchange: book a new parcel, switch to a return, or cancel. */
   exchangeDecide: (id: number, action: 'retry' | 'return' | 'cancel', note?: string) => patch(id, 'exchange/decide', { action, note }),
+
+  // ── Returns policy v2 (exchange-first) ──
+  /** The shop never clicked « Colis retour reçu »: the admin starts the inspection. */
+  startInspection: (id: number, note?: string) => patch(id, 'start-inspection', { note }),
+  /** Inspection on the shop's behalf (Non conforme needs a comment and a photo). */
+  inspect: (id: number, result: 'conform' | 'nonconform', comment?: string, photos: File[] = []) => {
+    const fd = new FormData()
+    fd.append('result', result)
+    if (comment) fd.append('comment', comment)
+    photos.forEach(f => fd.append('photos[]', f))
+    return formRequest<One>(`/admin/complaints/${id}/inspect`, fd)
+  },
+  /** Decision on a non-conforming item whose client was already refunded in cash. */
+  dispute: (id: number, body: { decision: 'charge_seller' | 'absorb' | 'contact_client' | 'send_back' | 'treat_as_conform'; amount?: number; note?: string; nid?: string; cod_amount?: number }) =>
+    patch(id, 'dispute', body),
+  /** The client refused the parcel sent back: the item returns to the seller, decide again. */
+  sentBackRefused: (id: number, note?: string) => patch(id, 'sent-back-refused', { note }),
+  policy: () => jsonRequest<{ success: boolean; data: ReturnsPolicySettings }>('GET', '/admin/returns-policy'),
+  updatePolicy: (body: Partial<ReturnsPolicySettings>) => jsonRequest<{ success: boolean; data: ReturnsPolicySettings }>('PUT', '/admin/returns-policy', body),
+  /** Finance: each return with refund, payer, seller charges, dispute decision. */
+  financeReturns: (params: Record<string, any> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])
+    ).toString()
+    return jsonRequest<{ success: boolean; data: any }>('GET', `/admin/finance/returns${qs ? `?${qs}` : ''}`)
+  },
 
   /** Return or exchange slip PDF for the delivery company. Resolves with the file name. */
   returnSlip: (id: number, exchange = false) =>

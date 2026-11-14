@@ -51,8 +51,10 @@ export function ParcelOutcomeBadge({ row }: { row: { status?: string; refused_ag
   )
 }
 
-export function PayoutBadge({ status }: { status: string }) {
-  const color = PAYOUT_COLORS[status] ?? '#94a3b8'
+/** `held`: returns policy v2, the client was refunded in cash and the item is not inspected yet: « En attente de retour ». */
+export function PayoutBadge({ status, held }: { status: string; held?: boolean }) {
+  if (held) status = 'En attente de retour'
+  const color = held ? '#f59e0b' : (PAYOUT_COLORS[status] ?? '#94a3b8')
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,

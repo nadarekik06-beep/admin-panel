@@ -17,6 +17,8 @@ export interface Category {
   is_active: boolean
   /** Femme / Homme switch in the storefront mega-menu (Mode & Vêtements) */
   is_gendered?: boolean
+  /** « Retour pour changement d'avis non autorisé »: the whole category (subcategories inherit it) */
+  no_changed_mind_return?: boolean
   order: number
   products_count?: number
   subcategories_count?: number
@@ -34,6 +36,8 @@ export interface Subcategory {
   slug: string
   icon: string | null
   is_active: boolean
+  /** Returns policy: null = inherits the category, true = changed-mind returns blocked, false = explicit exception */
+  no_changed_mind_return?: boolean | null
   order: number
   products_count?: number
   category?: Pick<Category, 'id' | 'name' | 'slug'>
@@ -79,11 +83,14 @@ export interface CategoryPayload {
   image?: string
   is_active?: boolean
   is_gendered?: boolean
+  no_changed_mind_return?: boolean
   order?: number
 }
 
 export interface SubcategoryPayload {
   category_id: number
+  /** null = inherits the category, true / false = explicit */
+  no_changed_mind_return?: boolean | null
   name: string
   name_ar?: string
   name_fr?: string

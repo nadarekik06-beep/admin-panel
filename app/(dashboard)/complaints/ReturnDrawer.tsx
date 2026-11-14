@@ -33,6 +33,9 @@ const EVENT_LABELS: Record<string, string> = {
   finance_applied: 'Sale reversed (finance)', refund_issued: 'Refund issued', slip_exported: 'Slip exported',
   payer_overridden: 'Payer switched', exchange_booking: 'Intigo exchange booking', exchange_retry: 'Exchange retried',
   exchange_carrier_cancelled: 'Cancelled by Intigo', replacement_released: 'Replacement back in stock',
+  // Returns policy v2
+  payout_frozen: 'Cash refund paid at pick-up — payout frozen', inspection: 'Inspection', dispute_decided: 'Dispute decision',
+  exchange_impossible: 'Shop: exchange impossible', switched_to_refund: 'Client switched to a refund', refund_amount_drift: 'Refund amount differs from the frozen figure',
 }
 const SYNC_LABELS: Record<string, { label: string; color: string }> = {
   sending:     { label: 'Booking…', color: '#38bdf8' },
@@ -69,7 +72,15 @@ export function ReturnStatusBadge({ status, resolution }: { status: string; reso
 }
 
 type StepKind = 'approve' | 'reject' | 'pickup' | 'pickedup' | 'receive' | 'refund' | 'cancel'
-  | 'nid' | 'delivered' | 'failed' | 'decide_retry' | 'decide_return' | 'decide_cancel'
+  | 'nid' | 'delivered' | 'failed' | 'decide_retry' | 'decide_return' | 'decide_cancel' | 'inspect' | 'dispute'
+
+const DISPUTE_OPTIONS: { value: 'charge_seller' | 'absorb' | 'contact_client' | 'send_back' | 'treat_as_conform'; label: string; hint: string }[] = [
+  { value: 'charge_seller',    label: 'Charge the seller',     hint: 'The seller keeps the payout but is debited the amount below (default: what the client was refunded).' },
+  { value: 'absorb',           label: 'Absorb it',             hint: 'ChooseTounsi pays: the seller keeps the payout, nothing is charged.' },
+  { value: 'contact_client',   label: 'Contact the client',    hint: 'Only a note: the dispute stays open until you decide.' },
+  { value: 'send_back',        label: 'Send the item back',    hint: 'Book the parcel by hand in Intigo and paste its number. It is cash on delivery: the refund already paid + the delivery fee (editable). The client sees the photos and the reason. If they refuse it, the item goes back to the seller and you decide again.' },
+  { value: 'treat_as_conform', label: 'Treat as conforming',   hint: 'The photos do not convince: the item goes back to stock and the sale is reversed (the seller loses the payout).' },
+]
 
 export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
   complaint: Complaint | null; onClose: () => void; onRefresh: () => void
@@ -113,6 +124,25 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
       return { title: 'Legacy exchange', text: 'Filed as an exchange under the previous policy. Close it once handled.', color: '#94a3b8',
         actions: [btn('Close request', <CheckCircle size={14} />, 'ct-btn--success', () => run(() => adminComplaintApi.close(c.id), 'Closed'))] }
     }
+    // ── Returns policy v2 (exchange-first): inspection + disputes ──
+    const v2flow = !!c.v2?.inspection_flow
+    if (c.dispute_status === 'open') {
+      return { title: 'Non-conforming item — your decision', text: `The seller marked the returned item non conforming${c.inspection_comment ? `: “${c.inspection_comment}”` : ''}. The client was already refunded ${dt(c.refund_amount)} in cash and the payout stays frozen until you decide. Review the photos below.`, color: '#ef4444', actions: [
+        btn('Decide', <ShieldAlert size={14} />, 'ct-btn--success', () => setStep('dispute'))] }
+    }
+    if (c.dispute_decision === 'send_back' && c.dispute_status === 'resolved' && !c.sent_back_refused_at) {
+      return { title: 'Item sent back to the client', text: `Parcel ${c.sent_back_nid ?? '(number not entered)'}: the courier collects ${dt(c.sent_back_cod)} in cash (refund already paid ${dt(c.refund_amount)} + delivery ${dt(c.sent_back_fee)}). If the client refuses it, the item goes back to the seller and you decide again.`, color: '#f59e0b', actions: [
+        btn('Client refused the parcel', <XCircle size={14} />, 'ct-btn--danger', () => run(() => adminComplaintApi.sentBackRefused(c.id), 'Marked as refused'))] }
+    }
+    if (v2flow && !exchange && c.status === 'picked_up') {
+      return { title: 'On its way back — payout frozen', text: `The courier paid the client ${dt(c.refund_amount)} in cash (the figure frozen at approval). The shop clicks « Colis retour reçu » then inspects. If it does not, start the inspection yourself.${c.refund_amount_locked != null ? '' : ''}`, color: '#818cf8', actions: [
+        btn('Start the inspection', <PackageCheck size={14} />, 'ct-btn--success', () => run(() => adminComplaintApi.startInspection(c.id), 'Inspection started'))] }
+    }
+    if (v2flow && !exchange && c.status === 'returned_to_seller' && !c.inspection_result) {
+      return { title: 'Received — waiting for the shop’s inspection', text: `Due ${when(c.inspection_due_at)}. Conforme: stock +1 and the sale is reversed. Non conforme: the payout stays frozen and you decide. You can inspect on the shop’s behalf.`, color: '#2dd4bf', actions: [
+        btn('Inspect on the shop’s behalf', <PackageCheck size={14} />, 'ct-btn--success', () => setStep('inspect'))] }
+    }
+
     if (exchange) {
       const retry = () => run(() => adminComplaintApi.exchangeBook(c.id), 'Booked')
       switch (c.status) {
@@ -128,7 +158,7 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
           btn('Mark failed', <XCircle size={14} />, 'ct-btn--danger', () => setStep('failed')),
           btn('Mark exchanged', <Repeat size={14} />, 'ct-btn--success', () => setStep('delivered'))] }
         case 'exchanged': return { title: c.old_item_overdue ? 'Old item not received' : 'Exchanged — waiting for the old item', text: `The client got the replacement on ${when(c.exchanged_at)}. The seller confirms the old item when it is back (or you can, below).${c.old_item_overdue ? ' More than 7 days: check with the seller and Intigo.' : ''}`, color: c.old_item_overdue ? '#ef4444' : '#2dd4bf', actions: [
-          btn('Confirm old item received', <PackageCheck size={14} />, 'ct-btn--success', () => setStep('receive'))] }
+          btn('Confirm old item received', <PackageCheck size={14} />, 'ct-btn--success', () => setStep(v2flow ? 'inspect' : 'receive'))] }
         case 'exchange_failed': return { title: 'Exchange failed — your decision', text: 'The client did not take the replacement; it goes back to the seller. Book a new exchange parcel, switch to a return (the pick-up follows, the return fee applies) or cancel. The replacement stock is released unless you retry.', color: '#ef4444', actions: [
           btn('Cancel', <Ban size={14} />, 'ct-btn--ghost', () => setStep('decide_cancel')),
           btn('Switch to return', <Truck size={14} />, 'ct-btn--ghost', () => setStep('decide_return')),
@@ -279,6 +309,37 @@ export default function ReturnDrawer({ complaint, onClose, onRefresh }: {
               </div>
             </div>
           </div>
+
+          {/* Returns policy v2: frozen refund, payout hold, inspection and dispute */}
+          {c.policy_version === 2 && (
+            <div className="ct-info-card">
+              <p className="ct-info-card-label"><ShieldAlert size={13} /> Exchange-first policy</p>
+              {c.refund_amount_locked != null && <KV k="Refund frozen at approval" v={<b style={{ color: GREEN }}>{dt(c.refund_amount_locked)}</b>} />}
+              <KV k="Seller payout" v={c.payout_frozen_at && !c.payout_released_at
+                ? <b style={{ color: '#f59e0b' }}>En attente de retour (frozen since {when(c.payout_frozen_at)})</b>
+                : c.payout_released_at ? `Released ${when(c.payout_released_at)}` : '—'} />
+              {c.exchange_impossible_at && <KV k="Exchange impossible" v={`${when(c.exchange_impossible_at)}${c.exchange_impossible_reason ? ` · ${c.exchange_impossible_reason}` : ''}`} />}
+              {c.inspection_result && (
+                <KV k="Inspection" v={<b style={{ color: c.inspection_result === 'conform' ? GREEN : '#ef4444' }}>
+                  {c.inspection_result === 'conform' ? 'Conforme' : 'Non conforme'} · {when(c.inspection_at)}</b>} />
+              )}
+              {c.inspection_comment && <KV k="Shop comment" v={c.inspection_comment} />}
+              {!!c.v2?.inspection_photos?.length && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '6px 0' }}>
+                  {c.v2.inspection_photos.map(url => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt="Inspection" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--drawer-bd)' }} /></a>
+                  ))}
+                </div>
+              )}
+              {c.dispute_decision && (
+                <KV k="Dispute" v={<b>{DISPUTE_OPTIONS.find(o => o.value === c.dispute_decision)?.label ?? c.dispute_decision}
+                  {c.dispute_amount != null && Number(c.dispute_amount) > 0 ? ` · ${dt(c.dispute_amount)}` : ''}
+                  {c.dispute_status === 'open' ? ' (still open)' : ''}</b>} />
+              )}
+              {c.dispute_note && <KV k="Decision note" v={c.dispute_note} />}
+              {c.dispute_decision === 'send_back' && <KV k="Sent back" v={`${c.sent_back_nid ?? '—'} · COD ${dt(c.sent_back_cod)} (refund paid + ${dt(c.sent_back_fee)} delivery)${c.sent_back_refused_at ? ' · REFUSED by the client ' + when(c.sent_back_refused_at) : ''}`} />}
+            </div>
+          )}
 
           {/* Addresses: pickup = client, destination = seller */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -552,6 +613,12 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
   const [method,     setMethod]     = useState<RefundMethod>(methods[0])
   const [reference,  setReference]  = useState('')
   const [conditions, setConditions] = useState<Record<number, ItemCondition>>({})
+  const [result,     setResult]     = useState<'conform' | 'nonconform' | ''>('')
+  const [photos,     setPhotos]     = useState<File[]>([])
+  const [decision,   setDecision]   = useState<typeof DISPUTE_OPTIONS[number]['value']>('absorb')
+  const [amount,     setAmount]     = useState(String(Number(c.refund_amount ?? 0)))
+  const sbs = c.v2?.send_back_suggested
+  const [cod,        setCod]        = useState(String(Number(sbs?.cod ?? (Number(c.refund_amount ?? 0) + Number(c.return_shipping_fee ?? 0)))))
   const [saving,     setSaving]     = useState(false)
   const [error,      setError]      = useState('')
 
@@ -562,6 +629,7 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
     receive: exchange ? 'Old item received — condition' : 'Confirm reception & condition', refund: 'Issue the refund', cancel: `Cancel the ${kindWord}`,
     nid: 'Intigo exchange parcel — tracking number', delivered: 'Mark exchanged (replacement delivered)', failed: 'Mark the exchange as failed',
     decide_retry: 'Retry the exchange (new Intigo parcel)', decide_return: 'Switch to a return', decide_cancel: 'Cancel the exchange',
+    inspect: 'Inspection (on the shop’s behalf)', dispute: 'Non-conforming item — decision',
   }
 
   const submit = async () => {
@@ -594,6 +662,21 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
         case 'decide_retry': res = await adminComplaintApi.exchangeDecide(c.id, 'retry', text || undefined); break
         case 'decide_return': res = await adminComplaintApi.exchangeDecide(c.id, 'return', text || undefined); break
         case 'decide_cancel': res = await adminComplaintApi.exchangeDecide(c.id, 'cancel', text || undefined); break
+        case 'inspect':
+          if (!result) throw new Error('Choose Conforme or Non conforme.')
+          if (result === 'nonconform' && (!text.trim() || photos.length < 1)) throw new Error('Non conforme needs a comment and at least one photo.')
+          res = await adminComplaintApi.inspect(c.id, result, text.trim() || undefined, photos); break
+        case 'dispute': {
+          const amt = Number(amount)
+          if (decision === 'charge_seller' && !(amt > 0)) throw new Error('Enter the amount to charge the seller.')
+          if (decision === 'send_back' && !(Number(cod) >= 0)) throw new Error('Enter the cash-on-delivery amount of the parcel.')
+          res = await adminComplaintApi.dispute(c.id, {
+            decision, note: text.trim() || undefined,
+            amount: decision === 'charge_seller' ? amt : undefined,
+            nid: decision === 'send_back' ? (nid.trim() || undefined) : undefined,
+            cod_amount: decision === 'send_back' ? Number(cod) : undefined,
+          }); break
+        }
       }
       onDone(res?.message ?? 'Done')
     } catch (err: any) {
@@ -669,11 +752,60 @@ function StepModal({ kind, complaint: c, onClose, onDone }: {
             {c.cash_refund && (
               <p style={{ fontSize: 13, color: 'var(--t1)', margin: '0 0 12px', lineHeight: 1.6 }}>
                 Confirm the courier checked the item against the photos and handed the client <b style={{ color: GREEN }}>{dt(c.refund_amount)}</b> in cash.
-                The sale is reversed in finance now; the shop still inspects the item at reception.
+                {c.policy_version === 2
+                  ? ' The seller payout of this parcel is frozen (excluded from every settlement) until the shop inspects the item.'
+                  : ' The sale is reversed in finance now; the shop still inspects the item at reception.'}
               </p>
             )}
             <label className="ct-label">Courier</label>
             <input className="ct-input" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="Courier name / company" style={{ marginBottom: 12 }} />
+          </>
+        )}
+
+        {kind === 'inspect' && (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button type="button" style={choice(result === 'conform', GREEN)} onClick={() => setResult('conform')}>Conforme → stock +1, sale reversed</button>
+              <button type="button" style={choice(result === 'nonconform', '#ef4444')} onClick={() => setResult('nonconform')}>Non conforme → dispute</button>
+            </div>
+            {result === 'nonconform' && (
+              <>
+                <label className="ct-label">Photos (at least one)</label>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ marginBottom: 10, color: 'var(--t1)' }}
+                  onChange={e => setPhotos(Array.from(e.target.files ?? []).slice(0, 5))} />
+                <p style={{ fontSize: 11.5, color: 'var(--t3)', margin: '0 0 8px' }}>{photos.length} selected · the note below is the comment (required).</p>
+              </>
+            )}
+          </>
+        )}
+
+        {kind === 'dispute' && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+              {DISPUTE_OPTIONS.filter(o => !(exchange && o.value === 'send_back')).map(o => (
+                <button key={o.value} type="button" style={{ ...choice(decision === o.value, o.value === 'treat_as_conform' ? GREEN : ORANGE), flex: 'none', textAlign: 'start' }} onClick={() => setDecision(o.value)}>
+                  {o.label}<span style={{ display: 'block', fontWeight: 500, fontSize: 11, marginTop: 2, color: 'var(--t2)' }}>{o.hint}</span>
+                </button>
+              ))}
+            </div>
+            {decision === 'charge_seller' && (
+              <>
+                <label className="ct-label">Amount charged to the seller (DT)</label>
+                <input className="ct-input" type="number" step="0.001" min="0" value={amount} onChange={e => setAmount(e.target.value)} style={{ marginBottom: 10 }} />
+              </>
+            )}
+            {decision === 'send_back' && (
+              <>
+                <label className="ct-label">Intigo tracking number of the parcel back to the client</label>
+                <input className="ct-input" value={nid} onChange={e => setNid(e.target.value)} maxLength={60} style={{ marginBottom: 6, fontFamily: 'monospace' }} />
+                <div style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: '8px 10px', margin: '0 0 8px', fontSize: 12.5, color: 'var(--t1)' }}>
+                  Refund already paid to the client <b>{dt(sbs?.refund ?? c.refund_amount)}</b> + delivery <b>{dt(sbs?.fee ?? c.return_shipping_fee)}</b> = suggested COD <b style={{ color: ORANGE }}>{dt(sbs?.cod ?? (Number(c.refund_amount ?? 0) + Number(c.return_shipping_fee ?? 0)))}</b>
+                </div>
+                <label className="ct-label">Cash on delivery of this parcel (DT, editable)</label>
+                <input className="ct-input" type="number" step="0.001" min="0" value={cod} onChange={e => setCod(e.target.value)} style={{ marginBottom: 6 }} />
+                <p style={{ fontSize: 11.5, color: 'var(--t3)', margin: '0 0 10px' }}>Use this amount when you book the parcel in Intigo. If the client refuses it, mark it from the return file: the item goes back to the seller and you decide again.</p>
+              </>
+            )}
           </>
         )}
 

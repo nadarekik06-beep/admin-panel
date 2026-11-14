@@ -96,6 +96,7 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
     description: initial?.description ?? '', icon: initial?.icon ?? '',
     is_active: initial?.is_active ?? true, order: initial?.order ?? 0,
     is_gendered: initial?.is_gendered ?? false,
+    no_changed_mind_return: initial?.no_changed_mind_return ?? false,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -145,6 +146,17 @@ function CategoryFormModal({ initial, onClose, onSaved }: {
           </div>
           <p className="text-[10px] text-text-muted mt-1.5">Columns, genders and images are managed in Gender menu.</p>
         </Field>
+        <Field label="Retour pour changement d'avis non autorisé">
+          <div className="flex gap-2">
+            {([true, false] as const).map(v => (
+              <button key={String(v)} type="button" onClick={() => set('no_changed_mind_return', v)}
+                className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${!!form.no_changed_mind_return === v ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-border text-text-muted hover:bg-bg-hover'}`}>
+                {v ? 'Not allowed (defective / not as described only)' : 'Allowed'}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted mt-1.5">Underwear, swimwear, cosmetics, food, personalised items… Every subcategory inherits it unless it has its own setting.</p>
+        </Field>
         <div className="flex gap-3 mt-2">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors">Cancel</button>
           <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-accent-red hover:bg-accent-red/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
@@ -168,6 +180,7 @@ function SubcategoryFormModal({ initial, categories, defaultCategoryId, onClose,
     category_id: initial?.category_id ?? defaultCategoryId ?? (categories[0]?.id ?? 0),
     name: initial?.name ?? '', name_fr: initial?.name_fr ?? '', name_ar: initial?.name_ar ?? '',
     icon: initial?.icon ?? '', is_active: initial?.is_active ?? true, order: initial?.order ?? 0,
+    no_changed_mind_return: initial?.no_changed_mind_return ?? null,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -193,6 +206,14 @@ function SubcategoryFormModal({ initial, categories, defaultCategoryId, onClose,
           <select value={form.category_id} onChange={e => set('category_id', Number(e.target.value))} className={inputCls}>
             <option value={0}>— Select category —</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Retour pour changement d'avis">
+          <select value={form.no_changed_mind_return === null || form.no_changed_mind_return === undefined ? 'inherit' : form.no_changed_mind_return ? 'blocked' : 'allowed'}
+            onChange={e => set('no_changed_mind_return', e.target.value === 'inherit' ? null : e.target.value === 'blocked')} className={inputCls}>
+            <option value="inherit">Same as the category</option>
+            <option value="blocked">Not allowed</option>
+            <option value="allowed">Allowed (exception)</option>
           </select>
         </Field>
         <Field label="Name (EN) *"><input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Smartphones" className={inputCls} /></Field>

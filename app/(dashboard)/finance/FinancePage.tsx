@@ -11,6 +11,7 @@ import api from '@/lib/axios'
 import { format } from 'date-fns'
 import { fmt, SHIPPING_PAYER, PayoutBadge, ParcelOutcomeBadge } from './financeShared'
 import FinanceOrderDrawer from './FinanceOrderDrawer'
+import FinanceReturnsTab from './FinanceReturnsTab'
 import SettlementPaymentModal, {
   PaymentFields, PaymentValues, emptyPayment, paymentFormData, uploadConfig, methodLabel,
 } from './SettlementPaymentModal'
@@ -235,7 +236,7 @@ function CreateSettlementModal({
   )
 }
 
-type Tab = 'overview' | 'orders' | 'sellers' | 'settlements'
+type Tab = 'overview' | 'orders' | 'sellers' | 'settlements' | 'returns'
 
 const filterInput: React.CSSProperties = {
   padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
@@ -393,6 +394,7 @@ export default function FinancePage() {
     { key: 'orders',      label: '📦 Orders'      },
     { key: 'sellers',     label: '🏪 Sellers'     },
     { key: 'settlements', label: '✅ Settlements' },
+    { key: 'returns',     label: '↩️ Returns'      },
   ]
 
   const th = (right = false): React.CSSProperties => ({
@@ -799,7 +801,7 @@ export default function FinancePage() {
                                 <p style={{ margin: 0, fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>after −{fmt(row.seller_shipping_charge)} shipping</p>
                               )}
                             </td>
-                            <td style={{ ...td(true) }}><PayoutBadge status={row.payout_status} /></td>
+                            <td style={{ ...td(true) }}><PayoutBadge status={row.payout_status} held={!!row.payout_held} /></td>
                             <td style={{ ...td(true) }}>
                               {row.payout_status === 'pending' && row.status === 'delivered' && (
                                 <button
@@ -867,6 +869,9 @@ export default function FinancePage() {
               </div>
             )}
   
+            {/* ── RETURNS TAB (refund, payer, seller charges, dispute decisions) ── */}
+            {tab === 'returns' && <FinanceReturnsTab />}
+
             {/* ── SETTLEMENTS TAB ── */}
             {tab === 'settlements' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
