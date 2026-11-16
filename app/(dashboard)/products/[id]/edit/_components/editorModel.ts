@@ -34,6 +34,8 @@ export interface EditorState {
   pack_quantity: string
   pack_contents: string
   parcel_size: 'S' | 'L' | 'XL'
+  /** '' = automatic (seller value / subcategory); otherwise the admin's choice */
+  gender: '' | 'women' | 'men' | 'unisex' | 'kids'
   occasions: string[]
   admin_note: string
   attributes: Record<string, any>
@@ -81,6 +83,7 @@ export function fromPayload(p: EditorPayload): EditorState {
     pack_quantity:     pr.pack_quantity != null ? String(pr.pack_quantity) : '',
     pack_contents:     pr.pack_contents ?? '',
     parcel_size:       pr.parcel_size ?? 'S',
+    gender:            (pr.gender_override ?? '') as '' | 'women' | 'men' | 'unisex' | 'kids',
     occasions:         pr.occasions?.length ? pr.occasions : ['all_season'],
     admin_note:        pr.admin_note ?? '',
     attributes:        { ...(p.attributes ?? {}) },
@@ -174,6 +177,7 @@ export function toDocument(s: EditorState, loadedUpdatedAt: string, colorAxis: A
     pack_quantity:     s.is_pack && s.pack_quantity.trim() ? Number(s.pack_quantity) : null,
     pack_contents:     s.is_pack ? nullIfBlank(s.pack_contents) : null,
     parcel_size:       s.parcel_size,
+    gender:            s.gender || 'auto',
     // Categories without occasions are stored as all_season by the backend
     occasions:         s.occasions.length ? s.occasions : ['all_season'],
     admin_note:        nullIfBlank(s.admin_note),

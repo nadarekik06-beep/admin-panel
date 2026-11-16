@@ -489,6 +489,18 @@ export default function ProductEditorForm(props: ProductEditorFormProps) {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted">TND</span>
                 </div>
               </Field>
+              <Field label="Gender (Femme / Homme)" hint="Where the product shows when shoppers browse Femme or Homme and in chatbot gender searches. Unisex shows in both. Leave on Automatic to use the seller's value.">
+                <select value={state.gender} onChange={(e) => set('gender', e.target.value as typeof state.gender)} className={inputCls(false)}>
+                  <option value="">Automatic{p.gender ? ` (currently: ${p.gender})` : ' (none: hidden from Femme / Homme)'}</option>
+                  <option value="women">Femme (women)</option>
+                  <option value="men">Homme (men)</option>
+                  <option value="unisex">Unisexe</option>
+                  <option value="kids">Enfants (kids)</option>
+                </select>
+                {!p.gender && !state.gender && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-amber-400">Gender missing: this product will not appear in gendered searches.</p>
+                )}
+              </Field>
               <Field label="Parcel size" required hint="S fits in a shoebox · L a large box (shoes, bags, small appliances) · XL bulky or heavy (furniture, large appliances). Sets the delivery included in the displayed price (Delivery & Fees) and Intigo's package size.">
                 <select value={state.parcel_size} onChange={(e) => set('parcel_size', e.target.value as 'S' | 'L' | 'XL')} className={inputCls(false)}>
                   <option value="S">S · small</option>

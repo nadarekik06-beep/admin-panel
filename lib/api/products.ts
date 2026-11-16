@@ -9,6 +9,8 @@ interface ProductsParams {
   per_page?: number
   /** 1: only products whose parcel size was never chosen by the seller or an admin */
   size_unconfirmed?: 1
+  /** 1: Mode & Vêtements products with no gender (Femme / Homme / unisex) */
+  gender_missing?: 1
 }
 
 export interface ProductUpdatePayload {

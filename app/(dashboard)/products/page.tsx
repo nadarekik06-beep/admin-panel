@@ -15,6 +15,7 @@ import { STATUS_META } from './reviewUtils'
 import { StockCell } from '@/components/products/VariantStock'
 import type { StockBreakdown } from '@/types/productReview'
 import { productsApi } from '@/lib/api/products'
+import { adminGenderMenuApi, type ProductGender } from '@/lib/api/genderMenu'
 import { PaginatedResponse } from '@/types'
 import { format } from 'date-fns'
 
@@ -43,6 +44,9 @@ interface AdminProduct {
   parcel_size?: 'S' | 'L' | 'XL'
   /** false: the size was never chosen by the seller or an admin (older products silently got S) */
   parcel_size_confirmed?: boolean
+  /** true: Mode & Vêtements product with no gender: hidden from Femme / Homme searches and the chatbot */
+  gender_missing?: boolean
+  gender?: string | null
   stock: number
   /** Total = active variants; per-variant rows for the Stock column tooltip */
   stock_breakdown?: StockBreakdown
@@ -121,6 +125,7 @@ export default function ProductsPage() {
   const [search, setSearch]               = useState('')
   const [status, setStatus]               = useState('pending')
   const [sizeUnconfirmed, setSizeUnconfirmed] = useState(false)
+  const [genderMissing, setGenderMissing] = useState(false)
   const [page, setPage]                   = useState(1)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
@@ -138,6 +143,7 @@ export default function ProductsPage() {
         status: status || undefined,
         page,
         ...(sizeUnconfirmed ? { size_unconfirmed: 1 as const } : {}),
+        ...(genderMissing ? { gender_missing: 1 as const } : {}),
       })
       setProducts(res)
     } catch (err) {
@@ -145,7 +151,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, status, page, sizeUnconfirmed])
+  }, [search, status, page, sizeUnconfirmed, genderMissing])
 
   useEffect(() => {
     const timer = setTimeout(fetchProducts, 300)
@@ -226,6 +232,33 @@ export default function ProductsPage() {
                   className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/30"
                 >
                   Size {row.parcel_size ?? 'S'} not confirmed
+                </span>
+              )}
+              {row.gender_missing && (
+                <span
+                  title="Mode & Vêtements product without a gender: it is hidden from Femme / Homme browsing and chatbot searches. Pick one."
+                  className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/30"
+                >
+                  Gender missing
+                  <select
+                    defaultValue=""
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={async (e) => {
+                      const g = e.target.value as ProductGender
+                      if (!g) return
+                      try {
+                        await adminGenderMenuApi.setProductGender(row.id, g)
+                        fetchProducts()
+                      } catch { setToast({ message: 'Could not save the gender', type: 'error' }) }
+                    }}
+                    className="bg-bg-primary border border-border rounded px-1 text-[10px] text-text-primary normal-case"
+                  >
+                    <option value="">Set…</option>
+                    <option value="women">Femme</option>
+                    <option value="men">Homme</option>
+                    <option value="unisex">Unisexe</option>
+                    <option value="kids">Enfants</option>
+                  </select>
                 </span>
               )}
               {!row.created_by_admin_id && row.admin_edited_at && (
@@ -507,6 +540,10 @@ export default function ProductsPage() {
           <label className="flex items-center gap-2 text-sm text-text-secondary whitespace-nowrap cursor-pointer" title="Products whose parcel size was never chosen (older products silently got S)">
             <input type="checkbox" checked={sizeUnconfirmed} onChange={(e) => { setSizeUnconfirmed(e.target.checked); setPage(1) }} />
             Size not confirmed
+          </label>
+          <label className="flex items-center gap-2 text-sm text-text-secondary whitespace-nowrap cursor-pointer" title="Mode & Vêtements products with no Femme / Homme / unisex tag">
+            <input type="checkbox" checked={genderMissing} onChange={(e) => { setGenderMissing(e.target.checked); setPage(1) }} />
+            Gender missing
           </label>
           <select
             value={status}

@@ -86,6 +86,9 @@ export interface EditorPayload {
     parcel_size?: 'S' | 'L' | 'XL'
     /** false: the size was never chosen by the seller or an admin (older products silently got S) */
     parcel_size_confirmed?: boolean
+    /** Browsing gender: the resolved value, and the admin's own choice (gender_override) */
+    gender?: 'women' | 'men' | 'unisex' | 'kids' | null
+    gender_override?: 'women' | 'men' | 'unisex' | 'kids' | null
     /** What the client sees for the SAVED price and size: base price + the delivery included */
     display_price?: number
     /** Client fee included in the displayed price, per parcel size (Delivery & Fees) */
@@ -143,6 +146,8 @@ export interface EditorDocument {
   pack_quantity: number | null
   pack_contents: string | null
   parcel_size: 'S' | 'L' | 'XL'
+  /** 'auto' or empty removes the admin's choice */
+  gender?: 'women' | 'men' | 'unisex' | 'kids' | 'auto'
   occasions: string[]
   admin_note: string | null
   attributes: Record<string, any>
