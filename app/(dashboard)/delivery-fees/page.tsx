@@ -16,6 +16,7 @@ import {
 import { Btn, card, input, Notice, GREEN, RED, GOLD } from '../sponsoring/_components/ui'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
 import BrandLoader from '@/components/brand/BrandLoader'
+import DeliveryTimeSection from './_components/DeliveryTimeSection'
 
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 5 }
 const hint: React.CSSProperties = { fontSize: 11.5, fontWeight: 500, color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }
@@ -342,6 +343,9 @@ export default function DeliveryFeesPage() {
           </section>
         </form>
       )}
+
+      {/* Delivery-time rules: own form and own save button (separate from the fees above) */}
+      <DeliveryTimeSection />
     </div>
   )
 }

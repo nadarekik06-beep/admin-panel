@@ -34,6 +34,9 @@ export interface EditorState {
   pack_quantity: string
   pack_contents: string
   parcel_size: 'S' | 'L' | 'XL'
+  /** Made to order ("Sur commande"): preparation time in business days (1–30), only when is_made_to_order */
+  is_made_to_order: boolean
+  preparation_days: string
   /** '' = automatic (seller value / subcategory); otherwise the admin's choice */
   gender: '' | 'women' | 'men' | 'unisex' | 'kids'
   occasions: string[]
@@ -83,6 +86,8 @@ export function fromPayload(p: EditorPayload): EditorState {
     pack_quantity:     pr.pack_quantity != null ? String(pr.pack_quantity) : '',
     pack_contents:     pr.pack_contents ?? '',
     parcel_size:       pr.parcel_size ?? 'S',
+    is_made_to_order:  !!pr.is_made_to_order,
+    preparation_days:  pr.preparation_days != null ? String(pr.preparation_days) : '',
     gender:            (pr.gender_override ?? '') as '' | 'women' | 'men' | 'unisex' | 'kids',
     occasions:         pr.occasions?.length ? pr.occasions : ['all_season'],
     admin_note:        pr.admin_note ?? '',
@@ -177,6 +182,8 @@ export function toDocument(s: EditorState, loadedUpdatedAt: string, colorAxis: A
     pack_quantity:     s.is_pack && s.pack_quantity.trim() ? Number(s.pack_quantity) : null,
     pack_contents:     s.is_pack ? nullIfBlank(s.pack_contents) : null,
     parcel_size:       s.parcel_size,
+    is_made_to_order:  s.is_made_to_order,
+    preparation_days:  s.is_made_to_order ? Number(s.preparation_days) : null,
     gender:            s.gender || 'auto',
     // Categories without occasions are stored as all_season by the backend
     occasions:         s.occasions.length ? s.occasions : ['all_season'],
@@ -263,6 +270,9 @@ export function validate(
   else if (Number(s.price) <= 0) e.price = 'Price must be greater than 0.'
   if (s.variants.length === 0 && (!/^\d+$/.test(s.stock.trim()))) e.stock = 'Stock must be a whole number ≥ 0.'
   if (ctx.occasionsApply && s.occasions.length === 0) e.occasions = 'Select at least one season / occasion.'
+  if (s.is_made_to_order && (!/^\d+$/.test(s.preparation_days.trim()) || Number(s.preparation_days) < 1 || Number(s.preparation_days) > 30)) {
+    e.preparation_days = 'Enter a preparation time between 1 and 30 business days.'
+  }
   if (s.is_pack && (!/^\d+$/.test(s.pack_quantity.trim()) || Number(s.pack_quantity) < 2 || Number(s.pack_quantity) > 1000)) {
     e.pack_quantity = 'Enter how many units the multi-pack contains (at least 2).'
   }
@@ -315,7 +325,7 @@ export function tabOf(errorKey: string): TabId {
   if (errorKey.startsWith('variants')) return 'variants'
   if (errorKey.startsWith('images.color')) return 'variants'
   if (errorKey.startsWith('images')) return 'images'
-  if (['price', 'stock', 'occasions', 'sku', 'is_active', 'is_pack', 'pack_quantity', 'pack_contents', 'parcel_size'].includes(errorKey)) return 'pricing'
+  if (['price', 'stock', 'occasions', 'sku', 'is_active', 'is_pack', 'pack_quantity', 'pack_contents', 'parcel_size', 'is_made_to_order', 'preparation_days'].includes(errorKey)) return 'pricing'
   if (['slug', 'admin_note'].includes(errorKey)) return 'seo'
   return 'general'
 }

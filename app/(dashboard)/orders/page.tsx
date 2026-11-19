@@ -675,6 +675,12 @@ function OrderItemRow({ item }: { item: any }) {
             {item.product_name}
           </p>
           {item.is_platform_item && <PlatformBadge />}
+          {item.product?.is_made_to_order && item.product?.preparation_days ? (
+            <span style={{
+              flexShrink: 0, fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 999,
+              background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)',
+            }}>Sur commande — {item.product.preparation_days} j</span>
+          ) : null}
           {item.item_status === 'returned' && (
             <span style={{
               flexShrink: 0, fontSize: 9, fontWeight: 800,

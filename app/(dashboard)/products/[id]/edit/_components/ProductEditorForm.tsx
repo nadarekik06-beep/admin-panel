@@ -518,6 +518,20 @@ export default function ProductEditorForm(props: ProductEditorFormProps) {
                   </p>
                 )}
               </Field>
+              <Field label="Made to order (Sur commande)" hint="Tick if the seller makes or prepares this product only after the customer orders it. The customer sees the preparation time in the delivery estimate.">
+                <label className="flex items-center gap-2 text-sm text-text-primary">
+                  <input type="checkbox" checked={state.is_made_to_order}
+                    onChange={(e) => { set('is_made_to_order', e.target.checked); if (!e.target.checked) set('preparation_days', '') }} />
+                  This product is made / prepared to order
+                </label>
+              </Field>
+              {state.is_made_to_order && (
+                <Field label="Preparation time (business days, Mon–Fri)" required error={errors.preparation_days}
+                  hint="Business days before the product is ready for pickup (1 to 30). The customer sees this delay.">
+                  <input type="number" min={1} max={30} inputMode="numeric" value={state.preparation_days}
+                    onChange={(e) => set('preparation_days', e.target.value.replace(/\D/g, '').slice(0, 2))} className={inputCls(!!errors.preparation_days)} />
+                </Field>
+              )}
             </div>
           </Card>
 
