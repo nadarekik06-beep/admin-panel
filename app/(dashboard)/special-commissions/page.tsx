@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
-import { BadgePercent, Search, Pencil, StopCircle, Trash2, History, AlertTriangle, Plus, Store } from 'lucide-react'
+import { BadgePercent, Search, Pencil, StopCircle, Trash2, History, AlertTriangle, Plus, Store, ImageIcon } from 'lucide-react'
 import Pagination from '@/components/ui/Pagination'
 import Modal from '@/components/ui/Modal'
 import { usePageLoading } from '@/components/brand/NavigationLoader'
@@ -14,7 +14,7 @@ import {
   type SellerProductRow, type SpecialCommission, type SpecialCommissionList,
 } from '@/lib/api/specialCommissions'
 import { Toasts, type ToastMsg } from '../products/[id]/edit/_components/ui'
-import { apiErrorMessage } from '../products/reviewUtils'
+import { apiErrorMessage, resolveImageUrl } from '../products/reviewUtils'
 
 /**
  * Special Commissions: a deliberate, temporary commission on chosen products of a seller
@@ -33,6 +33,20 @@ const STATUS: Record<OverrideStatus, { label: string; cls: string }> = {
   scheduled: { label: 'Scheduled', cls: 'bg-[#06b6d4]/15 text-[#67e8f9] border-[#06b6d4]/30' },
   expired:   { label: 'Expired',   cls: 'bg-white/5 text-text-muted border-border' },
   ended:     { label: 'Ended',     cls: 'bg-white/5 text-text-muted border-border' },
+}
+
+/** 48px rounded cover thumbnail; a neutral icon when the product has no image (layout never breaks). */
+function Thumb({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  const url = resolveImageUrl(src)
+  return (
+    <div className="w-12 h-12 rounded-lg overflow-hidden bg-bg-hover flex-shrink-0 flex items-center justify-center text-text-muted">
+      {url && !failed
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={url} alt={alt} className="w-full h-full object-cover" onError={() => setFailed(true)} />
+        : <ImageIcon size={18} />}
+    </div>
+  )
 }
 
 const money = (n: number) => `${n.toFixed(3)} DT`
@@ -172,8 +186,13 @@ export default function SpecialCommissionsPage() {
               {(list?.data ?? []).map((r) => (
                 <tr key={r.id} className="border-t border-border align-top">
                   <td className="py-3 pr-3">
-                    <p className="font-semibold text-text-primary max-w-[240px] truncate">{r.product_name ?? `#${r.product_id}`}</p>
-                    {r.product_price != null && <p className="text-[11px] text-text-muted">{money(r.product_price)}</p>}
+                    <div className="flex items-center gap-3">
+                      <Thumb src={r.product_image} alt={r.product_name ?? ''} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-text-primary max-w-[220px] truncate">{r.product_name ?? `#${r.product_id}`}</p>
+                        {r.product_price != null && <p className="text-[11px] text-text-muted">{money(r.product_price)}</p>}
+                      </div>
+                    </div>
                   </td>
                   <td className="pr-3 text-text-secondary">{r.seller_name ?? '—'}</td>
                   <td className="pr-3">
@@ -349,14 +368,14 @@ function NewOffer({ sellers, onSaved, toast }: { sellers: SellerOption[]; onSave
               {selected.length === selectable.length && selectable.length > 0 ? 'Clear' : 'Select all'}
             </button>
           </div>
-          <div className="border border-border rounded-lg max-h-64 overflow-y-auto divide-y divide-border">
+          <div className="border border-border rounded-lg max-h-96 overflow-y-auto divide-y divide-border">
             {loadingProducts && <p className="p-3 text-sm text-text-muted">Loading…</p>}
-            {!loadingProducts && products.length === 0 && <p className="p-3 text-sm text-text-muted">No product.</p>}
+            {!loadingProducts && products.length === 0 && <p className="p-3 text-sm text-text-muted">No approved product.</p>}
             {products.map((p) => (
               <label key={p.id} className={clsx('flex items-center gap-3 px-3 py-2 text-sm', p.offer ? 'opacity-60' : 'cursor-pointer hover:bg-bg-hover')}>
                 <input type="checkbox" disabled={!!p.offer} checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />
+                <Thumb src={p.image} alt={p.name} />
                 <span className="flex-1 truncate text-text-primary">{p.name}</span>
-                {!p.is_active && <span className="text-[10px] text-text-muted">inactive</span>}
                 {p.offer && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border" style={{ color: GREEN, borderColor: `${GREEN}55` }}>{p.offer.label} · {STATUS[p.offer.status].label}</span>}
                 <span className="text-text-secondary w-24 text-right">{money(p.price)}</span>
               </label>

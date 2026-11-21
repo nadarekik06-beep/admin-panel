@@ -14,6 +14,8 @@ export interface SpecialCommission {
   product_id: number
   product_name: string | null
   product_price: number | null
+  /** Cover image path/URL (same cover as the storefront card) */
+  product_image?: string | null
   seller_id: number | null
   seller_name: string | null
   type: OverrideType
@@ -41,6 +43,8 @@ export interface SellerProductRow {
   price: number
   is_active: boolean
   is_approved: boolean
+  /** Cover image path/URL (same cover as the storefront card) */
+  image: string | null
   /** Special commission already live or scheduled on it */
   offer: SpecialCommission | null
 }
