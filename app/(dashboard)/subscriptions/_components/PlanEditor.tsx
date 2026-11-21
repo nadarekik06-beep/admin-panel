@@ -1,13 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { X, Eye, EyeOff, Pencil, Info, Settings2, Gauge, ShieldCheck, LayoutTemplate, MonitorSmartphone, Star } from 'lucide-react'
 import clsx from 'clsx'
 import { plansApi, apiError, type PlanInput } from '@/lib/api/subscriptions'
 import type { Plan, PlansPayload, PublicLimitKey } from '@/types/subscriptions'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { Btn, Field, PlanBadge, inputCls } from './ui'
-import { DESCRIPTION_MAX, LABEL_MAX, LIMIT_NAMES, commissionRange } from './pricing'
+import { DESCRIPTION_MAX, LABEL_MAX, LIMIT_NAMES } from './pricing'
 import DisplayFeaturesEditor, { rowErrors, toRows, type FeatureRow } from './DisplayFeaturesEditor'
 import PricingCardPreview from './PricingCardPreview'
 
@@ -81,6 +81,18 @@ export default function PlanEditor({ plan, data, onClose, onSaved, onError }: {
   const reasonBad = !!f.reason && f.reason.trim().length < 5
   const invalid = generalErrors || capErrors || featureErrors || f.tagline.length > 120 || reasonBad
 
+  // The commission range the card will show comes from the BACKEND (CommissionService::rateRange):
+  // the admin panel never recomputes commission from the tier table.
+  const [range, setRange] = useState<{ min: number; max: number } | null>(null)
+  useEffect(() => {
+    const flat = f.commission_mode === 'flat' ? toNum(f.commission_rate) : null
+    if (f.commission_mode === 'flat' && (flat === null || Number.isNaN(flat))) { setRange(null); return }
+    const t = setTimeout(() => {
+      plansApi.commissionRange(flat, Number(f.commission_reduction || 0)).then(setRange).catch(() => setRange(null))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [f.commission_mode, f.commission_rate, f.commission_reduction])
+
   // ── Live preview input ──────────────────────────────────────────────────
   const preview = useMemo(() => ({
     name: f.name.trim(),
@@ -88,7 +100,7 @@ export default function PlanEditor({ plan, data, onClose, onSaved, onError }: {
     badge_color: f.badge_color,
     tier: Number(f.tier) as 0 | 1 | 2,
     price_monthly: Number(f.price_monthly || 0),
-    commission: commissionRange(data.commission_default ?? null, f.commission_mode, toNum(f.commission_rate), Number(f.commission_reduction || 0)),
+    commission: range,
     is_recommended: f.is_recommended,
     limits: {
       max_products: toNum(f.max_products),
@@ -99,7 +111,7 @@ export default function PlanEditor({ plan, data, onClose, onSaved, onError }: {
     features: f.features,
     capability_display: f.capability_display,
     display_features: rows,
-  }), [f, rows, data.commission_default])
+  }), [f, rows, range])
 
   const save = async () => {
     setSaving(true)

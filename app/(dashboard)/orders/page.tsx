@@ -130,6 +130,8 @@ interface CommissionSummaryData {
   shipping_paid_by?: 'customer' | 'seller' | 'mixed' | 'platform' | null
   seller_shipping?: number
   total_seller_net?: number
+  /** Commission ÷ net items, % — computed by the backend from the stored snapshots */
+  effective_rate?: number
 }
 
 const SHIPPING_PAYER_LABEL: Record<string, string> = {
@@ -642,7 +644,9 @@ function ContactModal({
 function OrderItemRow({ item }: { item: any }) {
   const options       = Object.entries(item.variant_options ?? {})
   const imageUrl      = item.resolved_image_url ?? null
-  const hasCommission = Number(item.commission_amount) > 0
+  // A line priced by an admin special commission always counts (it can be 0 %); legacy rule unchanged otherwise
+  const isSpecial     = item.commission_override_id != null
+  const hasCommission = Number(item.commission_amount) > 0 || isSpecial
   const commissionPct = Number(item.commission_percentage ?? 0)
   const commissionAmt = Number(item.commission_amount ?? 0)
   const sellerAmt     = Number(item.seller_amount ?? 0)
@@ -729,6 +733,22 @@ function OrderItemRow({ item }: { item: any }) {
             }}>
               Fee {commissionPct}%{discountAmt > 0 ? ` of ${netTotal.toFixed(3)}` : ''} → {commissionAmt.toFixed(3)} DT
             </span>
+            {isSpecial && (
+              <span style={{
+                fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+                background: 'rgba(25,143,65,0.12)', color: '#198f41', border: '1px solid rgba(25,143,65,0.25)',
+              }}>
+                Special offer{item.commission_normal_rate != null ? ` (normal ${Number(item.commission_normal_rate)}%)` : ''}
+              </span>
+            )}
+            {item.commission_source == null && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                background: 'rgba(148,163,184,0.12)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.25)',
+              }}>
+                source unknown
+              </span>
+            )}
             {discountAmt > 0 && (
               <span style={{
                 fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
@@ -782,7 +802,7 @@ function CommissionSummary({ items, grossTotal, commissionSummary }: {
 
   if (!hasData) return null
 
-  const commissionPct = effectiveGross > 0 ? ((totalCommission / effectiveGross) * 100).toFixed(1) : '0'
+  const commissionPct = String(commissionSummary?.effective_rate ?? 0)   // from the API: no commission maths in the browser
   const shippingCost   = Number(commissionSummary?.shipping_cost ?? 0)
   const sellerShipping = Number(commissionSummary?.seller_shipping ?? 0)
   const sellerNet      = commissionSummary?.total_seller_net ?? totalSeller - sellerShipping

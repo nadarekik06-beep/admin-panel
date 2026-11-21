@@ -48,6 +48,14 @@ interface DetailItem {
   paid_total: number
   product_deleted: boolean
   variant_deleted: boolean
+  /** Snapshot of the commission on this line (never recalculated) */
+  commission_percentage?: number | null
+  commission_amount?: number
+  commission_source?: string | null
+  commission_override_id?: number | null
+  commission_normal_rate?: number | null
+  /** commission_source is NULL: placed before the source was recorded */
+  source_unknown?: boolean
 }
 
 interface Detail {
@@ -196,6 +204,11 @@ function ItemRow({ item }: { item: DetailItem }) {
           <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', margin: 0, wordBreak: 'break-word' }}>{name}</p>
           {item.product_deleted && tag('Product deleted', '#94a3b8')}
           {item.variant_deleted && tag('Variant deleted', '#94a3b8')}
+          {item.commission_override_id != null && tag(
+            `Special offer · ${Number(item.commission_percentage ?? 0)}%${item.commission_normal_rate != null ? ` (normal ${Number(item.commission_normal_rate)}%)` : ''}`,
+            '#198f41',
+          )}
+          {item.source_unknown && tag('source unknown', '#94a3b8')}
         </div>
 
         {item.variant_options.length > 0 ? (

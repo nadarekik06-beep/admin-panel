@@ -274,11 +274,19 @@ function PricingTab({ product }: { product: ProductReview }) {
       <Section title={<>Commission <span className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: plan.color, background: plan.bg, border: `1px solid ${plan.border}` }}>{c.plan_name}</span></>}>
         <KV label={`Tier rate (on ${formatDT(c.on_price)})`} value={`${c.base_rate}%`} />
         <KV label="Plan reduction" value={c.plan_reduction > 0 ? `− ${c.plan_reduction} pts` : '—'} />
+        {c.special_offer && (
+          <KV label="Special commission" value={`${c.rate}% instead of ${c.normal_rate}%`} strong accent />
+        )}
         <KV label="Rate applied" value={`${c.rate}%`} />
         <KV label="Platform commission" value={formatDT(c.commission_amount)} />
         <KV label="Estimated seller payout" value={formatDT(c.seller_payout)} strong accent />
         {c.payout_range && (
           <KV label="Payout across variants" value={`${formatDT(c.payout_range.min)} – ${formatDT(c.payout_range.max)}`} />
+        )}
+        {c.special_offer && (
+          <p className="text-[11px] pt-2" style={{ color: '#198f41' }}>
+            Special commission live on this product. <a className="underline" href="/special-commissions">Manage</a>
+          </p>
         )}
         <p className="text-[10px] text-text-muted pt-2">Per unit, before coupons. Calculated with the same rules as checkout.</p>
       </Section>

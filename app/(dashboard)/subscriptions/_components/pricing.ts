@@ -2,7 +2,7 @@ import {
   BarChart3, Check, Clock, Crown, Gift, Headset, Heart, Image, Megaphone, Package, Percent,
   Rocket, Shield, Sparkles, Star, Tag, Ticket, Truck, Users, Zap, type LucideIcon,
 } from 'lucide-react'
-import type { Capability, CapabilityDisplay, CommissionTable, DisplayFeature, PublicLimitKey } from '@/types/subscriptions'
+import type { Capability, CapabilityDisplay, DisplayFeature, PublicLimitKey } from '@/types/subscriptions'
 
 /**
  * Mirrors of the backend's pricing-card rules (App\Services\PricingCatalog), so the
@@ -87,14 +87,6 @@ export function previewLines(p: PreviewInput, capabilities: Capability[]): Previ
     lines.push({ key: `d-${i}`, kind: 'feature', label: f.label.trim(), description: f.description?.trim() || null, included: f.included, highlight: f.highlight, icon: f.icon })
   })
   return lines
-}
-
-/** Commission range the plan will show, from the platform tiers (CommissionService::rateRangeForPlan). */
-export function commissionRange(table: CommissionTable | null, mode: 'flat' | 'tiers', flat: number | null, reduction: number): { min: number; max: number } | null {
-  if (mode === 'flat') return flat === null || Number.isNaN(flat) ? null : { min: flat, max: flat }
-  if (!table || table.tiers.length === 0) return null
-  const rates = table.tiers.map((t) => Math.max(table.floor, t.rate - reduction))
-  return { min: Math.min(...rates), max: Math.max(...rates) }
 }
 
 export const fmtPct = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(1)}%`

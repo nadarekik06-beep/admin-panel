@@ -70,6 +70,11 @@ export const subscriptionsApi = {
 }
 
 export const plansApi = {
+  /** Commission range of a plan described by its (unsaved) settings: computed by CommissionService, never in the browser. */
+  async commissionRange(flat: number | null, reduction: number): Promise<{ min: number; max: number }> {
+    const res = await api.get('/admin/subscription-plans/commission-range', { params: { flat: flat ?? undefined, reduction } })
+    return res.data.data
+  },
   async list(withArchived = false): Promise<PlansPayload> {
     const res = await api.get('/admin/subscription-plans', { params: { with_archived: withArchived ? 1 : 0 } })
     return res.data.data

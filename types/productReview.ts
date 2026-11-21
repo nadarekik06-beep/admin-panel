@@ -132,7 +132,11 @@ export interface ProductReview {
     commission: {
       plan: string
       plan_name: string
-      source?: 'override' | 'plan' | 'default'
+      source?: 'override' | 'plan' | 'default' | 'product_override'
+      /** An admin special commission is live on this product; normal_rate = the rate it replaces */
+      special_offer?: boolean
+      normal_rate?: number
+      override_id?: number | null
       on_price: number
       base_rate: number
       plan_reduction: number

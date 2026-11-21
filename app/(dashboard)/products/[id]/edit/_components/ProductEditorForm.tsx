@@ -20,6 +20,7 @@ import ImageSetManager from './ImageSetManager'
 import VariantsEditor from './VariantsEditor'
 import HistoryPanel from './HistoryPanel'
 import QualityWarnings from './QualityWarnings'
+import CommissionHint from './CommissionHint'
 import { Card, Field, Toasts, Toggle, inputCls, type ToastMsg } from './ui'
 import {
   type EditorState, type Errors, type ImgItem, type TabId,
@@ -489,6 +490,7 @@ export default function ProductEditorForm(props: ProductEditorFormProps) {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted">TND</span>
                 </div>
               </Field>
+              <CommissionHint sellerId={creating ? sellerId : p.seller?.id} productId={creating ? null : productId} price={state.price} />
               <Field label="Gender (Femme / Homme)" hint="Where the product shows when shoppers browse Femme or Homme and in chatbot gender searches. Unisex shows in both. Leave on Automatic to use the seller's value.">
                 <select value={state.gender} onChange={(e) => set('gender', e.target.value as typeof state.gender)} className={inputCls(false)}>
                   <option value="">Automatic{p.gender ? ` (currently: ${p.gender})` : ' (none: hidden from Femme / Homme)'}</option>

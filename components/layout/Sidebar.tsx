@@ -53,6 +53,7 @@ const navItems = [
   { href: '/users',               label: 'Users',        icon: Users           },
   { href: '/sellers',             label: 'Sellers',      icon: Store           },
   { href: '/subscriptions',       label: 'Subscriptions', icon: CreditCard      },
+  { href: '/special-commissions', label: 'Special commissions', icon: BadgePercent },
 
   { href: '/seller-applications', label: 'Applications', icon: FileText        },
 
